@@ -1,0 +1,21 @@
+@import "tailwindcss";
+:root {
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.2 0 0);
+  --muted-foreground: oklch(0.43 0 0);
+  --radius: 0.625rem;
+}
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --radius-lg: var(--radius);
+}
+@layer base {
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: system-ui, sans-serif;
+  }
+}

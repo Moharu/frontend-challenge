@@ -1,0 +1,10 @@
+node_modules
+dist
+package-lock.json
+public/mockServiceWorker.js
+playwright-report
+test-results
+.lighthouseci
+reports
+docs/coding-agent-bootstrap-draft.md
+docs/challenge-requirements.md
