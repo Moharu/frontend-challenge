@@ -41,3 +41,13 @@ Maintain this high-level journal during future AI-assisted project work. Append 
 **User direction:** commit and push the reviewed bootstrap before proceeding. This authorizes the bootstrap push to `origin` (`Moharu/frontend-challenge`), on the current `main` branch. The challenge repository configured as `upstream` is not a push target. Future pushes still require user authorization.
 
 **Pre-commit review:** the working tree contains the bootstrap source, tooling, lockfile and documentation; build output, dependencies, reports and local environment files are ignored. `git diff --check` passed. Prior build, lint, formatting and browser results are recorded above. Commit and push outcomes are reported in the accompanying chat and Git history.
+
+## 2026-10-28 — Startup validation and E2E type checking
+
+**Review findings:** confirmed both user-reported issues. Environment validation previously threw during static module evaluation, before the startup rejection handler could run. E2E test files were outside both TypeScript projects.
+
+**Changes:** moved validation into `readEnv()`, called inside `start()`. Startup assigns the validated base URL to the shared Axios instance before rendering; neither module validates at import time. Added a root-referenced `tsconfig.tests.json` inheriting strict tooling settings with DOM libraries and including `tests/**/*.ts`. Updated architecture documentation.
+
+**Verification:** build (including application, tooling and test type checking), lint, and desktop/mobile E2E smoke tests passed. An agent-run Chromium check confirmed malformed API URLs and invalid mock flags display the startup error message, log the caught failure and produce no uncaught page errors; valid settings render the placeholder. A temporary deliberate type error in `tests/` was detected by the root typecheck; after removing the probe, type checking passed. No human review of these changes is claimed. No commit or push was performed for this follow-up.
+
+**Commit authorization:** the user subsequently approved committing and pushing these fixes to `origin/main`. The commit includes the startup validation fix, test TypeScript project and accompanying documentation. Outcomes are reported in chat and Git history.

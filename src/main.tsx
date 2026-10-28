@@ -3,9 +3,12 @@ import { createRoot } from "react-dom/client";
 import { RouterProvider } from "@tanstack/react-router";
 import { Providers } from "@/app/providers";
 import { router } from "@/app/router";
-import { env } from "@/lib/env";
+import { readEnv } from "@/lib/env";
+import { http } from "@/lib/http";
 import "@/styles/globals.css";
 async function start() {
+  const env = readEnv();
+  http.defaults.baseURL = env.apiBaseURL;
   if (env.enableMocks) {
     const { worker } = await import("@/mocks/browser");
     await worker.start({ onUnhandledRequest: "bypass" });

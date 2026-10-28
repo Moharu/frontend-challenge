@@ -1,3 +1,4 @@
 import axios from "axios";
-import { env } from "@/lib/env";
-export const http = axios.create({ baseURL: env.apiBaseURL, timeout: 10000 });
+
+// Startup supplies the validated base URL before rendering any consumers.
+export const http = axios.create({ timeout: 10000 });
