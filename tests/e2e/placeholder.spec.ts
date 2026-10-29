@@ -33,6 +33,7 @@ test("placeholder loads without errors or business traffic", async ({
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+  expect(await page.evaluate(() => "__KURIO_TEST__" in window)).toBe(false);
   expect(errors).toEqual([]);
   expect(traffic).toEqual([]);
 });

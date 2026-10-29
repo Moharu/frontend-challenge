@@ -8,3 +8,6 @@ test-results/
 .lighthouseci/
 reports/
 *.tsbuildinfo
+
+!.env.integration
+dist-integration/

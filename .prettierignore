@@ -8,3 +8,6 @@ test-results
 reports
 docs/coding-agent-bootstrap-draft.md
 docs/challenge-requirements.md
+
+dist-integration
+docs/coding-agent-data-foundation-draft.md

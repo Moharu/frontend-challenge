@@ -1,78 +1,78 @@
-# Coding agent handoff: bootstrap the KURIO frontend challenge
+# Orientações para o agente de programação: inicialização do desafio frontend KURIO
 
-## Objective
+## Objetivo
 
-Initialize a clean, runnable project with the dependencies, configuration, and minimal infrastructure needed for the KURIO NFT marketplace challenge. Render one neutral placeholder screen. Stop after the bootstrap is verified.
+Inicializar um projeto limpo e executável com as dependências, configurações e infraestrutura mínima necessárias para o desafio KURIO de marketplace de NFTs. Renderizar uma única tela provisória neutra. Parar após verificar a inicialização.
 
-**Do not implement marketplace features, reproduce Figma screens, or deploy the application in this task.**
+**Não implementar funcionalidades do marketplace, reproduzir telas do Figma ou implantar a aplicação nesta tarefa.**
 
-## Context and sources
+## Contexto e fontes
 
-- Challenge requirements: https://github.com/junglegaming/frontend-challenge/blob/main/README.md
-- Approved design reference for future implementation: https://www.figma.com/design/Zbw0vAAPU80HoDwKVfAcCR/Frontend-Challenge--Copy-?node-id=0-1
-- Deployment target for later: Vercel.
-- Product name: KURIO.
-- The eventual application simulates REST APIs, authentication, wallets, payments, and realtime events. It must not depend on a production backend, real wallet extension, blockchain, or payment gateway.
+- Requisitos do desafio: https://github.com/junglegaming/frontend-challenge/blob/main/README.md
+- Referência de design aprovada para implementação futura: https://www.figma.com/design/Zbw0vAAPU80HoDwKVfAcCR/Frontend-Challenge--Copy-?node-id=0-1
+- Destino de implantação futuro: Vercel.
+- Nome do produto: KURIO.
+- A aplicação futura simula APIs REST, autenticação, carteiras, pagamentos e eventos em tempo real. Não deve depender de backend de produção, extensão real de carteira, blockchain ou gateway de pagamento.
 
-Read the challenge README and applicable repository instructions before starting. Do not open Figma or download design assets for this bootstrap task. The link is context for later work.
+Ler o README do desafio e as instruções aplicáveis do repositório antes de começar. Não abrir o Figma nem baixar recursos de design nesta tarefa de inicialização. O link serve de contexto para trabalho futuro.
 
-## Scope boundaries
+## Limites do escopo
 
-Allowed:
+Permitido:
 
-- Initialize the project, install dependencies, commit a lockfile, and configure tooling.
-- Wire providers, routing, HTTP configuration, and optional mock initialization.
-- Add one placeholder route and a minimal unknown-route fallback.
-- Add a smoke test, test configuration, and Lighthouse audit configuration.
-- Document setup, commands, environment variables, architecture boundaries, and deferred work.
+- Inicializar o projeto, instalar dependências, incluir um arquivo de lock no commit e configurar ferramentas.
+- Conectar provedores, roteamento, configuração HTTP e inicialização opcional de mocks.
+- Adicionar uma rota provisória e um fallback mínimo para rotas desconhecidas.
+- Adicionar um teste básico, configuração de testes e configuração de auditoria Lighthouse.
+- Documentar configuração, comandos, variáveis de ambiente, limites de arquitetura e trabalho adiado.
 
-Not allowed:
+Não permitido:
 
-- Catalog, NFT detail, cart, checkout, authentication, profile, wallet, favorite, or order features.
-- Domain models, API endpoints, fixtures, fake accounts, business validation, persisted business state, or event scenarios.
-- A functional purchase flow, wallet connection, session system, or realtime subscription.
-- Product navigation, hero sections, cards, account forms, dashboards, or Figma reproduction.
-- Databases, third-party authentication, real payment integrations, or server infrastructure.
-- Creating remote repositories, pushing commits, changing the challenge repository, or deploying to Vercel.
-- Claims that the challenge is complete or that placeholder audit results represent final performance.
+- Funcionalidades de catálogo, detalhe de NFT, carrinho, checkout, autenticação, perfil, carteira, favoritos ou pedidos.
+- Modelos de domínio, endpoints de API, massas de dados, contas fictícias, validações de negócio, estado de negócio persistido ou cenários de eventos.
+- Fluxo funcional de compra, conexão de carteira, sistema de sessão ou assinatura de tempo real.
+- Navegação de produto, seções de destaque, cartões, formulários de conta, painéis ou reprodução do Figma.
+- Bancos de dados, autenticação de terceiros, integrações reais de pagamento ou infraestrutura de servidor.
+- Criar repositórios remotos, enviar commits, alterar o repositório do desafio ou implantar na Vercel.
+- Declarar que o desafio está concluído ou que resultados de auditoria da tela provisória representam o desempenho final.
 
-## Workspace handling
+## Preparação do diretório de trabalho
 
-1. Inspect the target directory and its instructions before writing files.
-2. Preserve existing user work. Do not overwrite an existing application or replace its package manager without checking compatibility.
-3. If no application exists, initialize Vite + React + TypeScript in the intended project directory.
-4. Use npm for a new project and commit `package-lock.json`. If the repository already has a package manager and lockfile, retain them and adapt commands consistently.
-5. Select a currently supported Node.js LTS version compatible with the selected dependencies. Record it in `.nvmrc` and `package.json` engines.
-6. Verify current official package documentation when selecting versions and setup patterns. Pin a compatible dependency set through the lockfile. Do not blindly mix prereleases or copy outdated setup instructions.
+1. Inspecionar o diretório de destino e suas instruções antes de gravar arquivos.
+2. Preservar o trabalho existente do usuário. Não sobrescrever uma aplicação existente nem substituir seu gerenciador de pacotes sem verificar compatibilidade.
+3. Se não existir aplicação, inicializar Vite + React + TypeScript no diretório pretendido do projeto.
+4. Usar npm em projeto novo e incluir `package-lock.json` no commit. Se o repositório já tiver gerenciador e arquivo de lock, mantê-los e adaptar todos os comandos de forma consistente.
+5. Selecionar uma versão Node.js LTS atualmente suportada e compatível com as dependências escolhidas. Registrá-la em `.nvmrc` e em engines de `package.json`.
+6. Verificar a documentação oficial atual dos pacotes ao escolher versões e padrões de configuração. Fixar um conjunto compatível de dependências pelo arquivo de lock. Não misturar versões preliminares às cegas nem copiar instruções de configuração desatualizadas.
 
-## Required dependencies
+## Dependências obrigatórias
 
-Install and configure these as appropriate for bootstrap:
+Instalar e configurar conforme necessário para a inicialização:
 
-- React and React DOM.
-- TypeScript with strict checking.
-- Vite and its React plugin.
-- TanStack Router for routing.
-- TanStack Query for remote-state infrastructure.
-- Axios as the future REST client.
-- Tailwind CSS using the integration appropriate to its installed major version.
-- shadcn/ui configuration and only the supporting dependencies required by the selected setup.
-- MSW for future network-level mocks.
-- `socket.io-client` for future realtime connections.
-- `@mswjs/socket.io-binding` for future MSW Socket.IO simulation.
-- Playwright for E2E and visual regression tooling.
-- Lighthouse tooling, preferably Lighthouse CI for repeatable runs and report artifacts.
-- ESLint with TypeScript, React Hooks, and React Refresh support as appropriate.
-- Prettier for formatting.
-- Node.js type definitions for configuration files where needed.
+- React e React DOM.
+- TypeScript com verificação estrita.
+- Vite e seu plugin React.
+- TanStack Router para roteamento.
+- TanStack Query para infraestrutura de estado remoto.
+- Axios como futuro cliente REST.
+- Tailwind CSS com a integração adequada à versão principal instalada.
+- Configuração shadcn/ui e somente as dependências de apoio exigidas pela configuração escolhida.
+- MSW para futuros mocks na camada de rede.
+- `socket.io-client` para futuras conexões de tempo real.
+- `@mswjs/socket.io-binding` para futura simulação Socket.IO com MSW.
+- Playwright para ferramentas E2E e de regressão visual.
+- Ferramentas Lighthouse, de preferência Lighthouse CI para execuções reproduzíveis e relatórios.
+- ESLint com suporte a TypeScript, React Hooks e React Refresh conforme apropriado.
+- Prettier para formatação.
+- Definições de tipos Node.js para arquivos de configuração quando necessárias.
 
-Do not install a second router, HTTP client, state manager, backend framework, blockchain SDK, or additional UI component library. Defer form libraries and other optional dependencies until a concrete feature needs them.
+Não instalar um segundo roteador, cliente HTTP, gerenciador de estado, framework de backend, SDK blockchain ou biblioteca adicional de componentes de interface. Adiar bibliotecas de formulários e outras dependências opcionais até uma funcionalidade concreta precisar delas.
 
-Check and record compatibility between MSW, the Socket.IO binding, and `socket.io-client`. Do not create a socket connection to prove compatibility in this task. If integration cannot be validated without a later protocol test, label that limitation explicitly.
+Verificar e registrar a compatibilidade entre MSW, a integração Socket.IO e `socket.io-client`. Não criar uma conexão de socket para demonstrar compatibilidade nesta tarefa. Se a integração não puder ser validada sem um teste posterior de protocolo, declarar explicitamente essa limitação.
 
-## Project organization
+## Organização do projeto
 
-Use a modest structure with clear extension points, for example:
+Usar uma estrutura simples com pontos claros de extensão, por exemplo:
 
 ```text
 src/
@@ -111,143 +111,143 @@ README.md
 ARCHITECTURE.md
 ```
 
-Adapt filenames to the selected tooling. Avoid generating empty feature modules, repositories, services, hooks, or speculative abstractions. Explain future feature boundaries in documentation instead.
+Adaptar os nomes dos arquivos às ferramentas escolhidas. Evitar gerar módulos de funcionalidades, repositórios, serviços, hooks ou abstrações especulativas vazios. Explicar na documentação os futuros limites entre funcionalidades.
 
-## Bootstrap wiring
+## Integração da infraestrutura inicial
 
-### Routing and providers
+### Roteamento e provedores
 
-- Use TanStack Router's code-based routing for this small bootstrap unless existing conventions require file-based routing.
-- Register router types correctly.
-- Create a root route, an index route, and a small not-found fallback.
-- Wrap the app with a single stable TanStack Query client/provider.
-- Configure a shared `@/` alias consistently for TypeScript, Vite, and shadcn.
-- Keep React Strict Mode enabled.
+- Usar rotas TanStack Router definidas em código nesta pequena inicialização, salvo se convenções existentes exigirem rotas baseadas em arquivos.
+- Registrar corretamente os tipos do roteador.
+- Criar uma rota raiz, uma rota inicial e um pequeno fallback de página não encontrada.
+- Envolver a aplicação com um único cliente/provedor TanStack Query estável.
+- Configurar o alias compartilhado `@/` de forma consistente no TypeScript, Vite e shadcn.
+- Manter React Strict Mode habilitado.
 
-### HTTP and environment
+### HTTP e ambiente
 
-- Create one Axios instance with a validated base URL and finite timeout.
-- Do not add auth interceptors, tokens, retries, API calls, or endpoint wrappers yet.
-- Provide `.env.example` with a small documented set of public configuration values, such as:
+- Criar uma instância Axios com URL base validada e timeout finito.
+- Não adicionar ainda interceptores de autenticação, tokens, novas tentativas, chamadas de API ou funções auxiliares de endpoints.
+- Fornecer `.env.example` com um conjunto pequeno e documentado de valores públicos de configuração, por exemplo:
 
 ```dotenv
 VITE_API_BASE_URL=/api
 VITE_ENABLE_MOCKS=true
 ```
 
-- Parse booleans explicitly; the string `false` must not enable mocks.
-- Explain that `VITE_*` values are public build-time configuration, not secrets.
-- Do not add unused socket URLs or invented backend services.
+- Interpretar booleanos explicitamente; a string `false` não deve habilitar mocks.
+- Explicar que valores `VITE_*` são configuração pública definida no build, não segredos.
+- Não adicionar URLs de socket não utilizadas nem inventar serviços de backend.
 
-### Mock infrastructure
+### Infraestrutura de mocks
 
-- Generate the MSW worker using the installed MSW tooling.
-- Export an empty handler array and a browser worker using it.
-- Load mocks dynamically only when enabled by configuration.
-- Await mock startup before rendering so future requests cannot race interception.
-- Keep mock activation available in an optimized build; do not gate it solely on development mode.
-- Do not add REST handlers, Socket.IO handlers, sample events, or domain fixtures yet.
-- Ensure unhandled-request behavior does not break Vite, fonts, images, or static assets. Document the intended future API request policy.
-- Do not silently suppress worker-startup failures.
+- Gerar o worker MSW usando as ferramentas da versão instalada.
+- Exportar um array vazio de handlers e um worker de navegador que o utilize.
+- Carregar mocks dinamicamente somente quando habilitados por configuração.
+- Aguardar sua inicialização antes de renderizar para evitar que futuras requisições ocorram antes da interceptação.
+- Manter a ativação de mocks disponível em build otimizado; não condicioná-la exclusivamente ao modo de desenvolvimento.
+- Não adicionar ainda handlers REST, handlers Socket.IO, eventos de exemplo ou massas de dados de domínio.
+- Garantir que o tratamento de requisições não interceptadas não quebre Vite, fontes, imagens ou recursos estáticos. Documentar a política futura pretendida para requisições de API.
+- Não suprimir silenciosamente falhas de inicialização do worker.
 
-### Styles and shadcn
+### Estilos e shadcn
 
-- Initialize Tailwind and shadcn configuration with CSS variables and the shared alias.
-- Keep component generation minimal; a component library showcase is not needed.
-- Basic background, foreground, spacing, and readable system typography are sufficient.
-- Do not reproduce the full KURIO theme, load remote fonts, or export Figma assets yet.
+- Inicializar Tailwind e configuração shadcn com variáveis CSS e o alias compartilhado.
+- Gerar o mínimo de componentes; não é necessária uma vitrine da biblioteca.
+- Fundo, cor de texto, espaçamentos básicos e tipografia legível do sistema são suficientes.
+- Não reproduzir ainda o tema completo do KURIO, carregar fontes remotas ou exportar recursos do Figma.
 
-## Placeholder screen
+## Tela provisória
 
-Render a single accessible, responsive page with:
+Renderizar uma única página acessível e responsiva com os seguintes textos literais da aplicação:
 
-- Heading: `KURIO`
-- Supporting text: `Frontend challenge — project setup complete.`
-- Small note: `Marketplace features have not been implemented yet.`
+- Título: `KURIO`
+- Texto de apoio: `Frontend challenge — project setup complete.`
+- Nota pequena: `Marketplace features have not been implemented yet.`
 
-Use a semantic `main` and one `h1`. Center a simple content block with comfortable padding. No buttons, menu, mock NFT cards, counters, wallet controls, or interactive product behavior.
+Usar `main` semântico e um único `h1`. Centralizar um bloco simples de conteúdo com espaçamento interno confortável. Sem botões, menu, cartões fictícios de NFT, contadores, controles de carteira ou comportamento interativo de produto.
 
-Set the document title to `KURIO | Frontend Challenge`, a basic description, and an appropriate language attribute for the placeholder copy. Remove Vite demo logos, counters, and unused starter styles/assets.
+Definir o título do documento como `KURIO | Frontend Challenge`, uma descrição básica e um atributo de idioma adequado ao texto da tela provisória. Remover logos, contadores e estilos/recursos iniciais não utilizados da demonstração Vite.
 
-The page must fit narrow viewports without horizontal overflow and must not issue REST requests or open Socket.IO connections.
+A página deve caber em telas estreitas sem transbordamento horizontal e não deve emitir requisições REST ou abrir conexões Socket.IO.
 
-## Tooling and commands
+## Ferramentas e comandos
 
-Provide working scripts equivalent to:
+Fornecer scripts funcionais equivalentes a:
 
 ```text
-dev                Start the development server
-dev:mocks          Start development with mocks explicitly enabled
-build              Type-check and produce the optimized build
-preview            Serve the optimized build locally
-typecheck          Check application and configuration types
-lint               Run ESLint with no warnings allowed
-format             Format maintained source/configuration files
-format:check       Verify formatting
-test:e2e           Run Playwright smoke tests
-test:e2e:ui        Open Playwright's interactive runner
-test:e2e:report    Open the HTML test report
-audit:lighthouse  Run the configured Lighthouse checks
+dev                Iniciar o servidor de desenvolvimento
+dev:mocks          Iniciar o desenvolvimento com mocks explicitamente habilitados
+build              Verificar tipos e produzir o build otimizado
+preview            Servir o build otimizado localmente
+typecheck          Verificar tipos da aplicação e configurações
+lint               Executar ESLint sem permitir avisos
+format             Formatar os arquivos mantidos de código/configuração
+format:check       Verificar a formatação
+test:e2e           Executar os testes básicos Playwright
+test:e2e:ui        Abrir o executor interativo do Playwright
+test:e2e:report    Abrir o relatório HTML dos testes
+audit:lighthouse  Executar as verificações Lighthouse configuradas
 ```
 
-Ensure commands work on Windows and Unix-like environments. Do not use POSIX-only inline environment assignments; use a Vite mode/configuration or a small cross-platform helper where appropriate.
+Garantir que os comandos funcionem em Windows e sistemas Unix. Não usar atribuições de ambiente na linha de comando exclusivas de POSIX; usar modo/configuração Vite ou um pequeno auxiliar multiplataforma quando apropriado.
 
-Exclude generated workers, build output, reports, and lockfiles from format/lint processing as appropriate. Ignore dependencies, local environment files, reports, traces, and build artifacts in Git; retain `.env.example` and the lockfile.
+Excluir workers gerados, saída de build, relatórios e arquivos de lock do processamento de formatação/lint conforme apropriado. Ignorar no Git dependências, arquivos locais de ambiente, relatórios, rastros de execução e artefatos de build; manter `.env.example` e o arquivo de lock.
 
-## Playwright setup
+## Configuração Playwright
 
-- Configure Chromium desktop and mobile viewport projects. Include 1440px desktop and 390px mobile widths.
-- Use a managed local web server and deterministic base URL.
-- Configure HTML reporting, screenshots on failure, and traces retained on failure.
-- Add one smoke test that verifies the placeholder heading and copy, catches uncaught page errors, and checks for horizontal overflow.
-- Keep the test isolated and independent of external services.
-- Do not add future feature tests, skipped test inventories, or placeholder visual baselines.
-- Document how to install the required browser binaries from a clean checkout.
+- Configurar projetos Chromium para desktop e dimensão de tela mobile. Incluir larguras de 1440px desktop e 390px mobile.
+- Usar servidor local gerenciado e URL base determinística.
+- Configurar relatório HTML, capturas de tela em falhas e rastros de execução retidos em falhas.
+- Adicionar um teste básico que verifique título e textos da tela provisória, capture erros de página não tratados e verifique transbordamento horizontal.
+- Manter o teste isolado e independente de serviços externos.
+- Não adicionar testes de funcionalidades futuras, inventários de testes ignorados ou referências visuais provisórias.
+- Documentar como instalar os binários de navegador necessários a partir de uma cópia limpa do repositório.
 
-## Lighthouse setup
+## Configuração Lighthouse
 
-- Configure auditing against the optimized local build, never the Vite development server.
-- Make mobile and desktop profiles reproducible and retain HTML/JSON reports.
-- Configure three runs per profile where supported; document that final reporting must use per-category medians.
-- The only current audit target is `/`. NFT detail auditing is deferred until that route exists.
-- Document the final challenge targets: performance 90, accessibility 95, best practices 95, SEO 90; record LCP, CLS, and TBT in the final implementation phase.
-- Do not claim these targets have been met for the marketplace based on this placeholder.
+- Configurar auditoria sobre o build otimizado local, nunca sobre o servidor de desenvolvimento Vite.
+- Tornar os perfis mobile e desktop reproduzíveis e manter relatórios HTML/JSON.
+- Configurar três execuções por perfil quando suportado; documentar que o relatório final deve usar medianas por categoria.
+- O único alvo atual de auditoria é `/`. A auditoria do detalhe de NFT fica adiada até que a rota exista.
+- Documentar as metas finais do desafio: desempenho 90, acessibilidade 95, boas práticas 95 e SEO 90; registrar LCP, CLS e TBT na fase de implementação final.
+- Não declarar que o marketplace atingiu essas metas com base nesta tela provisória.
 
-## Vercel preparation only
+## Somente preparação Vercel
 
-- Configure the Vite build output and SPA fallback needed for direct-route access and refresh.
-- Ensure the MSW worker and other static files remain directly accessible rather than being served as the HTML fallback.
-- Document the intended demo environment variable enabling mocks.
-- Do not create/link a Vercel project or deploy. No public URL is expected from this task.
+- Configurar a saída do build Vite e o fallback SPA necessários para acesso direto e recarregamento de rotas.
+- Garantir que o worker MSW e outros arquivos estáticos continuem diretamente acessíveis, em vez de receberem o HTML de fallback.
+- Documentar a variável de ambiente pretendida para habilitar mocks na demonstração.
+- Não criar/vincular projeto Vercel nem implantar. Nenhuma URL pública é esperada nesta tarefa.
 
-## Documentation
+## Documentação
 
-Write a concise README covering prerequisites, installation, environment configuration, scripts, mock activation, browser installation, and local build/preview.
+Escrever um README conciso com pré-requisitos, instalação, configuração de ambiente, scripts, ativação de mocks, instalação do navegador e build/pré-visualização locais.
 
-Write a short `ARCHITECTURE.md` explaining the current provider/router/HTTP/mock boundaries. Clearly distinguish installed tooling from implemented functionality. Record these future constraints without implementing them:
+Escrever um `ARCHITECTURE.md` curto explicando os limites atuais entre provedor/roteador/HTTP/mocks. Diferenciar claramente ferramentas instaladas de funcionalidades implementadas. Registrar estas restrições futuras sem implementá-las:
 
-- URL-backed discovery state.
-- User-scoped caches and session cleanup.
-- Decimal-string ETH transport with precise arithmetic.
-- API-authoritative quotes and idempotent order creation.
-- Versioned Socket.IO events and REST reconciliation.
-- Network-level mocks shared across development, demo, and tests.
-- Desktop/mobile compositions sharing business logic.
+- Estado da descoberta baseado na URL.
+- Caches por usuário e limpeza de sessão.
+- Transporte de ETH como string decimal com aritmética precisa.
+- Cotações determinadas pela API e criação idempotente de pedidos.
+- Eventos Socket.IO versionados e reconciliação REST.
+- Mocks na camada de rede compartilhados entre desenvolvimento, demonstração e testes.
+- Composições desktop/mobile compartilhando lógica de negócio.
 
-In `docs/bootstrap-scope.md`, record completed setup, package/runtime choices, deferred protocol verification, and the explicit feature exclusions.
+Em `docs/bootstrap-scope.md`, registrar a configuração concluída, escolhas de pacotes/ambiente, verificação de protocolo adiada e exclusões explícitas de funcionalidades.
 
-## Verification and stopping criteria
+## Verificação e critérios de parada
 
-Before finishing:
+Antes de finalizar:
 
-1. Confirm dependencies install reproducibly with the committed lockfile.
-2. Run type checking, lint, formatting checks, and the optimized build.
-3. Run the Playwright placeholder smoke test in desktop and mobile projects.
-4. Verify the placeholder starts with mocks enabled and disabled, with no startup errors.
-5. Smoke-run the Lighthouse configuration against the optimized build and confirm report artifacts are generated. Label them bootstrap-only.
-6. Confirm there are no application REST calls or Socket.IO connections, no business handlers, and no implemented marketplace features.
-7. Confirm no deployment or remote repository mutation occurred.
+1. Confirmar que as dependências são instaladas de forma reproduzível com o arquivo de lock versionado.
+2. Executar verificação de tipos, lint, verificação de formatação e build otimizado.
+3. Executar o teste básico Playwright da tela provisória nos projetos desktop e mobile.
+4. Verificar que a tela provisória inicia com mocks habilitados e desabilitados, sem erros de inicialização.
+5. Executar uma verificação básica da configuração Lighthouse sobre o build otimizado e confirmar a geração de relatórios. Identificá-los como exclusivos da inicialização.
+6. Confirmar ausência de chamadas REST ou conexões Socket.IO da aplicação, handlers de negócio e funcionalidades de marketplace implementadas.
+7. Confirmar que nenhuma implantação ou alteração de repositório remoto ocorreu.
 
-If an environment restriction prevents installation or verification, report the exact command and limitation. Never claim an unexecuted check passed.
+Se uma restrição de ambiente impedir instalação ou verificação, informar o comando exato e a limitação. Nunca declarar aprovada uma verificação não executada.
 
-Return a concise summary of files/configuration added, installed package versions, checks run and their outcomes, and any remaining setup limitations. **Stop at the placeholder screen. Do not proceed to feature implementation.**
+Retornar um resumo conciso dos arquivos/configurações adicionados, versões dos pacotes instalados, verificações executadas e resultados, além das limitações restantes de configuração. **Parar na tela provisória. Não prosseguir para implementação de funcionalidades.**

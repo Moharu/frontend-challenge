@@ -1,12 +1,14 @@
-# Bootstrap scope and handoff
+# Escopo da inicialização e passagem de contexto
 
-Completed on 2026-10-28. This is infrastructure and a neutral placeholder, not the marketplace implementation. No Figma access, remote mutation, commit, push, project linking or deployment occurred. The lockfile is ready for a future commit with the rest of the bootstrap.
+Registro histórico da etapa de inicialização. Para a base de dados atual, consulte `ARCHITECTURE.md`, `docs/contracts/` e `docs/mock-scenarios.md`.
 
-## Runtime and packages
+Concluída em 2026-10-28. Trata-se de infraestrutura e uma tela provisória neutra, não da implementação do marketplace. Não houve acesso ao Figma, alteração remota, commit, push, vinculação de projeto ou implantação. O arquivo de lock está pronto para um commit futuro com o restante da inicialização.
 
-Node 24.22.0 LTS, npm 11.19.1. `.nvmrc` pins the runtime; engines require Node 24 and npm 11. Vite 8 uses the React plugin and Tailwind 4 Vite plugin. TypeScript 5.9 uses strict checking. ESLint 10 and its plugins have compatible peer requirements. The lockfile pins the complete dependency graph.
+## Ambiente de execução e pacotes
 
-| Package                       | Resolved version |
+Node 24.22.0 LTS, npm 11.19.1. `.nvmrc` fixa o ambiente de execução; engines exigem Node 24 e npm 11. O Vite 8 usa o plugin React e o plugin Vite do Tailwind 4. O TypeScript 5.9 usa verificação estrita. ESLint 10 e seus plugins possuem requisitos compatíveis de dependências pares. O arquivo de lock fixa todo o grafo de dependências.
+
+| Pacote                        | Versão resolvida |
 | ----------------------------- | ---------------- |
 | `@eslint/js`                  | 10.0.1           |
 | `@lhci/cli`                   | 0.15.1           |
@@ -37,51 +39,51 @@ Node 24.22.0 LTS, npm 11.19.1. `.nvmrc` pins the runtime; engines require Node 2
 | `typescript-eslint`           | 8.72.1           |
 | `vite`                        | 8.3.5            |
 
-## Compatibility and limitations
+## Compatibilidade e limitações
 
-`@mswjs/socket.io-binding@0.2.0` requires MSW `^2.10.2`; MSW 2.15.0 satisfies that peer. Its published development dependency uses Socket.IO client `^4.8.1`, compatible with the selected 4.8.4. The binding uses Engine.IO parser 5 and Socket.IO parser 4. This establishes package-level compatibility only. A later browser protocol test must verify the client's WebSocket transport, handshake, event encoding, disconnection and reconnection through MSW. Long-polling support is not assumed. No socket connection was created at bootstrap.
+`@mswjs/socket.io-binding@0.2.0` exige MSW `^2.10.2`; MSW 2.15.0 atende a essa dependência par. Sua dependência de desenvolvimento publicada usa cliente Socket.IO `^4.8.1`, compatível com a versão escolhida 4.8.4. A integração usa analisador Engine.IO 5 e analisador Socket.IO 4. Isso estabelece somente compatibilidade entre pacotes. Um teste posterior de protocolo no navegador deve verificar transporte WebSocket, negociação inicial, codificação de eventos, desconexão e reconexão do cliente pelo MSW. Não se presume suporte a long-polling. Nenhuma conexão de socket foi criada na inicialização.
 
-The latest Lighthouse CI 0.15.1 brings transitive development-tool advisories: `npm audit` reports 16 (13 high, 1 moderate, 2 low), all in the Lighthouse CI chain. No forced downgrade or cross-major transitive override was applied. These remain a tooling limitation to revisit before upgrading or accepting untrusted audit inputs; they are not imported into the application. The MSW package postinstall is skipped by npm 11's script approval policy; explicit worker generation succeeded and browser startup was verified.
+O Lighthouse CI mais recente, 0.15.1, traz avisos transitivos de ferramentas de desenvolvimento: `npm audit` informa 16, sendo 13 de gravidade alta, 1 moderada e 2 baixas, todos na cadeia do Lighthouse CI. Não foram aplicadas redução forçada de versão ou sobrescritas transitivas entre versões principais. Permanecem como limitação das ferramentas a ser revista antes de atualizações ou aceitação de entradas de auditoria não confiáveis; essas dependências não são importadas pela aplicação. O postinstall do pacote MSW é ignorado pela política de aprovação de scripts do npm 11; a geração explícita do worker funcionou e a inicialização no navegador foi verificada.
 
-## Boundaries and exclusions
+## Limites e exclusões
 
-Configured Query provider, registered code-based router, Axios instance with validated environment and finite timeout, dynamic awaited empty MSW worker, Tailwind/shadcn aliases and utilities, Chromium desktop/mobile tests, optimized-build Lighthouse CI and filesystem-first Vercel SPA configuration.
+Configurados provedor Query, roteador em código com tipos registrados, instância Axios com ambiente validado e timeout finito, worker MSW vazio carregado dinamicamente e aguardado, aliases/utilitários Tailwind/shadcn, testes Chromium desktop/mobile, Lighthouse CI sobre build otimizado e configuração SPA Vercel com prioridade para arquivos existentes.
 
-No catalog, NFT detail, cart, checkout, account/authentication, profile, wallet, favorites, orders, domain models, contracts, REST endpoints, fixtures, persistence, business validation, network scenarios, Socket.IO events, external integrations, product navigation or design reproduction. Future architecture constraints are recorded in `ARCHITECTURE.md`.
+Sem catálogo, detalhe de NFT, carrinho, checkout, conta/autenticação, perfil, carteira, favoritos, pedidos, modelos de domínio, contratos, endpoints REST, massas de dados, persistência, validação de negócio, cenários de rede, eventos Socket.IO, integrações externas, navegação de produto ou reprodução de design. As restrições futuras de arquitetura estão registradas em `ARCHITECTURE.md`.
 
-## Official references consulted
+## Referências oficiais consultadas
 
-- [Vite setup and runtime requirements](https://vite.dev/guide/)
-- [Node release lifecycle](https://nodejs.org/en/about/previous-releases)
-- [TanStack Router quick start](https://tanstack.com/router/latest/docs/quick-start)
-- [Tailwind Vite integration](https://tailwindcss.com/docs/installation/using-vite)
-- [shadcn manual setup](https://ui.shadcn.com/docs/installation/manual)
-- [MSW browser integration](https://mswjs.io/guides/integrations/browser)
-- [Socket.IO binding source](https://github.com/mswjs/socket.io-binding)
-- [Playwright configuration](https://playwright.dev/docs/test-configuration)
-- [Lighthouse CI configuration](https://googlechrome.github.io/lighthouse-ci/docs/configuration.html)
+- [Configuração e requisitos de execução do Vite](https://vite.dev/guide/)
+- [Ciclo de vida das versões do Node](https://nodejs.org/en/about/previous-releases)
+- [Início rápido do TanStack Router](https://tanstack.com/router/latest/docs/quick-start)
+- [Integração Vite do Tailwind](https://tailwindcss.com/docs/installation/using-vite)
+- [Configuração manual do shadcn](https://ui.shadcn.com/docs/installation/manual)
+- [Integração do MSW no navegador](https://mswjs.io/guides/integrations/browser)
+- [Código-fonte da integração Socket.IO](https://github.com/mswjs/socket.io-binding)
+- [Configuração do Playwright](https://playwright.dev/docs/test-configuration)
+- [Configuração do Lighthouse CI](https://googlechrome.github.io/lighthouse-ci/docs/configuration.html)
 
-Package registry manifests were also checked for resolved versions and peer requirements. The supplied local challenge README was treated as authoritative and preserved verbatim in `docs/challenge-requirements.md`.
+Os manifestos do registro de pacotes também foram consultados para versões resolvidas e requisitos de dependências pares. O README local fornecido para o desafio foi tratado como referência e preservado integralmente em `docs/challenge-requirements.md`.
 
-## Verification
+## Verificação
 
-All browser/audit observations are agent-run; no human visual signoff is claimed.
+Todas as observações de navegador/auditoria foram executadas pelo agente; não se declara aprovação visual humana.
 
-| Check                                 | Outcome                                                                                                                                       |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm ci`                              | Passed with the checked-in-ready lockfile; advisory counts above remain                                                                       |
-| `npm run typecheck` / `npm run build` | Passed, including both default and `--mode mocks` optimized builds                                                                            |
-| `npm run lint`                        | Passed with ESLint 10 and zero warnings                                                                                                       |
-| `npm run format:check`                | Passed                                                                                                                                        |
-| `npm run test:e2e`                    | Two tests passed for each mock mode, 1440px desktop and 390px mobile                                                                          |
-| Worker and routing inspection         | Enabled controller points to `/mockServiceWorker.js`; worker asset responds 200 with `text/javascript`; direct unknown-route fallback renders |
-| Screenshot review                     | Agent inspected desktop/mobile screenshots; copy is readable, centered and wraps without horizontal overflow                                  |
-| Runtime/source review                 | No observed REST/Socket.IO traffic, browser console/page errors, business handlers or feature implementation                                  |
-| `npm run audit:lighthouse`            | Passed; three HTML and JSON reports per profile retained locally in `reports/lighthouse`                                                      |
-| Remote actions                        | No deployment, remote repository mutation or push                                                                                             |
+| Verificação                           | Resultado                                                                                                                                                                       |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm ci`                              | Aprovada com o arquivo de lock pronto para versionamento; permanecem os avisos acima                                                                                            |
+| `npm run typecheck` / `npm run build` | Aprovados, incluindo builds otimizados padrão e `--mode mocks`                                                                                                                  |
+| `npm run lint`                        | Aprovado com ESLint 10 e nenhum aviso                                                                                                                                           |
+| `npm run format:check`                | Aprovado                                                                                                                                                                        |
+| `npm run test:e2e`                    | Dois testes aprovados por modo de mocks, desktop de 1440px e mobile de 390px                                                                                                    |
+| Inspeção do worker e roteamento       | O controlador habilitado aponta para `/mockServiceWorker.js`; o arquivo do worker responde 200 com `text/javascript`; o fallback de acesso direto a rota desconhecida renderiza |
+| Revisão de capturas de tela           | O agente inspecionou capturas desktop/mobile; o texto é legível, centralizado e quebra de linha sem transbordamento horizontal                                                  |
+| Revisão da execução/código            | Não foram observados tráfego REST/Socket.IO, erros de console/página, handlers de negócio ou funcionalidades implementadas                                                      |
+| `npm run audit:lighthouse`            | Aprovado; três relatórios HTML e JSON por perfil mantidos localmente em `reports/lighthouse`                                                                                    |
+| Ações remotas                         | Nenhuma implantação, alteração de repositório remoto ou push                                                                                                                    |
 
-The sandbox prevented npm DNS access (`EAI_AGAIN`) and local server binding (`listen EPERM 127.0.0.1:4173`). Network installation, browser execution and local audit servers succeeded with elevated execution. A premature test attempt overlapped dependency reinstall and was discarded; the completed install was followed by successful builds and browser checks. This host's `mktemp` produced Windows-style Lighthouse profile directories inside the working directory; those generated profiles were removed after the completed audit.
+O ambiente restrito impediu acesso DNS do npm (`EAI_AGAIN`) e abertura da porta do servidor local (`listen EPERM 127.0.0.1:4173`). Instalação pela rede, execução do navegador e servidores locais de auditoria funcionaram com permissões ampliadas. Uma tentativa prematura de teste se sobrepôs à reinstalação de dependências e foi descartada; após a conclusão da instalação, builds e verificações no navegador passaram. O `mktemp` deste ambiente produziu diretórios de perfil Lighthouse com estilo Windows na árvore de trabalho; esses perfis gerados foram removidos após a conclusão da auditoria.
 
-Bootstrap-only category medians (performance / accessibility / best practices / SEO): mobile **98 / 100 / 96 / 91**; desktop **100 / 100 / 96 / 91**. Environment: Linux x86_64, Node 24.22.0, Lighthouse CI 0.15.1 with Lighthouse 12.6.1, Playwright-managed Headless Chromium 156, localhost optimized build with mocks enabled, default Lighthouse simulated mobile throttling and desktop preset respectively. These are placeholder measurements and provide no evidence of marketplace performance. No token or upload service was configured; reports use local filesystem output.
+Medianas por categoria exclusivas da inicialização (desempenho / acessibilidade / boas práticas / SEO): mobile **98 / 100 / 96 / 91**; desktop **100 / 100 / 96 / 91**. Ambiente: Linux x86_64, Node 24.22.0, Lighthouse CI 0.15.1 com Lighthouse 12.6.1, Headless Chromium 156 gerenciado pelo Playwright, build otimizado em localhost com mocks habilitados, limitação simulada padrão mobile do Lighthouse e configuração desktop, respectivamente. São medições da tela provisória e não demonstram desempenho do marketplace. Nenhum token ou serviço de envio foi configurado; os relatórios usam saída local no sistema de arquivos.
 
-The final local `dist/` is rebuilt with mocks disabled. Vercel filesystem-first routing is prepared but cannot be verified on the platform without a later authorized deployment. Socket.IO protocol verification and marketplace functionality remain deferred.
+O `dist/` local final foi gerado novamente com mocks desabilitados. O roteamento Vercel com prioridade para arquivos está preparado, mas não pode ser verificado na plataforma sem uma implantação posterior autorizada. A verificação do protocolo Socket.IO e as funcionalidades do marketplace permanecem adiadas.

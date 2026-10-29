@@ -19,7 +19,9 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
-    "audit:lighthouse": "node scripts/audit-lighthouse.mjs"
+    "audit:lighthouse": "node scripts/audit-lighthouse.mjs",
+    "build:integration": "npm run build -- --mode integration --outDir dist-integration",
+    "test:integration": "playwright test --config playwright.integration.config.ts"
   },
   "dependencies": {
     "@mswjs/socket.io-binding": "^0.2.0",

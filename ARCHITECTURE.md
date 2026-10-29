@@ -1,23 +1,29 @@
-# Architecture
+# Arquitetura
 
-`main.tsx` calls `readEnv()` inside its caught startup function to validate public environment settings, optionally awaits the dynamically imported MSW browser worker, then renders React Strict Mode. Startup failures are reported in the console and visibly in the root. The stable QueryClient is owned by `lib/query-client.ts`; `app/providers.tsx` mounts its provider once. No queries, mutations, cache policies, auth state, or subscriptions exist yet.
+`main.tsx` chama `readEnv()` dentro da função de inicialização com tratamento de erros, atribui a URL base validada ao cliente Axios compartilhado, aguarda opcionalmente `startMocks()` e renderiza a tela provisória inalterada com React Strict Mode. Falhas de inicialização são registradas e exibidas no elemento raiz. A tela provisória não inicia consultas de catálogo nem conexões de socket. O build de integração, habilitado explicitamente, instala dinamicamente a estrutura de testes somente depois que os mocks e o estado estão prontos.
 
-`app/router.tsx` defines code-based TanStack routes with registered types: a root outlet, `/` placeholder and unknown-route fallback. `@/` resolves to `src/` in TypeScript, Vite and shadcn configuration.
+`app/router.tsx` mantém as rotas TanStack definidas em código com tipos registrados: saída da rota raiz, tela provisória em `/` e fallback para rotas desconhecidas. `@/` resolve para `src/` no TypeScript, Vite e shadcn. O QueryClient estável fica em `lib/query-client.ts`; `app/providers.tsx` monta seu provedor uma única vez.
 
-`lib/http.ts` exposes the single Axios instance with a 10-second timeout. Startup assigns its validated base URL before rendering consumers. Environment and HTTP module imports do not perform validation or throw configuration errors. It has no interceptors, tokens, endpoint wrappers or requests. `mocks/handlers.ts` is empty. The worker is available in demo builds through configuration and bypasses unhandled requests for now. Future API handlers must be shared across development, demo and tests; tighten unhandled API request checks when those handlers exist.
+`contracts/` contém tipos de recursos independentes de frameworks, contratos de erros e envelopes e pequenos analisadores explícitos nas fronteiras de entrada para consultas de NFTs, ETH decimal, recursos e eventos. Não foi adicionada uma dependência de esquemas: as fronteiras implementadas compartilham os mesmos analisadores entre handlers, funções de API, massas de dados e testes. Os tipos de conta/carrinho/cotação/pedido/perfil/carteira/favorito existem apenas como contratos. Consulte os [contratos REST](docs/contracts/rest.md) e os [contratos de eventos](docs/contracts/events.md) para os endpoints propostos e seu estado de implementação.
 
-Tailwind uses its Vite plugin and CSS variables. The shadcn configuration and `cn` helper prepare component generation; no UI components or product theme are generated. Socket.IO client and its MSW binding are installed but not imported or connected. Playwright supplies smoke testing and future visual regression tooling without speculative baselines.
+`lib/http.ts` mantém a única instância Axios, com timeout de 10 segundos; não executa validação durante a importação do módulo. `data/nfts/api.ts` fornece as chamadas implementadas de listagem/detalhe e a validação das respostas. `data/nfts/queries.ts` normaliza chaves completas de consulta, encaminha sinais de cancelamento, considera os dados desatualizados imediatamente e desabilita novas tentativas automáticas para consultas públicas de catálogo. Falhas de consulta permanecem visíveis para uma nova tentativa explícita. Não existem cache privado, interceptor de autenticação ou token.
 
-Future implementation must preserve these constraints:
+`mocks/store` inicializa um único retrato versionado do catálogo a partir do localStorage com chave própria antes que os handlers atendam requisições. Gravações validadas são serializadas e persistidas antes da emissão de eventos. Retratos ausentes, incompatíveis ou corrompidos restauram a massa inicial determinística. Falhas de persistência são propagadas. O funcionamento é intencionalmente restrito a uma aba; não há garantia de consistência entre abas. `mocks/handlers.ts` implementa somente listagem/detalhe de NFT e um fallback explícito de erro para APIs não suportadas. `mocks/scenarios.ts` controla latência determinística, respostas vazias e falhas HTTP/de rede. Recursos estáticos fora do prefixo de API configurado não são interceptados pelos mocks.
 
-- Discovery search, filters, ordering and pagination belong in the URL.
-- Query caches and subscriptions must be scoped to the user and cleaned on session changes.
-- Transport ETH values as decimal strings and use precise arithmetic.
-- API quotes are authoritative; order creation must be idempotent.
-- Socket.IO events require stable identity and versions; reconcile active resources through REST on reconnection and reject stale/duplicate/session-old events.
-- Use network-level mocks across development, demo and tests, with deterministic shared state and reset scenarios.
-- Desktop/mobile compositions share business logic.
+`mocks/socket.ts` usa interceptação WebSocket do MSW com `@mswjs/socket.io-binding` para codificar quadros reais do Socket.IO. O mock fornece pings de manutenção da conexão e encerra/libera conexões em interrupções e restaurações do estado. `realtime/catalog.ts` mantém operações explícitas de conexão/desconexão/descarte, valida eventos, protege versões/IDs, cancela requisições antigas de detalhe, atualiza entradas de detalhe mais recentes no cache, invalida listas e reconcilia recursos ativos via REST ao reconectar. Não existem servidor real, contexto de sessão fictício ou caminho direto de callbacks entre controles de cenário e consumidores.
 
-No domain models, endpoints, fixtures, persistence, session system or business rules are defined at bootstrap. Cache/retry/session policies, contracts and transport protocol tests are deferred until feature work.
+`testing/harness.ts` depende de configuração explícita de integração e é excluído da saída normal do build. Importa os módulos reais de Axios, Query e tempo real e expõe controles de teste não visuais. O Playwright verifica o build otimizado de protocolo separadamente dos testes básicos da tela provisória em desktop/mobile. `tsconfig.tests.json` inclui todos os arquivos E2E/de integração com verificação estrita e tipos DOM; os comandos de tipos/build da raiz o incluem. Consulte os [cenários de mocks](docs/mock-scenarios.md) para IDs de dados, política de armazenamento/restauração, controles e comandos.
 
-`tsconfig.tests.json` includes E2E test files with strict checking and DOM types for browser callbacks. The root project references it, so both `typecheck` and `build` check tests alongside application and tooling code.
+O Tailwind usa seu plugin Vite e variáveis CSS neutras. A configuração shadcn e `cn` preparam componentes futuros. Nenhuma interface de produto, tema, recurso de design ou referência visual de regressão foi adicionada. A configuração Lighthouse permanece inalterada. A Vercel tem somente configuração; nada foi vinculado ou implantado.
+
+As implementações futuras devem preservar estas restrições:
+
+- Busca, filtros, ordenação e paginação da descoberta pertencem à URL. As fábricas de consultas atuais preparam o estado de transporte; ainda não existe interface com estado baseado na URL.
+- Limitar caches e assinaturas privadas ao usuário e à geração da sessão, limpá-los em mudanças de sessão e proteger eventos privados. Eventos públicos de catálogo não dependem de sessões fictícias.
+- Transportar ETH como strings decimais e usar aritmética precisa. A comparação atual em unidades inteiras não implementa cálculos de cotações ou pedidos.
+- As cotações da API são a referência; a criação de pedidos deve ser idempotente e os recibos confirmados, imutáveis.
+- Versionar eventos Socket.IO e reconciliar recursos ativos via REST após reconexões. Estender posteriormente o ciclo de vida público verificado para o evento privado `order.updated`.
+- Reutilizar mocks na camada de rede em desenvolvimento, demonstração e testes, com estado compartilhado e restauração determinísticos.
+- Compartilhar a lógica de negócio entre as futuras composições desktop/mobile.
+
+Comportamento de sessão, estado privado, carrinhos, checkout, cotações, pedidos, alterações de conta, autorização de API, cenários completos de backend, suporte a múltiplas abas e telas do marketplace continuam adiados.

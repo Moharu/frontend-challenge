@@ -10,8 +10,12 @@ async function start() {
   const env = readEnv();
   http.defaults.baseURL = env.apiBaseURL;
   if (env.enableMocks) {
-    const { worker } = await import("@/mocks/browser");
-    await worker.start({ onUnhandledRequest: "bypass" });
+    const { startMocks } = await import("@/mocks/browser");
+    const controls = await startMocks(env.apiBaseURL);
+    if (import.meta.env.VITE_ENABLE_TEST_HARNESS === "true") {
+      const { installHarness } = await import("@/testing/harness");
+      installHarness(controls, env.apiBaseURL);
+    }
   }
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
