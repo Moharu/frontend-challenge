@@ -5,6 +5,7 @@ import { Providers } from "@/app/providers";
 import { router } from "@/app/router";
 import { readEnv } from "@/lib/env";
 import { http } from "@/lib/http";
+import { verifySession } from "@/data/session/identity";
 import "@/styles/globals.css";
 async function start() {
   const env = readEnv();
@@ -18,6 +19,8 @@ async function start() {
       if (window.location.pathname === "/__protocol") return;
     }
   }
+  // A stored session is verified in the background; public pages never wait.
+  void verifySession();
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
       <Providers>

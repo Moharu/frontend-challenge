@@ -1,5 +1,7 @@
 import { discoverySearch } from "@/lib/discovery-search";
 import {
+  lazy,
+  Suspense,
   useEffect,
   useRef,
   useState,
@@ -18,8 +20,53 @@ import { queryClient } from "@/lib/query-client";
 import { readEnv } from "@/lib/env";
 import type { CatalogRealtime } from "@/realtime/catalog";
 import { Unavailable } from "./shared";
+import { AccountArea, MobileAccount, ExpiryRedirect, Notices } from "./account";
+import { subscribeIdentity, getIdentity } from "@/data/session/identity";
+import { openedOnLoad } from "@/lib/redirect";
 import { asset, artImage } from "./assets";
 import { badgeText, cartCountLabel, useCart } from "@/data/cart/hooks";
+// The auth dialog opened over the current page, in its own chunk. It starts
+// loading at once when the page was reloaded with the dialog open (so mobile
+// does not show the page before the full-screen dialog), and otherwise right
+// after the first render (idle callbacks can wait seconds while the realtime
+// socket is active), so the first "Entrar" does not wait for the network.
+// Once loaded, the component is rendered directly: going through `lazy` would
+// suspend once anyway, and React holds a revealed Suspense fallback for about
+// 300ms, which made the first opening noticeably slower.
+let authModule: typeof import("@/routes/auth") | null = null;
+const loadAuth = () =>
+  import("@/routes/auth").then((m) => {
+    authModule = m;
+    return m;
+  });
+if (openedOnLoad || /^\/(login|signup)$/.test(window.location.pathname))
+  void loadAuth();
+const LazyAuthOverlay = lazy(() =>
+  loadAuth().then((m) => ({ default: m.AuthOverlay })),
+);
+function AuthOverlay({ mode }: { mode: "login" | "signup" }) {
+  if (authModule) return <authModule.AuthOverlay mode={mode} />;
+  return (
+    <Suspense fallback={<div className="auth-pending" aria-hidden="true" />}>
+      <LazyAuthOverlay mode={mode} />
+    </Suspense>
+  );
+}
+function usePrefetchAuth() {
+  useEffect(() => {
+    // After the page's own load (LCP image, fonts), never competing with it.
+    let id = 0;
+    const prefetch = () => {
+      id = window.setTimeout(() => void loadAuth(), 0);
+    };
+    if (document.readyState === "complete") prefetch();
+    else window.addEventListener("load", prefetch, { once: true });
+    return () => {
+      window.removeEventListener("load", prefetch);
+      window.clearTimeout(id);
+    };
+  }, []);
+}
 // Início and Mercado both point at "/", so the router would mark both active.
 // The active state comes from the scroll position instead, and both links keep
 // the current filters (discoverySearch renormalizes the previous search, so other
@@ -174,17 +221,33 @@ export function PublicLayout() {
     select: (state) => state.location.pathname === "/",
   });
   const inCatalog = useCatalogInView(home);
+  const auth = useRouterState({ select: (state) => state.location.state.auth });
+  usePrefetchAuth();
   useEffect(() => {
     let disposed = false;
     let live: CatalogRealtime | undefined;
+    // Private listeners follow the session: a new identity (login, logout,
+    // expiry, user switch) releases them and events of other generations are
+    // ignored. No private event is emitted yet.
+    const follow = () => {
+      const session = getIdentity().session;
+      live?.setIdentity(
+        session
+          ? { userId: session.user.id, generation: session.generation }
+          : null,
+      );
+    };
+    const unsubscribe = subscribeIdentity(follow);
     // Socket.IO must load after MSW installs its WebSocket interception.
     void import("@/realtime/catalog").then(({ createCatalogRealtime }) => {
       if (disposed) return;
       live = createCatalogRealtime(queryClient, readEnv().apiBaseURL);
+      follow();
       live.connect();
     });
     return () => {
       disposed = true;
+      unsubscribe();
       live?.dispose();
     };
   }, []);
@@ -216,9 +279,7 @@ export function PublicLayout() {
           <div className="header-actions">
             <HeaderSearch />
             <CartLink icon="home-CartIcon.svg" />
-            <Unavailable className="button button-primary" label="Entrar">
-              Entrar
-            </Unavailable>
+            <AccountArea />
           </div>
         </header>
         <div className="route-content">
@@ -249,10 +310,11 @@ export function PublicLayout() {
           </span>
         </Unavailable>
         <CartLink icon="mobile-home-Shop.svg" />
-        <Unavailable label="Minha conta">
-          <img src={asset("mobile-home-User.svg")} alt="" />
-        </Unavailable>
+        <MobileAccount />
       </nav>
+      {auth && <AuthOverlay mode={auth} />}
+      <Notices />
+      <ExpiryRedirect />
     </>
   );
 }

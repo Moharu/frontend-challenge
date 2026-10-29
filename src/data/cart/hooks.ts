@@ -1,15 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Cart } from "@/contracts/cart";
+import { cartScope, useIdentity } from "@/data/session/identity";
+import type { CartResult } from "./api";
 import { cartKey, cartOptions, storeCart } from "./queries";
-export const useCart = () => useQuery(cartOptions());
-// Successful mutations replace the cart with the API response; failures leave
-// the cached cart untouched so the previous state stays visible.
-export function useCartMutation<Input>(run: (input: Input) => Promise<Cart>) {
+export const useCart = () => useQuery(cartOptions(cartScope(useIdentity())));
+// Successful mutations replace the cart with the API response (for the scope
+// they were sent with); failures leave the cached cart untouched.
+export function useCartMutation<Input>(
+  run: (input: Input) => Promise<CartResult>,
+) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: run,
-    onMutate: () => queryClient.cancelQueries({ queryKey: cartKey }),
-    onSuccess: (cart) => storeCart(queryClient, cart),
+    mutationFn: async (input: Input) => {
+      const result = await run(input);
+      storeCart(queryClient, result);
+      return result.cart;
+    },
+    onMutate: () =>
+      queryClient.cancelQueries({ queryKey: cartKey(cartScope()) }),
   });
 }
 export function cartCountLabel(count: number) {

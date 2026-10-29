@@ -27,9 +27,11 @@ const categoryNames: Record<string, string> = {
   memberships: "Assinaturas",
   utility: "Utilidade",
 };
+// Also rendered behind the login/signup modal, so the search is read without
+// the route constraint and normalized (other routes fall back to defaults).
 export function IndexPage() {
-  const query = useSearch({ from: "/" });
-  const navigate = useNavigate({ from: "/" });
+  const query = discoverySearch(useSearch({ strict: false }));
+  const navigate = useNavigate();
   const [drawer, setDrawer] = useState(false);
   const result = useQuery({
     ...nftListOptions(query),
@@ -37,6 +39,7 @@ export function IndexPage() {
   });
   function change(patch: Partial<NftListQuery>) {
     void navigate({
+      to: "/",
       search: discoverySearch({ ...query, ...patch, page: patch.page ?? 1 }),
       hash: "catalogo",
     });

@@ -1,10 +1,9 @@
 import { io } from "socket.io-client";
 import type { QueryClient } from "@tanstack/react-query";
-import type { DataResponse } from "@/contracts/common";
+import { record, type DataResponse } from "@/contracts/common";
 import type { Nft } from "@/contracts/nfts";
 import { isNftUpdated } from "@/contracts/events";
 import { nftKeys } from "@/data/nfts/queries";
-import { cartKey } from "@/data/cart/queries";
 import type { Cart } from "@/contracts/cart";
 import { apiURL } from "@/lib/urls";
 export function createCatalogRealtime(
@@ -55,7 +54,7 @@ export function createCatalogRealtime(
           refetchType: "active",
         });
         await queryClient.invalidateQueries({
-          queryKey: cartKey,
+          queryKey: ["cart"],
           refetchType: "active",
         });
         stats.reconciliations++;
@@ -101,10 +100,14 @@ export function createCatalogRealtime(
           refetchType: "active",
         });
         // Cart values come from the API: refetch instead of recalculating.
-        const cart = queryClient.getQueryData<Cart | null>(cartKey);
-        if (cart?.items.some((i) => i.nftId === value.resourceId))
+        const inCart = queryClient
+          .getQueriesData<Cart | null>({ queryKey: ["cart"] })
+          .some(([, cart]) =>
+            cart?.items.some((i) => i.nftId === value.resourceId),
+          );
+        if (inCart)
           await queryClient.invalidateQueries({
-            queryKey: cartKey,
+            queryKey: ["cart"],
             refetchType: "active",
           });
         stats.applied++;
@@ -115,9 +118,47 @@ export function createCatalogRealtime(
   }
   socket.on("connect", reconcile);
   socket.on("nft.updated", event);
+  // Private events share this connection. Their listeners belong to one
+  // identity: changing it (login, logout, expiry, user switch) releases them,
+  // and an envelope addressed to another user or session generation is
+  // ignored. No private event is emitted in this stage.
+  type Audience = { userId: string; generation: number };
+  let identity: Audience | null = null;
+  const privateListeners = new Map<string, (value: unknown) => void>();
+  function releasePrivate() {
+    privateListeners.forEach((listener, name) => socket.off(name, listener));
+    privateListeners.clear();
+  }
   return {
     stats,
     socket,
+    setIdentity(next: Audience | null) {
+      if (JSON.stringify(next) === JSON.stringify(identity)) return;
+      releasePrivate();
+      identity = next;
+    },
+    onPrivate(name: string, handler: (value: unknown) => void) {
+      if (!identity) throw new Error("Private listener without a session");
+      const owner = identity;
+      const listener = (value: unknown) => {
+        const audience = record(value) ? value.audience : undefined;
+        if (
+          identity !== owner ||
+          !record(audience) ||
+          audience.userId !== owner.userId ||
+          audience.sessionGeneration !== owner.generation
+        ) {
+          stats.ignored++;
+          return;
+        }
+        handler(value);
+      };
+      const previous = privateListeners.get(name);
+      if (previous) socket.off(name, previous);
+      privateListeners.set(name, listener);
+      socket.on(name, listener);
+    },
+    privateListenerCount: () => privateListeners.size,
     connect() {
       if (disposed) throw new Error("Disposed realtime client");
       socket.connect();
@@ -132,6 +173,7 @@ export function createCatalogRealtime(
       disposed = true;
       socket.off("connect", reconcile);
       socket.off("nft.updated", event);
+      releasePrivate();
       socket.disconnect();
       versions.clear();
       seen.clear();

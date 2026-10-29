@@ -1,10 +1,29 @@
 import axios, { type Method } from "axios";
 import { http } from "@/lib/http";
-import { isCart, visitorHeader, type Cart } from "@/contracts/cart";
+import { UserFacingError } from "@/lib/api-error";
+import { isCart, type Cart } from "@/contracts/cart";
 import { record } from "@/contracts/common";
-import { setVisitorToken, visitorToken } from "./visitor";
+import {
+  cartScope,
+  getIdentity,
+  identityHeaders,
+  sameScope,
+  setVisitorToken,
+  verifySession,
+  type CartScope,
+  type Identity,
+} from "@/data/session/identity";
+import { notify } from "@/data/session/notices";
+// A cart response always travels with the scope it was requested for, so the
+// cache only accepts it while that scope is still current.
+export interface CartResult {
+  cart: Cart;
+  scope: CartScope;
+}
+const lostVisitorCart =
+  "Seu carrinho anterior não está mais disponível. Repita a ação para começar um novo carrinho.";
 let issuing: Promise<string> | null = null;
-function issueToken() {
+function issueVisitor() {
   issuing ??= http
     .post<unknown>("/visitor-sessions")
     .then(({ data }) => {
@@ -22,13 +41,15 @@ function issueToken() {
     });
   return issuing;
 }
-function sessionInvalid(error: unknown) {
-  return axios.isAxiosError(error) && error.response?.status === 401;
+function errorCode(error: unknown) {
+  if (!axios.isAxiosError(error)) return undefined;
+  const body = error.response?.data as unknown;
+  return record(body) && record(body.error) ? body.error.code : undefined;
 }
 async function send(
   method: Method,
   url: string,
-  token: string,
+  identity: Identity,
   data?: unknown,
   signal?: AbortSignal,
 ): Promise<Cart> {
@@ -37,34 +58,49 @@ async function send(
     url,
     data,
     signal,
-    headers: { [visitorHeader]: token },
+    headers: identityHeaders(identity),
   });
   if (!record(value) || !isCart(value.data))
     throw new Error("Invalid cart response");
   return value.data;
 }
-// Without a token there is no cart yet: reads resolve to null without a request.
-export async function getCart(signal?: AbortSignal): Promise<Cart | null> {
-  const token = visitorToken();
-  if (!token) return null;
-  try {
-    return await send("GET", "/cart", token, undefined, signal);
-  } catch (error) {
-    if (!sessionInvalid(error)) throw error;
+// An unknown visitor token (e.g. after a mock reset) only ever means a lost
+// visitor cart; it is never confused with an expired session.
+function visitorLost(error: unknown, identity: Identity) {
+  if (errorCode(error) !== "VISITOR_INVALID") return false;
+  if (getIdentity().visitorToken === identity.visitorToken)
     setVisitorToken(null);
+  return true;
+}
+export async function getCart(
+  scope: CartScope,
+  signal?: AbortSignal,
+): Promise<Cart | null> {
+  const identity = getIdentity();
+  if (!sameScope(scope, cartScope(identity))) return null;
+  if (scope?.kind === "visitor" && !scope.token) return null;
+  try {
+    return await send("GET", "/cart", identity, undefined, signal);
+  } catch (error) {
+    if (!visitorLost(error, identity)) throw error;
+    notify("Seu carrinho anterior não está mais disponível.");
     return null;
   }
 }
-// Mutations create the visitor on demand; an unknown token (e.g. after a mock
-// reset) is replaced once with a fresh visitor and an empty cart.
+// Mutations create a visitor on demand. A lost visitor cart is reported to the
+// user instead of applying the operation to a fresh empty cart in silence.
 async function mutate(method: Method, url: string, data?: unknown) {
-  const token = visitorToken() ?? (await issueToken());
+  if (getIdentity().status === "checking") await verifySession();
+  if (!getIdentity().sessionToken && !getIdentity().visitorToken)
+    await issueVisitor();
+  const identity = getIdentity();
+  const scope = cartScope(identity);
   try {
-    return await send(method, url, token, data);
+    return { cart: await send(method, url, identity, data), scope };
   } catch (error) {
-    if (!sessionInvalid(error)) throw error;
-    setVisitorToken(null);
-    return send(method, url, await issueToken(), data);
+    if (!visitorLost(error, identity)) throw error;
+    notify(lostVisitorCart);
+    throw new UserFacingError(lostVisitorCart);
   }
 }
 export const addCartItem = (body: {

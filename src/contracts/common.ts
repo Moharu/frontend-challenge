@@ -16,6 +16,8 @@ export interface DataResponse<T> {
 export type ErrorCode =
   | "VALIDATION"
   | "SESSION_INVALID"
+  | "VISITOR_INVALID"
+  | "INVALID_CREDENTIALS"
   | "FORBIDDEN"
   | "NOT_FOUND"
   | "CONFLICT"

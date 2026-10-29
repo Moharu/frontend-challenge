@@ -8,6 +8,8 @@ import {
 import { PublicLayout } from "@/components/discovery/layout";
 import { discoverySearch } from "@/lib/discovery-search";
 import { IndexPage } from "@/routes/index";
+import { authSearch } from "@/lib/redirect";
+import { redirectAuthenticated } from "@/lib/route-guards";
 const rootRoute = createRootRoute({
   component: PublicLayout,
   notFoundComponent: () => (
@@ -36,8 +38,29 @@ const cartRoute = createRoute({
   path: "/cart",
   component: lazyRouteComponent(() => import("@/routes/cart"), "CartPage"),
 });
+// Login and signup have real URLs; the target travels in a validated param.
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/login",
+  validateSearch: authSearch,
+  beforeLoad: redirectAuthenticated,
+  component: lazyRouteComponent(() => import("@/routes/auth"), "LoginPage"),
+});
+const signupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/signup",
+  validateSearch: authSearch,
+  beforeLoad: redirectAuthenticated,
+  component: lazyRouteComponent(() => import("@/routes/auth"), "SignupPage"),
+});
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([indexRoute, detailRoute, cartRoute]),
+  routeTree: rootRoute.addChildren([
+    indexRoute,
+    detailRoute,
+    cartRoute,
+    loginRoute,
+    signupRoute,
+  ]),
 });
 declare module "@tanstack/react-router" {
   interface Register {

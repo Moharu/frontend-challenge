@@ -4,7 +4,7 @@ A interface de descoberta consulta NFTs via Axios/Query e mantém uma conexão p
 
 ## Estado persistido de referência
 
-`src/mocks/store` usa um único retrato em memória, persistido de forma síncrona no localStorage sob **`kurio.mock.catalog.v1`**. Os retratos incluem `schemaVersion: 3`, `seedVersion: 2`, um contador lógico `tick`, os 24 NFTs, os visitantes (token → carrinho) e os carrinhos. Não é necessário outro pacote para esse pequeno conjunto de dados. Leituras do carrinho, atualizações e restaurações passam pela mesma fila serializada de promessas, de modo que uma leitura nunca observa um estado anterior a uma escrita já enfileirada. Uma gravação só é confirmada em memória depois de o armazenamento ter sucesso; falhas são propagadas em vez de simular persistência. Retratos ausentes, malformados, estruturalmente inválidos ou incompatíveis restauram e salvam a massa inicial determinística. Indisponibilidade ou falta de espaço no armazenamento causam falhas visíveis pelo tratamento de inicialização ou pela chamada aguardada ao controle.
+`src/mocks/store` usa um único retrato em memória, persistido de forma síncrona no localStorage sob **`kurio.mock.catalog.v1`**. Os retratos incluem `schemaVersion: 4`, `seedVersion: 2`, um contador lógico `tick`, os 24 NFTs, os visitantes (token → carrinho), os carrinhos, as contas, as sessões e o contador global de geração de sessão. Não é necessário outro pacote para esse pequeno conjunto de dados. Leituras do carrinho, atualizações e restaurações passam pela mesma fila serializada de promessas, de modo que uma leitura nunca observa um estado anterior a uma escrita já enfileirada. Uma gravação só é confirmada em memória depois de o armazenamento ter sucesso; falhas são propagadas em vez de simular persistência. Retratos ausentes, malformados, estruturalmente inválidos ou incompatíveis restauram e salvam a massa inicial determinística. Indisponibilidade ou falta de espaço no armazenamento causam falhas visíveis pelo tratamento de inicialização ou pela chamada aguardada ao controle.
 
 O armazenamento é limitado a essa chave; a restauração não limpa dados de outras partes da origem. Recarregamentos normais e reconexões de socket preservam o retrato. **Múltiplas abas:** antes de cada operação, o store adota o retrato persistido se o `tick` dele for maior que o da memória; não há eventos de armazenamento, bloqueios ou transmissões entre abas, e duas gravações no mesmo `tick` resolvem por última gravação. Uma aba vê a mudança da outra na próxima leitura (inclusive ao recuperar o foco). Contextos novos do Playwright isolam os testes.
 
@@ -12,7 +12,7 @@ A restauração aborta requisições de cenário pendentes, limpa falhas de uso 
 
 IDs da massa de dados: `nft-001`..`nft-024`; cada NFT possui `edition-N-limited` (limite de emissão 20 / disponibilidade 10) e `edition-N-unique` (1 / 1). São nove categorias públicas, duas redes (ethereum/polygon), vários preços e três páginas padrão de oito itens. Os nomes alternam entre Emerald Ape, Sage Nomad, Noon Verbal, Cosmic Bloom, Violet Nomad e Ivory Baron. Os dois primeiros preços limitados padrão são 1.19 e 1.69 ETH. O teste de precisão injeta `1.000000000000000001` e `1.000000000000000002` nos mesmos IDs, mantendo a comparação de valores indistinguíveis como números de ponto flutuante em JS. Os demais preços limitados alternam de 1 a 7 ETH; edições únicas custam 12 ETH. Valores de arte são apenas identificadores. Datas/horários derivam de `2026-01-01T00:00:00.000Z`; atualizações avançam um segundo por incremento lógico persistido, e versões aumentam por NFT. IDs de eventos usam esse contador global. A restauração reinicia intencionalmente o histórico de identidade/versão e exige consumidores novos, como os fornecidos pela estrutura de testes.
 
-`fixtureUsers` contém `user-ada` / `ada@example.test` e `user-lin` / `lin@example.test`, com usernames `ada_example` e `lin_example` e nomes fictícios, sem senhas ou comportamento de autenticação. Não existe estado de perfil, carteira ou pedido; o estado do carrinho está descrito em "Extensões da etapa do carrinho".
+`fixtureUsers` contém `user-ada` / `ada@example.test` e `user-lin` / `lin@example.test`, com usernames `ada_example` e `lin_example` e nomes de exibição fictícios; `fixturePasswords` guarda apenas sal e hash PBKDF2-SHA256 das senhas de demonstração do README. Não existe estado de perfil, carteira ou pedido; carrinho e sessão estão descritos nas seções de extensões abaixo.
 
 ## Cenários nomeados e controles
 
@@ -90,3 +90,17 @@ O retrato passa a `schemaVersion: 3` (seed 2 mantida), na mesma chave `kurio.moc
 | `update(...)` existente                                            | Altera preço/disponibilidade de um item do carrinho e emite `nft.updated`                                                                                                                                                                      |
 
 Cupons inválido/expirado não precisam de controle: `KURIO15` é sempre expirado e qualquer código fora das fixtures é inexistente. A resposta 503 transitória passou a ter mensagem genérica em pt-BR ("Serviço temporariamente indisponível. Tente novamente."), pois também atende o carrinho. O projeto `eth-unit` do Playwright roda a aritmética de ETH em Node, sem navegador; `cart-desktop`/`cart-mobile` rodam os fluxos do carrinho na interface real.
+
+## Extensões da etapa de sessão
+
+Contas (`accounts`), sessões (token opaco → usuário, geração, `expiresAt`, `revokedAt`) e o contador `generation` fazem parte do retrato (`schemaVersion` 4); retratos anteriores restauram a seed. Cadastro cria a conta com carrinho próprio e já autentica; login e cadastro consomem o carrinho de visitante indicado em `X-Visitor-Token`. A validade da sessão usa o relógio real (7 dias). Regras em [sessão](session.md).
+
+| Controle da ponte (`window.__KURIO_TEST__`) | Efeito                                                                                       |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `identity()`                                | Retrato da identidade do cliente (tokens, sessão verificada, estado)                         |
+| `signOut()`                                 | Mesmo logout da interface: limpa a identidade local e revoga o token                         |
+| `expireSession()` / `revokeSession()`       | Expira / revoga no servidor simulado a sessão atual; a próxima requisição privada recebe 401 |
+| `cartDelay('read' or 'write', ms)`          | Atraso de resposta do carrinho, usado para respostas tardias da sessão anterior              |
+| `state().transport`                         | Contadores de requisições e de requisições canceladas pelo cliente                           |
+
+Gravações do retrato podem disparar uma nova leitura do carrinho (adoção do retrato mais recente). Por isso, depois de `expireSession()`, o aviso de expiração pode surgir sem nenhuma ação na interface; os testes aceitam qualquer uma das duas origens da requisição privada.

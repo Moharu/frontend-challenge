@@ -1,36 +1,63 @@
 import { isNft, type Nft } from "@/contracts/nfts";
 import { record, integer } from "@/contracts/common";
-import { seedNfts } from "./seed";
+import { fixturePasswords, fixtureUsers, seedNfts } from "./seed";
 import type { NftUpdated } from "@/contracts/events";
 import {
   addItem,
   applyCoupon,
-  cartFor,
   changeItem,
   createVisitor,
   logicalTime,
   removeCoupon,
   removeItem,
   viewCart,
-  type CommerceState,
+  visitorCart,
   type StoredCart,
 } from "./cart";
+import {
+  accountCart,
+  expireSession,
+  login,
+  logout,
+  register,
+  revokeSession,
+  seedAccount,
+  viewSession,
+  type AccountsState,
+} from "./accounts";
+// Who a cart request belongs to: an authenticated session wins over a visitor.
+export interface CartIdentity {
+  session: string | null;
+  visitor: string | null;
+}
 export const storageKey = "kurio.mock.catalog.v1";
-export interface Snapshot extends CommerceState {
-  schemaVersion: 3;
+export interface Snapshot extends AccountsState {
+  schemaVersion: 4;
   seedVersion: 2;
   tick: number;
   nfts: Nft[];
 }
 function fresh(): Snapshot {
-  return {
-    schemaVersion: 3,
+  const state: Snapshot = {
+    schemaVersion: 4,
     seedVersion: 2,
     tick: 0,
     nfts: seedNfts(),
     visitors: {},
     carts: {},
+    accounts: {},
+    sessions: {},
+    generation: 0,
   };
+  for (const user of fixtureUsers)
+    seedAccount(state, {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      displayName: user.displayName,
+      password: fixturePasswords[user.id],
+    });
+  return state;
 }
 function validCart(value: unknown): value is StoredCart {
   return (
@@ -54,12 +81,15 @@ function validCart(value: unknown): value is StoredCart {
 function valid(value: unknown): value is Snapshot {
   if (
     !record(value) ||
-    value.schemaVersion !== 3 ||
+    value.schemaVersion !== 4 ||
     value.seedVersion !== 2 ||
     !integer(value.tick) ||
     value.tick > 1000000 ||
     !record(value.visitors) ||
-    !record(value.carts)
+    !record(value.carts) ||
+    !record(value.accounts) ||
+    !record(value.sessions) ||
+    !integer(value.generation)
   )
     return false;
   const nfts = value.nfts;
@@ -73,6 +103,16 @@ function valid(value: unknown): value is Snapshot {
     Object.values(carts).every(validCart) &&
     Object.values(value.visitors).every(
       (v) => record(v) && typeof v.cartId === "string" && v.cartId in carts,
+    ) &&
+    Object.values(value.accounts).every(
+      (a) =>
+        record(a) &&
+        typeof a.id === "string" &&
+        typeof a.email === "string" &&
+        typeof a.cartId === "string" &&
+        a.cartId in carts &&
+        record(a.password) &&
+        typeof a.password.hash === "string",
     )
   );
 }
@@ -100,7 +140,7 @@ export function createStore(storage: Storage) {
     const persisted = read();
     if (valid(persisted) && persisted.tick > state.tick) state = persisted;
   }
-  function transaction<T>(work: () => T): Promise<T> {
+  function transaction<T>(work: () => T | Promise<T>): Promise<T> {
     const result = queue.then(() => {
       refresh();
       return work();
@@ -111,16 +151,32 @@ export function createStore(storage: Storage) {
     );
     return result;
   }
+  function cartFor(draft: Snapshot, identity: CartIdentity) {
+    return identity.session
+      ? accountCart(draft, identity.session)
+      : visitorCart(draft, identity.visitor);
+  }
   function cartWrite(
-    token: string | null,
+    identity: CartIdentity,
     change: (draft: Snapshot, cart: StoredCart) => void,
   ) {
     return transaction(() => {
       const next = structuredClone(state);
-      const cart = cartFor(next, token);
+      const cart = cartFor(next, identity);
       change(next, cart);
       persist(next);
       return viewCart(next, cart);
+    });
+  }
+  // Writes that touch sessions/accounts; the async password work runs inside
+  // the serialized queue, and nothing is persisted when it throws.
+  function write<T>(work: (draft: Snapshot) => T | Promise<T>) {
+    return transaction(async () => {
+      const next = structuredClone(state);
+      const result = await work(next);
+      next.tick++;
+      persist(next);
+      return result;
     });
   }
   return {
@@ -142,18 +198,32 @@ export function createStore(storage: Storage) {
       }),
     // Reads share the write queue: a read never observes a state older than a
     // write already enqueued before it.
-    cart: (token: string | null) =>
-      transaction(() => viewCart(state, cartFor(state, token))),
-    addItem: (token: string | null, body: unknown) =>
-      cartWrite(token, (draft, cart) => addItem(draft, cart, body)),
-    changeItem: (token: string | null, itemId: string, body: unknown) =>
-      cartWrite(token, (draft, cart) => changeItem(draft, cart, itemId, body)),
-    removeItem: (token: string | null, itemId: string) =>
-      cartWrite(token, (draft, cart) => removeItem(draft, cart, itemId)),
-    applyCoupon: (token: string | null, body: unknown) =>
-      cartWrite(token, (draft, cart) => applyCoupon(draft, cart, body)),
-    removeCoupon: (token: string | null) =>
-      cartWrite(token, (draft, cart) => removeCoupon(draft, cart)),
+    cart: (identity: CartIdentity) =>
+      transaction(() => viewCart(state, cartFor(state, identity))),
+    addItem: (identity: CartIdentity, body: unknown) =>
+      cartWrite(identity, (draft, cart) => addItem(draft, cart, body)),
+    changeItem: (identity: CartIdentity, itemId: string, body: unknown) =>
+      cartWrite(identity, (draft, cart) =>
+        changeItem(draft, cart, itemId, body),
+      ),
+    removeItem: (identity: CartIdentity, itemId: string) =>
+      cartWrite(identity, (draft, cart) => removeItem(draft, cart, itemId)),
+    applyCoupon: (identity: CartIdentity, body: unknown) =>
+      cartWrite(identity, (draft, cart) => applyCoupon(draft, cart, body)),
+    removeCoupon: (identity: CartIdentity) =>
+      cartWrite(identity, (draft, cart) => removeCoupon(draft, cart)),
+    register: (body: unknown, visitor: string | null) =>
+      write((draft) => register(draft, body, visitor)),
+    login: (body: unknown, visitor: string | null) =>
+      write((draft) => login(draft, body, visitor)),
+    logout: (token: string | null) => write((draft) => logout(draft, token)),
+    session: (token: string | null) =>
+      transaction(() => viewSession(state, token ?? "")),
+    // Test-only scenario controls (no public endpoint).
+    expireSession: (token: string) =>
+      write((draft) => expireSession(draft, token)),
+    revokeSession: (token: string) =>
+      write((draft) => revokeSession(draft, token)),
     update: (
       id: string,
       editionId: string,

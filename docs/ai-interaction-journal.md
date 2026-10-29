@@ -221,3 +221,41 @@ Mantenha este diário de alto nível nos próximos trabalhos do projeto com assi
 **Verificação:** tipos, lint, formatação, build de integração e 56 testes de integração (duas execuções completas) aprovados; casos alterados repetidos sem falhas. Detalhes em `docs/cart-verification.md`. Nenhum commit ou push.
 
 **Autorização de commit:** o usuário aprovou commit e push destes ajustes para `origin/main`, incluindo o handoff `docs/handoffs/coding-agent-cart-nits-draft-pt-br.md`. Pushes futuros continuam exigindo autorização.
+
+## 2026-10-29 — Cadastro, login e sessão (`docs/handoffs/coding-agent-session-draft-pt-br.md`)
+
+**Orientação do usuário:** executar o handoff de sessão, sem commit/push. A etapa começou na extensão do VS Code (WSL) e foi retomada no aplicativo desktop do Claude a partir do registro da conversa anterior, que parou durante a estabilização dos testes de sessão.
+
+**Entregue:** cadastro, login, logout, recuperação no refresh e expiração de sessão sobre o MSW (token opaco, hash PBKDF2 na seed, geração por sessão); mesclagem única do carrinho de visitante no login; retorno ao fluxo validado contra redirecionamento aberto; isolamento do cache do carrinho e do tempo real por usuário e geração; `VISITOR_INVALID` separado de `SESSION_INVALID`; diálogo do Figma no desktop e tela cheia com "Voltar" no mobile; cabeçalho com conta e "Sair". Política e desvios em `docs/session.md`.
+
+**Correção na retomada:** o foco não voltava ao gatilho ao fechar o login (o fechamento é pela troca de rota, então o Radix não devolve o foco); corrigido em `AuthScreen`. Os demais ajustes foram nos testes (nome de exibição no cabeçalho, diálogo lazy, ausência de barra de navegação no carrinho mobile, corridas de tempo).
+
+**Verificação:** tipos, lint, formatação, builds, 82 testes de integração e 8 E2E aprovados; suíte de sessão repetida 5 vezes sem falhas. Referências visuais desktop atualizadas após inspeção (ícone do "Entrar"). Lighthouse dentro da oscilação da etapa anterior; mobile segue abaixo de 90. Detalhes em `docs/session-verification.md`. Nenhum commit ou push.
+
+## 2026-10-29 — Login sobre a página atual
+
+**Verificação manual do usuário:** login, cadastro, credenciais inválidas, erros de formulário e mesclagem de carrinhos aprovados. **Orientação do usuário:** no desktop, manter o estado do app ao fundo; o diálogo sempre voltava à página inicial sem filtros.
+
+**Alteração:** aberto dentro do app, o diálogo usa mascaramento de rota (TanStack Router): o roteador continua na página atual (sinalizada no estado do histórico) e a barra de endereço mostra `/login?redirect=…`. A página não é remontada, então filtros, paginação, rolagem e rascunhos permanecem; fechar volta uma entrada do histórico e o login bem-sucedido a substitui. Acesso direto ou recarga de `/login` continua pela rota real. Vale também para o mobile e para a expiração de sessão. Dois problemas encontrados na verificação: a navegação rolava a página ao topo (`resetScroll: false`) e, numa localização mascarada, o roteador perde o hash (`#catalogo`); o destino passou a viajar no estado do histórico.
+
+**Verificação:** novo teste de integração (marcador no DOM, URL e rolagem preservados; carrinho atrás do login; "voltar" não reabre o diálogo); tipos, lint, formatação, builds, 84 testes de integração e 8 E2E aprovados; suíte de sessão repetida 3 vezes sem falhas. Detalhes em `docs/session.md` e `docs/session-verification.md`. Nenhum commit ou push.
+
+## 2026-10-29 — Recarregar com o diálogo de login aberto
+
+**Problema relatado pelo usuário:** rolar a página, abrir o login/cadastro, recarregar e fechar o diálogo fazia a página rolar até a posição anterior à recarga; o esperado é permanecer no topo, como após qualquer recarga.
+
+**Causas confirmadas (reprodução em início, catálogo com hash, detalhe e carrinho):** fechar voltava uma entrada do histórico, que pertence à carga anterior; a restauração de rolagem do próprio navegador ficava pendente enquanto o diálogo travava a rolagem e era aplicada ao fechar; com `#catalogo`, a navegação rolava até o hash.
+
+**Correção:** se o diálogo está na entrada em que o documento foi carregado, fechar substitui a entrada pela página, sem rolar até o hash; a restauração do navegador fica em `manual` desde a inicialização até o fechamento. Novo teste de integração para desktop e mobile.
+
+**Verificação:** tipos, lint, formatação, builds, 86 testes de integração e 8 E2E aprovados; suíte de sessão repetida 3 vezes (90/90). Nenhum commit ou push.
+
+## 2026-10-29 — Recarga no mobile e primeira abertura do login
+
+**Problemas relatados pelo usuário:** no mobile, recarregar em login/cadastro mostrava rapidamente a tela anterior antes do diálogo; depois de uma recarga, a primeira abertura do login/cadastro demorava visivelmente mais.
+
+**Causas confirmadas:** (1) durante cerca de 300 ms após a recarga, o React renderizava a página de fundo antes do diálogo de tela cheia (amostragem por quadro: 18 quadros descobertos); (2) o chunk do diálogo só era baixado no primeiro clique, e, mesmo pré-carregado, `lazy` suspendia uma vez e o React 19 segurava o fallback de Suspense por ~300 ms (perfil de CPU quase todo ocioso; ≈310 ms na primeira abertura, ≈50 ms na segunda).
+
+**Correção:** classe `auth-restoring` no `<html>` desde a inicialização quando a página carrega com o diálogo aberto, cobrindo a tela no mobile até o diálogo montar; pré-carregamento do chunk depois do evento `load` (e imediato numa recarga com o diálogo aberto); componente renderizado diretamente depois de carregado. Primeira abertura ≈14 ms. Um pré-carregamento logo após a primeira renderização reduziu o Lighthouse mobile do detalhe (82 → 80); adiado para depois do `load`, voltou aos valores da etapa (87/82 mobile, 98/99 desktop).
+
+**Verificação:** novo teste de integração mobile (nenhum quadro descoberto; primeira abertura sem fallback); tipos, lint, formatação, builds, 87 testes de integração e 8 E2E aprovados; suíte de sessão repetida 3 vezes sem falhas. Nenhum commit ou push.

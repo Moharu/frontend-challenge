@@ -28,13 +28,13 @@ test("descoberta, detalhe e carrinho carregam sem erros ou ponte de testes no bu
     "adicionado ao carrinho",
   );
   await page.goto("/cart");
+  // Signed out, checkout leads to the login, which returns to the cart.
   await page
-    .getByRole("button", { name: "Conectar e finalizar", exact: true })
+    .getByRole("link", { name: "Conectar e finalizar", exact: true })
     .click();
-  await expect(page.getByRole("dialog")).toContainText(
-    "O checkout ainda não está disponível",
-  );
+  await expect(page.getByRole("dialog")).toContainText("Entrar");
   await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/cart$/);
   await expect(page.getByRole("dialog")).not.toBeVisible();
   expect(
     await page.evaluate(

@@ -1991,3 +1991,266 @@ h3 {
   ) {
   scroll-margin-top: var(--sticky-offset);
 }
+
+/* Breakpoint-specific copy (e.g. "Criar conta" / "Criar perfil"). */
+.mobile-only {
+  display: none;
+}
+
+/* Login / signup: desktop modal over the home page with only a subtle overlay
+   (the page behind stays inert); full-screen page on phones. */
+.auth-overlay {
+  background: #140d0a40;
+}
+.auth-dialog {
+  width: min(480px, calc(100% - 32px));
+  padding: 40px 40px 32px;
+  border-bottom: 3px solid var(--primary);
+}
+.auth-back,
+.auth-brand,
+.auth-switch {
+  display: none;
+}
+.auth-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.auth-tabs {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.auth-tabs a[aria-current="page"] {
+  color: var(--primary);
+}
+.auth-tabs span {
+  color: var(--border);
+}
+.dialog-content .auth-description {
+  margin-bottom: 20px;
+}
+.auth-form {
+  display: grid;
+  gap: 14px;
+}
+.auth-input {
+  position: relative;
+}
+.auth-input input {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+}
+.auth-input input::placeholder {
+  color: var(--muted-foreground);
+}
+.auth-input input[aria-invalid="true"] {
+  border-color: #ffb08a;
+}
+.auth-input:has(.auth-reveal) input {
+  padding-right: 84px;
+}
+.auth-reveal {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  min-height: 36px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--accent);
+}
+.dialog-content .auth-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+.dialog-content .auth-error,
+.dialog-content .auth-summary {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #ffb08a;
+}
+.auth-summary:empty {
+  display: none;
+}
+.auth-forgot {
+  text-align: right;
+  font-size: 13px;
+  color: var(--accent);
+}
+.auth-submit {
+  width: 100%;
+  height: 48px;
+}
+.auth-submit[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: progress;
+}
+.dialog-content .auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 12px;
+  font-size: 12px;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
+.auth-social {
+  display: grid;
+  gap: 10px;
+}
+.auth-social .button {
+  width: 100%;
+}
+
+/* Header account slot. */
+.account-pending {
+  display: inline-block;
+  width: 96px;
+  height: 37px;
+}
+.header-actions .button img {
+  max-width: 18px;
+}
+.account-menu {
+  position: relative;
+}
+.account-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 37px;
+  padding: 0 12px;
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.account-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 45;
+  min-width: 180px;
+  padding: 8px;
+  margin: 0;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.account-panel button {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 10px;
+  text-align: left;
+}
+.account-sheet .button {
+  width: 100%;
+  margin-top: 12px;
+}
+
+/* Polite announcements (login, logout, expiry, cart merge). */
+.notices {
+  position: fixed;
+  left: 24px;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  z-index: 60;
+  max-width: min(420px, calc(100% - 48px));
+  pointer-events: none;
+}
+.notices p {
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px #0008;
+}
+
+@media (max-width: 700px) {
+  .mobile-only {
+    display: inline;
+  }
+  .desktop-only {
+    display: none;
+  }
+  .auth-dialog {
+    inset: 0;
+    transform: none;
+    width: 100%;
+    height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    padding: max(24px, env(safe-area-inset-top)) 24px
+      max(24px, env(safe-area-inset-bottom));
+    background: var(--background);
+  }
+  /* While the dialog is restored after a reload, or its chunk loads, cover
+     the page like the full-screen dialog will. */
+  .auth-restoring body::after,
+  .auth-pending {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 51;
+    background: var(--background);
+  }
+  .auth-dialog .dialog-x,
+  .auth-tabs,
+  .dialog-content .auth-description {
+    display: none;
+  }
+  .auth-back {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--raised);
+    font-size: 24px;
+  }
+  .auth-brand {
+    display: block;
+    margin: 8px 0 24px;
+    text-align: center;
+    font-weight: 700;
+    letter-spacing: 2px;
+  }
+  .auth-title {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 20px;
+  }
+  .dialog-content .auth-switch {
+    display: block;
+    margin-top: 20px;
+    text-align: center;
+  }
+  .auth-switch a {
+    color: var(--accent);
+  }
+  .notices {
+    bottom: calc(110px + env(safe-area-inset-bottom));
+  }
+}

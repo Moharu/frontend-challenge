@@ -11,6 +11,7 @@ import { compareEth } from "@/contracts/eth";
 import { createCatalogRealtime } from "@/realtime/catalog";
 import type { MockControls } from "@/mocks/browser";
 import { cartKey } from "@/data/cart/queries";
+import { cartScope, getIdentity, signOut } from "@/data/session/identity";
 
 export function installHarness(controls: MockControls, baseURL: string) {
   let realtime = createCatalogRealtime(queryClient, baseURL);
@@ -122,10 +123,20 @@ export function installHarness(controls: MockControls, baseURL: string) {
     failNextCart: controls.scenarios.failNextCart,
     cartDelay: controls.scenarios.setCartDelay,
     // Drops the cached cart so the next observer starts from a pending query.
-    forgetCart: () => queryClient.removeQueries({ queryKey: cartKey }),
+    forgetCart: () => queryClient.removeQueries({ queryKey: ["cart"] }),
+    // Session controls act on the client's current session token.
+    identity: () => {
+      const { sessionToken, session, visitorToken, status } = getIdentity();
+      return { sessionToken, session, visitorToken, status };
+    },
+    signOut,
+    expireSession: () =>
+      controls.store.expireSession(getIdentity().sessionToken ?? ""),
+    revokeSession: () =>
+      controls.store.revokeSession(getIdentity().sessionToken ?? ""),
     // Cart query diagnostics: each fetched or written cart increments the count.
     cartQuery: () => {
-      const state = queryClient.getQueryState(cartKey);
+      const state = queryClient.getQueryState(cartKey(cartScope()));
       return {
         dataUpdateCount: state?.dataUpdateCount ?? 0,
         fetchStatus: state?.fetchStatus ?? "idle",

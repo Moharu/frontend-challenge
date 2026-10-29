@@ -46,6 +46,19 @@ export default defineConfig({
       testMatch: "cart.spec.ts",
       use: { ...devices["Pixel 7"], viewport: { width: 390, height: 844 } },
     },
+    {
+      name: "session-desktop",
+      testMatch: "session.spec.ts",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1440, height: 900 },
+      },
+    },
+    {
+      name: "session-mobile",
+      testMatch: "session.spec.ts",
+      use: { ...devices["Pixel 7"], viewport: { width: 390, height: 844 } },
+    },
   ],
   webServer: {
     command:

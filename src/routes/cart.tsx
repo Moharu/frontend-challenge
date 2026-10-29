@@ -22,8 +22,10 @@ import {
   removeCoupon,
 } from "@/data/cart/api";
 import { useCart, useCartMutation } from "@/data/cart/hooks";
+import { useIdentity } from "@/data/session/identity";
 import { nftListOptions } from "@/data/nfts/queries";
 import { apiError } from "@/lib/api-error";
+import { authLink } from "@/lib/redirect";
 import { Button } from "@/components/ui/button";
 import { NftCard, Unavailable } from "@/components/discovery/shared";
 import { artImage, asset } from "@/components/discovery/assets";
@@ -371,6 +373,7 @@ function CartSummary({ cart }: { cart: Cart }) {
   const pending = apply.isPending || clear.isPending;
   const { summary } = cart;
   const reserve = useReservedSpace();
+  const signedIn = useIdentity().status === "authenticated";
   const discounted = compareEth(summary.discountEth, "0") > 0;
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -482,14 +485,22 @@ function CartSummary({ cart }: { cart: Cart }) {
             Resolva os itens indisponíveis ou acima do limite para continuar.
           </p>
         </>
-      ) : (
+      ) : signedIn ? (
         <Unavailable
           className="button button-primary checkout-button"
           label="Conectar e finalizar"
-          description="O checkout ainda não está disponível nesta versão. Seu carrinho continua salvo; conexão de carteira, pagamento e pedidos chegam na próxima etapa."
+          description="Você está conectado, mas o checkout ainda não está disponível nesta versão. Seu carrinho continua salvo na sua conta; carteira, pagamento e pedidos chegam na próxima etapa."
         >
           Conectar e finalizar
         </Unavailable>
+      ) : (
+        // Checkout requires a session: sign in first, then return to the cart.
+        <Link
+          className="button button-primary checkout-button"
+          {...authLink("login", "/cart")}
+        >
+          Conectar e finalizar
+        </Link>
       )}
       <Link
         className="continue-link"

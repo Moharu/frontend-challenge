@@ -9,9 +9,10 @@ import {
   type Nft,
 } from "@/contracts/nfts";
 import type { ErrorResponse } from "@/contracts/common";
-import { visitorHeader, type Cart } from "@/contracts/cart";
+import { visitorHeader } from "@/contracts/cart";
+import { sessionHeader } from "@/contracts/session";
 import { ApiError } from "./store/cart";
-import type { MockStore } from "./store";
+import type { CartIdentity, MockStore } from "./store";
 import type { ScenarioControls } from "./scenarios";
 function error(
   status: number,
@@ -50,14 +51,25 @@ export function createHandlers(
       return { response: HttpResponse.error(), empty: false, responseDelay: 0 };
     }
   }
-  // Cart routes: the visitor token header identifies the server-side cart.
-  function cartRoute(
-    run: (token: string | null, request: Request) => Promise<Cart> | Cart,
+  // Session and cart routes: an `Authorization: Bearer` session token wins
+  // over the visitor token header when identifying the server-side cart.
+  function identityOf(request: Request): CartIdentity {
+    const auth = request.headers.get(sessionHeader);
+    return {
+      session: auth?.startsWith("Bearer ") ? auth.slice(7) : null,
+      visitor: request.headers.get(visitorHeader),
+    };
+  }
+  function apiRoute(
+    run: (identity: CartIdentity, request: Request) => unknown,
+    status = 200,
   ) {
     async function respond(request: Request) {
       try {
-        const cart = await run(request.headers.get(visitorHeader), request);
-        return HttpResponse.json({ data: cart });
+        const data = await run(identityOf(request), request);
+        return data === undefined
+          ? new HttpResponse(null, { status: 204 })
+          : HttpResponse.json({ data }, { status });
       } catch (e) {
         if (e instanceof ApiError)
           return error(e.status, e.code, e.message, e.fields);
@@ -93,39 +105,64 @@ export function createHandlers(
         { status: 201 },
       );
     }),
+    // Login/register merge the visitor cart named by X-Visitor-Token.
+    http.post(
+      `${base}/account/register`,
+      apiRoute(
+        async (identity, request) =>
+          store.register(await body(request), identity.visitor),
+        201,
+      ),
+    ),
+    http.post(
+      `${base}/session/login`,
+      apiRoute(async (identity, request) =>
+        store.login(await body(request), identity.visitor),
+      ),
+    ),
+    http.get(
+      `${base}/session`,
+      apiRoute((identity) => store.session(identity.session)),
+    ),
+    http.post(
+      `${base}/session/logout`,
+      apiRoute(async (identity) => {
+        await store.logout(identity.session);
+      }),
+    ),
     http.get(
       `${base}/cart`,
-      cartRoute((token) => store.cart(token)),
+      apiRoute((identity) => store.cart(identity)),
     ),
     http.post(
       `${base}/cart/items`,
-      cartRoute(async (token, request) =>
-        store.addItem(token, await body(request)),
+      apiRoute(async (identity, request) =>
+        store.addItem(identity, await body(request)),
       ),
     ),
     http.patch(`${base}/cart/items/:itemId`, (info) =>
-      cartRoute(async (token, request) =>
+      apiRoute(async (identity, request) =>
         store.changeItem(
-          token,
+          identity,
           String(info.params.itemId),
           await body(request),
         ),
       )(info),
     ),
     http.delete(`${base}/cart/items/:itemId`, (info) =>
-      cartRoute((token) => store.removeItem(token, String(info.params.itemId)))(
-        info,
-      ),
+      apiRoute((identity) =>
+        store.removeItem(identity, String(info.params.itemId)),
+      )(info),
     ),
     http.put(
       `${base}/cart/coupon`,
-      cartRoute(async (token, request) =>
-        store.applyCoupon(token, await body(request)),
+      apiRoute(async (identity, request) =>
+        store.applyCoupon(identity, await body(request)),
       ),
     ),
     http.delete(
       `${base}/cart/coupon`,
-      cartRoute((token) => store.removeCoupon(token)),
+      apiRoute((identity) => store.removeCoupon(identity)),
     ),
     http.get(`${base}/nfts/:id/related`, async ({ request, params }) => {
       const { response } = await condition(request);

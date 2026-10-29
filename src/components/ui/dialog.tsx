@@ -8,12 +8,17 @@ export const DialogTitle = DialogPrimitive.Title;
 export const DialogDescription = DialogPrimitive.Description;
 export function DialogContent({
   className,
+  overlayClassName,
   children,
   ...props
-}: ComponentProps<typeof DialogPrimitive.Content>) {
+}: ComponentProps<typeof DialogPrimitive.Content> & {
+  overlayClassName?: string;
+}) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="dialog-overlay" />
+      <DialogPrimitive.Overlay
+        className={cn("dialog-overlay", overlayClassName)}
+      />
       <DialogPrimitive.Content
         className={cn("dialog-content", className)}
         {...props}

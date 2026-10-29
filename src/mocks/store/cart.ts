@@ -55,13 +55,15 @@ function edition(state: CommerceState, nftId: string, editionId: string) {
 }
 const maxQuantity = (e: { available: number; purchaseLimit: number }) =>
   Math.min(e.available, e.purchaseLimit);
-export function cartFor(state: CommerceState, token: string | null) {
+// Unknown visitor tokens get their own code: SESSION_INVALID is reserved for
+// authenticated sessions, so the client never confuses the two.
+export function visitorCart(state: CommerceState, token: string | null) {
   const visitor = token ? state.visitors[token] : undefined;
   if (!visitor)
     throw new ApiError(
       401,
-      "SESSION_INVALID",
-      "Identificação de visitante ausente ou expirada.",
+      "VISITOR_INVALID",
+      "Carrinho de visitante não encontrado.",
     );
   return state.carts[visitor.cartId];
 }

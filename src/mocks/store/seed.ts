@@ -1,5 +1,6 @@
 import { categories, type Nft } from "@/contracts/nfts";
 import type { UserIdentity } from "@/contracts/common";
+import type { PasswordHash } from "./passwords";
 export const baseline = "2026-01-01T00:00:00.000Z";
 export const fixtureUsers: UserIdentity[] = [
   {
@@ -133,3 +134,22 @@ export const networkFees = {
   solana: "0.0005",
 } as const;
 export const defaultFeeNetwork = "ethereum" as const;
+// Fictional accounts. Only salt + PBKDF2 hash are stored; the demo passwords
+// are documented in the README and were hashed with scripts/hash-password.mjs.
+export const fixturePasswords: Record<string, PasswordHash> = {
+  "user-ada": {
+    algorithm: "PBKDF2-SHA256",
+    iterations: 100000,
+    salt: "Cjh0lOnU2SIMhMyqfAMicw==",
+    hash: "NY1g015qqiKKjWgU5lWVHuh13R/O33bM7y5RxYooFWw=",
+  },
+  "user-lin": {
+    algorithm: "PBKDF2-SHA256",
+    iterations: 100000,
+    salt: "rVgpBHJFkZMt1siIJjoKdA==",
+    hash: "m5XQ5MPe5nqk95RjARCo68SZG1baSN+OiJNi0HKbD6Q=",
+  },
+};
+// Sessions last 7 days from login (real clock); scenario controls can expire
+// or revoke the current session for deterministic tests.
+export const sessionDurationMs = 7 * 24 * 60 * 60 * 1000;

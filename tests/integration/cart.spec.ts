@@ -247,7 +247,11 @@ test("nft.updated altera preço e disponibilidade; conflito bloqueia; eventos an
   await expect(page.locator("#checkout-blocked")).toBeVisible();
   await emerald.getByRole("button", { name: "Ajustar para 1" }).click();
   await expect(emerald.locator(".qty-value")).toHaveText("1");
-  await expect(checkout).toBeEnabled();
+  // Without conflicts and signed out, checkout becomes the way to the login.
+  await expect(checkout).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "Conectar e finalizar" }),
+  ).toBeVisible();
   await update({ available: 0 });
   await expect(emerald.locator(".cart-notice")).toContainText(
     "Esta edição esgotou.",
@@ -338,7 +342,7 @@ test("falhas preservam o estado, permitem nova tentativa e o skeleton aparece em
   await page.getByRole("button", { name: "Tentar novamente" }).click();
   await expect(emerald.locator(".qty-value")).toHaveText("3");
 });
-test("teclado mantém o foco e Conectar e finalizar informa indisponibilidade", async ({
+test("teclado mantém o foco e Conectar e finalizar leva ao login", async ({
   page,
 }) => {
   await seed(page, [
@@ -360,15 +364,16 @@ test("teclado mantém o foco e Conectar e finalizar informa indisponibilidade", 
   await expect(
     page.getByRole("link", { name: "Noon Verbal #044" }),
   ).toBeFocused();
-  const checkout = page.getByRole("button", { name: "Conectar e finalizar" });
+  // Signed out, checkout leads to the login with the cart as return target;
+  // Escape closes it back to the cart.
+  const checkout = page.getByRole("link", { name: "Conectar e finalizar" });
   await checkout.focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("dialog")).toContainText(
-    "O checkout ainda não está disponível",
-  );
+  await expect(page).toHaveURL(/\/login\?redirect=%2Fcart$/);
+  await expect(page.getByRole("textbox", { name: "E-mail" })).toBeFocused();
   await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/cart$/);
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(checkout).toBeFocused();
 });
 test("um novo contexto do navegador começa com carrinho vazio", async ({
   page,
