@@ -15,6 +15,29 @@ export function createScenarios() {
   let cartDelays = { read: 0, write: 0 };
   let generation = new AbortController();
   const stats = { started: 0, completed: 0, cancelled: 0 };
+  // Abortable wait shared by request delays and cart response latency; aborts
+  // with the request or on reset (generation change).
+  async function pause(ms: number, request: Request) {
+    const signal = generation.signal;
+    if (request.signal.aborted || signal.aborted)
+      throw new DOMException("Aborted", "AbortError");
+    await new Promise<void>((resolve, reject) => {
+      const abort = () => {
+        cleanup();
+        reject(new DOMException("Aborted", "AbortError"));
+      };
+      const cleanup = () => {
+        request.signal.removeEventListener("abort", abort);
+        signal.removeEventListener("abort", abort);
+      };
+      request.signal.addEventListener("abort", abort, { once: true });
+      signal.addEventListener("abort", abort, { once: true });
+      void delay(ms).then(() => {
+        cleanup();
+        resolve();
+      });
+    });
+  }
   return {
     stats,
     reset() {
@@ -62,28 +85,7 @@ export function createScenarios() {
         throw new Error("Delay must be 0..10000 ms");
       cartDelays[kind] = ms;
     },
-    // Abortable wait shared by request delays and cart response latency.
-    async pause(ms: number, request: Request) {
-      const signal = generation.signal;
-      if (request.signal.aborted || signal.aborted)
-        throw new DOMException("Aborted", "AbortError");
-      await new Promise<void>((resolve, reject) => {
-        const abort = () => {
-          cleanup();
-          reject(new DOMException("Aborted", "AbortError"));
-        };
-        const cleanup = () => {
-          request.signal.removeEventListener("abort", abort);
-          signal.removeEventListener("abort", abort);
-        };
-        request.signal.addEventListener("abort", abort, { once: true });
-        signal.addEventListener("abort", abort, { once: true });
-        void delay(ms).then(() => {
-          cleanup();
-          resolve();
-        });
-      });
-    },
+    pause,
     async before(request: Request) {
       stats.started++;
       const activeScenario = scenario;
@@ -108,7 +110,7 @@ export function createScenarios() {
         : (delays[key] ??
           (activeScenario === "out-of-order" && key === "emerald" ? 300 : 0));
       try {
-        await this.pause(ms, request);
+        await pause(ms, request);
         stats.completed++;
         return {
           responseDelay: cartRead ? cartDelays.read : 0,

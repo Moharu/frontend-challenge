@@ -123,6 +123,14 @@ export function installHarness(controls: MockControls, baseURL: string) {
     cartDelay: controls.scenarios.setCartDelay,
     // Drops the cached cart so the next observer starts from a pending query.
     forgetCart: () => queryClient.removeQueries({ queryKey: cartKey }),
+    // Cart query diagnostics: each fetched or written cart increments the count.
+    cartQuery: () => {
+      const state = queryClient.getQueryState(cartKey);
+      return {
+        dataUpdateCount: state?.dataUpdateCount ?? 0,
+        fetchStatus: state?.fetchStatus ?? "idle",
+      };
+    },
     snapshot: controls.store.snapshot,
     compareEth,
   };

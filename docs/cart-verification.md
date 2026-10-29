@@ -66,3 +66,15 @@ Rodada guiada por `docs/handoffs/coding-agent-cart-fixes-draft-pt-br.md`, sem mu
 3. **`fields.quantity` com número.** As respostas 409 de `addItem`/`changeItem` trazem mensagens ("É possível adicionar no máximo 0.", "A quantidade máxima atual é 5.", "Edição esgotada."). Nenhum campo estruturado novo foi adicionado ao envelope: a interface não interpreta essa informação (exibe `message` e usa `maxQuantity` da linha do carrinho). Novo teste verifica as duas respostas 409.
 
 Resultados: tipos, lint, formatação, build normal e de integração aprovados; 56 testes de integração (eram 52; +2 casos × desktop/mobile) e 8 E2E aprovados, sem mudança nas referências visuais.
+
+## Ajustes finos da revisão de `fec94b1`
+
+Rodada guiada por `docs/handoffs/coding-agent-cart-nits-draft-pt-br.md`, sem mudanças visuais nem de contrato.
+
+1. **Limite já atingido:** com restante zero, `addItem` responde "Você já atingiu o limite desta edição no carrinho." em `fields.quantity` e "Você já tem N no carrinho e o limite atual é M. Não é possível adicionar mais unidades desta edição." na mensagem principal; com restante positivo, as mensagens anteriores foram mantidas. O teste de 409 cobre os dois casos.
+2. **`pause` sem `this`:** a espera abortável virou função local de `createScenarios`, usada por `before()` e exposta como `pause`; comportamento e assinatura inalterados.
+3. **Sem espera fixa no teste de versão:** a ponte de testes ganhou o diagnóstico `cartQuery()` (`dataUpdateCount` e `fetchStatus` da consulta do carrinho; ausente do build normal). O teste espera as duas atualizações (resposta do `PATCH` e `GET` atrasado) e a consulta ociosa antes da verificação final; o `MutationObserver` continua comprovando que a quantidade não regride.
+
+Durante a verificação, o caso "falhas preservam o estado..." falhou uma vez sob carga paralela: a falha de uso único podia ser consumida pela busca do cabeçalho antes de a página montar. O trecho de falha de carga passou a usar o cenário persistente `http-error` (desligado antes de "Tentar novamente"), eliminando a dependência de tempo.
+
+Resultados: tipos, lint, formatação e build de integração aprovados; 56 testes de integração aprovados em duas execuções completas; os casos alterados passaram em 6 a 10 repetições por viewport. Lighthouse e E2E visuais não executados nesta rodada, conforme o handoff. Outros dois testes de tempo real ainda usam esperas curtas de 300ms para comprovar ausência de efeito (fora do escopo desta rodada).

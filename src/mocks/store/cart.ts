@@ -171,15 +171,21 @@ export function addItem(state: CommerceState, cart: StoredCart, body: unknown) {
     throw new ApiError(409, "CONFLICT", "Esta edição está esgotada.", {
       quantity: "Edição esgotada.",
     });
+  const remaining = Math.max(0, max - current);
   if (current + amount > max)
     throw new ApiError(
       409,
       "CONFLICT",
-      current
-        ? `Você já tem ${current} no carrinho e o limite atual é ${max}. É possível adicionar no máximo ${Math.max(0, max - current)}.`
-        : `O limite atual é ${max}.`,
+      remaining === 0
+        ? `Você já tem ${current} no carrinho e o limite atual é ${max}. Não é possível adicionar mais unidades desta edição.`
+        : current
+          ? `Você já tem ${current} no carrinho e o limite atual é ${max}. É possível adicionar no máximo ${remaining}.`
+          : `O limite atual é ${max}.`,
       {
-        quantity: `É possível adicionar no máximo ${Math.max(0, max - current)}.`,
+        quantity:
+          remaining === 0
+            ? "Você já atingiu o limite desta edição no carrinho."
+            : `É possível adicionar no máximo ${remaining}.`,
       },
     );
   if (existing) {

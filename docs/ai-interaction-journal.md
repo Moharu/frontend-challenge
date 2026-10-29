@@ -211,3 +211,13 @@ Mantenha este diário de alto nível nos próximos trabalhos do projeto com assi
 **Verificação:** tipos, lint, formatação, builds, 56 testes de integração e 8 E2E aprovados. Evidências em `docs/cart-verification.md`. Nenhum commit ou push.
 
 **Autorização de commit:** o usuário aprovou commit e push destas correções para `origin/main`, incluindo o handoff `docs/handoffs/coding-agent-cart-fixes-draft-pt-br.md`. Pushes futuros continuam exigindo autorização.
+
+## 2026-10-29 — Ajustes finos do carrinho (`docs/handoffs/coding-agent-cart-nits-draft-pt-br.md`)
+
+**Orientação do usuário:** executar o handoff de ajustes finos da revisão de `fec94b1`, sem commit/push.
+
+**Resolução:** mensagem própria para limite já atingido (principal e `fields.quantity`), com teste dos casos de restante zero e positivo; espera abortável dos cenários como função local, sem `this`; teste de regressão de versão sem espera fixa, usando o novo diagnóstico `cartQuery()` da ponte. Um caso intermitente sob carga no teste de falhas foi estabilizado com o cenário persistente `http-error`.
+
+**Verificação:** tipos, lint, formatação, build de integração e 56 testes de integração (duas execuções completas) aprovados; casos alterados repetidos sem falhas. Detalhes em `docs/cart-verification.md`. Nenhum commit ou push.
+
+**Autorização de commit:** o usuário aprovou commit e push destes ajustes para `origin/main`, incluindo o handoff `docs/handoffs/coding-agent-cart-nits-draft-pt-br.md`. Pushes futuros continuam exigindo autorização.

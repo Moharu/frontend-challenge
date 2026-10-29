@@ -323,16 +323,18 @@ test("falhas preservam o estado, permitem nova tentativa e o skeleton aparece em
   await expect(
     page.getByRole("link", { name: "Carrinho, 3 itens" }),
   ).toBeVisible();
-  // The delay makes the header and the page share the same failing request.
+  // A persistent failure scenario (instead of a one-shot failure) makes every
+  // cart read fail until it is switched off, so no fetch timing can let the
+  // page load succeed before the error screen is observed.
   await page.evaluate(() => {
-    window.__KURIO_TEST__.cartDelay("read", 500);
-    window.__KURIO_TEST__.failNextCart("http", "read");
+    window.__KURIO_TEST__.scenario("http-error");
     window.__KURIO_TEST__.forgetCart();
   });
   await page.getByRole("link", { name: /^Carrinho/ }).click();
   await expect(
     page.getByRole("heading", { name: "Não foi possível carregar o carrinho" }),
   ).toBeVisible();
+  await page.evaluate(() => window.__KURIO_TEST__.scenario("default"));
   await page.getByRole("button", { name: "Tentar novamente" }).click();
   await expect(emerald.locator(".qty-value")).toHaveText("3");
 });
@@ -405,6 +407,9 @@ test("leitura antiga do carrinho nunca sobrescreve uma alteração mais nova", a
   });
   // The PATCH waits 300ms before writing; the GET triggered by the event reads
   // the state immediately (before the write) and answers only after 900ms.
+  const updatesBefore = await page.evaluate(
+    () => window.__KURIO_TEST__.cartQuery().dataUpdateCount,
+  );
   await page.evaluate(() => {
     window.__KURIO_TEST__.cartDelay("write", 300);
     window.__KURIO_TEST__.cartDelay("read", 900);
@@ -416,7 +421,12 @@ test("leitura antiga do carrinho nunca sobrescreve uma alteração mais nova", a
     }),
   );
   await expect(emerald.locator(".qty-value")).toHaveText("3");
-  await page.waitForTimeout(1300);
+  // Observed condition instead of a fixed wait: both the PATCH result and the
+  // delayed GET reached the cart query, and nothing is still fetching.
+  await page.waitForFunction((before) => {
+    const query = window.__KURIO_TEST__.cartQuery();
+    return query.dataUpdateCount >= before + 2 && query.fetchStatus === "idle";
+  }, updatesBefore);
   await expect(emerald.locator(".qty-value")).toHaveText("3");
   const seen = await page.evaluate(
     () => (window as unknown as { __qty: string[] }).__qty,
@@ -429,7 +439,10 @@ test("leitura antiga do carrinho nunca sobrescreve uma alteração mais nova", a
 test("conflitos 409 trazem mensagens legíveis em fields.quantity", async ({
   page,
 }) => {
-  await seed(page, [["nft-001", "edition-1-limited", 5]]);
+  await seed(page, [
+    ["nft-001", "edition-1-limited", 5],
+    ["nft-003", "edition-3-limited", 3],
+  ]);
   const responses = await page.evaluate(async () => {
     const token = localStorage.getItem("kurio.visitor.v1")!;
     const headers = {
@@ -445,6 +458,15 @@ test("conflitos 409 trazem mensagens legíveis em fields.quantity", async ({
         quantity: 1,
       }),
     });
+    const partial = await fetch("/api/cart/items", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        nftId: "nft-003",
+        editionId: "edition-3-limited",
+        quantity: 3,
+      }),
+    });
     const cart = await (await fetch("/api/cart", { headers })).json();
     const change = await fetch(`/api/cart/items/${cart.data.items[0].id}`, {
       method: "PATCH",
@@ -453,15 +475,28 @@ test("conflitos 409 trazem mensagens legíveis em fields.quantity", async ({
     });
     return [
       { status: add.status, body: await add.json() },
+      { status: partial.status, body: await partial.json() },
       { status: change.status, body: await change.json() },
     ];
   });
+  // Limit already reached: dedicated message, no "no máximo 0".
   expect(responses[0].status).toBe(409);
   expect(responses[0].body.error.fields.quantity).toBe(
-    "É possível adicionar no máximo 0.",
+    "Você já atingiu o limite desta edição no carrinho.",
   );
+  expect(responses[0].body.error.message).toBe(
+    "Você já tem 5 no carrinho e o limite atual é 5. Não é possível adicionar mais unidades desta edição.",
+  );
+  // Some quantity still possible: current messages are kept.
   expect(responses[1].status).toBe(409);
   expect(responses[1].body.error.fields.quantity).toBe(
+    "É possível adicionar no máximo 2.",
+  );
+  expect(responses[1].body.error.message).toBe(
+    "Você já tem 3 no carrinho e o limite atual é 5. É possível adicionar no máximo 2.",
+  );
+  expect(responses[2].status).toBe(409);
+  expect(responses[2].body.error.fields.quantity).toBe(
     "A quantidade máxima atual é 5.",
   );
 });
