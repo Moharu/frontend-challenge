@@ -1,4 +1,4 @@
-﻿# Contratos de transporte REST
+# Contratos de transporte REST
 
 Os tipos ficam em `src/contracts`, agrupados por recurso, sem dependências de framework, cliente ou mocks. Este é um contrato proposto para etapas futuras; **estão implementados os GET de NFT (listagem, detalhe e relacionados), o carrinho (visitante e conta) e cadastro/login/sessão**. Os demais recursos não possuem handler, estado de teste ou função de API no cliente. Caminhos não suportados sob a API configurada retornam JSON `501 NOT_IMPLEMENTED`, inclusive operações de escrita, em vez do HTML da SPA com status de sucesso.
 
@@ -149,7 +149,7 @@ Todas as rotas (exceto a emissão) identificam o carrinho por `Authorization: Be
 | `PUT /cart/coupon`           | `ApplyCouponRequest`: code                                   | 200; substitui o cupom anterior; 400 `fields.coupon` para vazio, inexistente ou expirado                                                   |
 | `DELETE /cart/coupon`        | —                                                            | 200                                                                                                                                        |
 
-`Cart` contém `id`, `version`, `updatedAt`, `items`, `itemCount` (soma das quantidades), `coupon`, `summary` (`subtotalEth`, `discountEth`, `networkFeeEth`, `totalEth`, `feeNetwork`, `feeEstimated`) e `hasConflicts`. Cada `CartLine` expõe nftId/editionId, versão do NFT, nome, arte, tokenId, rótulo da edição, quantidade, preço unitário atual, total da linha, disponibilidade, limite de compra, `maxQuantity`, `priceChange` e `conflict`. Valores são calculados no servidor simulado com `src/contracts/eth.ts`; a interface não recalcula.
+`Cart` contém `id`, `version`, `updatedAt`, `items`, `itemCount` (soma das quantidades), `coupon` (somente se válido), `couponRemoved` (`{ code, reason }` quando o cupom aplicado expirou: sem desconto, com o motivo; mesma regra da cotação), `summary` (`subtotalEth`, `discountEth`, `networkFeeEth`, `totalEth`, `feeNetwork`, `feeEstimated`) e `hasConflicts`. Cada `CartLine` expõe nftId/editionId, versão do NFT, nome, arte, tokenId, rótulo da edição, quantidade, preço unitário atual, total da linha, disponibilidade, limite de compra, `maxQuantity`, `priceChange` e `conflict`. Valores são calculados no servidor simulado com `src/contracts/eth.ts`; a interface não recalcula.
 
 ## Sessão e conta implementadas
 

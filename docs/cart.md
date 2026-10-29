@@ -36,6 +36,8 @@ O carrinho pertence ao servidor simulado. O cliente guarda somente um **token op
 
 `PUT /cart/coupon` aplica (código sem diferenciar maiúsculas, espaços removidos) e substitui o anterior; `DELETE /cart/coupon` remove. Um cupom por carrinho, persistido com ele. Erros: 400 `VALIDATION` com `fields.coupon` "Este código promocional não existe." ou "Este código promocional expirou." A validade usa o relógio lógico da simulação (`baseline + tick` segundos), nunca o relógio real. O desconto incide somente sobre o subtotal, nunca sobre a taxa.
 
+**Cupom aplicado que expira.** Uma única regra (`couponStatus` em `src/mocks/store/cart.ts`: data de expiração no relógio lógico ou expiração por cenário) é usada ao aplicar, ao exibir o carrinho e, por meio de `viewCart`, na cotação; não há outra lógica de desconto. Com o cupom aplicado expirado, o carrinho responde `coupon: null` e `couponRemoved: { code, reason }`, e o desconto não é aplicado. **Decisão:** o código expirado continua guardado no carrinho apenas como informação (não é retirado numa escrita seguinte), até o usuário aplicar outro cupom; isso mantém o motivo visível enquanto ele for relevante, sem nunca descontar. A interface mostra o motivo ("O cupom KURIO10 expirou e foi removido.") numa região de status junto ao campo de cupom.
+
 ## Aritmética e formatação de ETH
 
 `src/contracts/eth.ts` é usado pelos handlers MSW (fonte dos valores) e pela interface (exibição). Tudo roda em unidades inteiras `bigint` de 10^-18 ETH; nenhum cálculo passa por `Number`, `parseFloat` ou `toFixed`.

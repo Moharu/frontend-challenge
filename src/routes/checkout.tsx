@@ -1,4 +1,4 @@
-﻿import {
+import {
   useEffect,
   useRef,
   useState,
@@ -1263,6 +1263,11 @@ function Amounts({ quote }: { quote: Quote | null }) {
           Os valores são calculados pela API depois que a carteira conecta.
         </p>
       )}
+      {/* Shown for any displayed quote, the first one included, without
+          depending on a comparison between quotes. */}
+      <p className="coupon-removed" role="status">
+        {quote?.couponRemoved?.reason ?? ""}
+      </p>
     </dl>
   );
 }

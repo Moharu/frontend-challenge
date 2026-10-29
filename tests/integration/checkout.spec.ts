@@ -1,4 +1,4 @@
-﻿import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import type { Harness } from "../../src/testing/harness";
 declare global {
   interface Window {
@@ -249,7 +249,10 @@ test("5. usuário sem carteiras cadastra uma no checkout; vira principal e fica 
   const address = "0x1111111111111111111111111111111111111111";
   await form.getByLabel("Endereço da carteira").fill(address);
   await form.getByRole("button", { name: "Cadastrar carteira" }).click();
-  // The new wallet is the user's primary one.
+  // Once selected (the creation finished), the new wallet is the primary one.
+  await expect(
+    page.getByRole("radio", { name: /Minha MetaMask/ }),
+  ).toBeChecked();
   const roles = await page.evaluate(async () => {
     const token = window.__KURIO_TEST__.identity().sessionToken;
     const r = await fetch("/api/wallets", {
@@ -398,7 +401,13 @@ test("8. revalidação: preço, esgotamento, cupom expirado e cotação expirada
   await expect(dialog(page)).toContainText("Revisão concluída");
   await page.keyboard.press("Escape");
   await expect(dialog(page)).toHaveCount(0);
-  await expect(page.locator(".checkout-amounts")).not.toContainText("KURIO10");
+  // No discount line for the coupon, and its removal reason in the summary.
+  await expect(page.locator(".checkout-amounts dt")).not.toContainText([
+    "KURIO10",
+  ]);
+  await expect(page.locator(".checkout-amounts .coupon-removed")).toHaveText(
+    "O cupom KURIO10 expirou e foi removido.",
+  );
   // Sold out: the quote refuses with the affected item.
   await page.evaluate(() =>
     window.__KURIO_TEST__.persistUpdate("nft-001", "edition-1-limited", {
@@ -410,6 +419,33 @@ test("8. revalidação: preço, esgotamento, cupom expirado e cotação expirada
     page.getByRole("alert").filter({ hasText: "não estão mais disponíveis" }),
   ).toContainText("disponível no máximo 1");
   await expect(dialog(page)).toHaveCount(0);
+});
+test("8c. cupom expirado antes de abrir: carrinho e primeira cotação mostram o motivo, sem desconto e com valores coerentes", async ({
+  page,
+}, testInfo) => {
+  const mobile = isMobile(testInfo.project.name);
+  await login(page);
+  await addLines(page, [emerald], "KURIO10");
+  await page.evaluate(() => window.__KURIO_TEST__.expireCoupon("KURIO10"));
+  // Cart: the reason next to the coupon field, and no discount.
+  await page.goto("/cart");
+  await ready(page);
+  const summary = page.locator(".cart-summary");
+  await expect(summary.locator(".coupon-removed")).toHaveText(
+    "O cupom KURIO10 expirou e foi removido.",
+  );
+  await expect(summary.locator(".amounts")).toContainText("Desconto");
+  await expect(summary.locator(".amounts")).not.toContainText("(-)");
+  const cartTotal = await summary.locator(".amount-total dd").innerText();
+  // Checkout: the first quote already shows the reason (no comparison).
+  await toReview(page, mobile);
+  await expect(page.locator(".checkout-amounts .coupon-removed")).toHaveText(
+    "O cupom KURIO10 expirou e foi removido.",
+  );
+  await expect(page.locator(".quote-changes")).toHaveCount(0);
+  // Same rule on both: the Ethereum wallet quote equals the cart total
+  // (whose estimated fee is Ethereum's).
+  await expect(total(page)).toHaveText(cartTotal);
 });
 test("8b. cotação expirada é renovada automaticamente e pede confirmação se os valores mudaram", async ({
   page,

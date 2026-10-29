@@ -2753,3 +2753,12 @@ h3 {
   max-width: 100%;
   align-self: flex-start;
 }
+/* Expired coupon reason (cart and checkout summary). */
+.coupon-removed {
+  margin: 6px 0 0;
+  color: #f0a08f;
+  font-size: 14px;
+}
+.coupon-removed:empty {
+  display: none;
+}

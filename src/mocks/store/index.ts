@@ -1,4 +1,4 @@
-﻿import { isNft, type Nft } from "@/contracts/nfts";
+import { isNft, type Nft } from "@/contracts/nfts";
 import { record, integer } from "@/contracts/common";
 import {
   fixturePasswords,

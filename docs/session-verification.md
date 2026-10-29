@@ -1,4 +1,4 @@
-﻿# Verificação da etapa de sessão
+# Verificação da etapa de sessão
 
 Evidências executadas em 2026-10-29 sobre a árvore de trabalho da etapa de sessão (sem commit), partindo de `157f168`. Ambiente: WSL2, Node 24.22.0, npm 11.19.1, Chromium headless do Playwright, Lighthouse 12.6.1.
 

@@ -1,5 +1,11 @@
 import { integer, record, timestamp, type Eth, type Network } from "./common";
-import { isCartLine, type AppliedCoupon, type CartLine } from "./cart";
+import {
+  isCartLine,
+  isCouponRemoval,
+  type AppliedCoupon,
+  type CartLine,
+  type CouponRemoval,
+} from "./cart";
 import { isEth } from "./eth";
 import { networkNames } from "./wallets";
 export interface Amounts {
@@ -27,7 +33,7 @@ export interface Quote {
   items: CartLine[];
   coupon: AppliedCoupon | null;
   // The cart's coupon left out of this quote, with the reason.
-  couponRemoved: { code: string; reason: string } | null;
+  couponRemoved: CouponRemoval | null;
   amounts: Amounts;
   // True when the user must confirm values different from what they saw in
   // the cart (a price changed since it was acknowledged, or the coupon left).
@@ -50,10 +56,7 @@ export function isQuote(value: unknown): value is Quote {
     value.items.every(isCartLine) &&
     (value.coupon === null ||
       (record(value.coupon) && typeof value.coupon.code === "string")) &&
-    (removed === null ||
-      (record(removed) &&
-        typeof removed.code === "string" &&
-        typeof removed.reason === "string")) &&
+    (removed === null || isCouponRemoval(removed)) &&
     isEth(a.subtotalEth) &&
     isEth(a.discountEth) &&
     isEth(a.networkFeeEth) &&

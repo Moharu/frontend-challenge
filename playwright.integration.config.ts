@@ -3,6 +3,10 @@ export default defineConfig({
   testDir: "./tests/integration",
   outputDir: "test-results/integration",
   fullyParallel: true,
+  // Two browsers at a time by default: unbounded parallel Chromium crashed
+  // the browser ("Target crashed") and the editor under WSL. Override with
+  // PW_WORKERS=n or --workers=n when the machine has room.
+  workers: Number(process.env.PW_WORKERS) || 2,
   forbidOnly: !!process.env.CI,
   retries: 0,
   reporter: [
@@ -15,6 +19,7 @@ export default defineConfig({
   },
   projects: [
     { name: "eth-unit", testMatch: "eth.spec.ts" },
+    { name: "contracts-unit", testMatch: "wallets.spec.ts" },
     {
       name: "protocol-chromium",
       testMatch: "foundation.spec.ts",

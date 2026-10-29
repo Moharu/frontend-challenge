@@ -1,4 +1,4 @@
-﻿import { delay } from "msw";
+import { delay } from "msw";
 export type Scenario =
   "default" | "empty" | "http-error" | "network-error" | "out-of-order";
 export type Failure = "http" | "network";

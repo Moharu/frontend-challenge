@@ -32,6 +32,27 @@ export interface CommerceState {
   // Opaque visitor token -> cart id. A future login merges this cart.
   visitors: Record<string, { cartId: string; createdAt: string }>;
   carts: Record<string, StoredCart>;
+  // Coupons expired by a scenario control (besides their own expiry date).
+  expiredCoupons: string[];
+}
+// The single coupon validity rule, used when applying a coupon, when viewing
+// the cart and (through viewCart) when quoting: a coupon past its expiry date
+// on the logical clock, or expired by a scenario, never gives a discount.
+export function couponStatus(state: CommerceState, code: string | null) {
+  const coupon = coupons.find((c) => c.code === code) ?? null;
+  if (!coupon) return { coupon: null, removed: null };
+  const expired =
+    state.expiredCoupons.includes(coupon.code) ||
+    Date.parse(coupon.expiresAt) <= Date.parse(logicalTime(state.tick));
+  return expired
+    ? {
+        coupon: null,
+        removed: {
+          code: coupon.code,
+          reason: `O cupom ${coupon.code} expirou e foi removido.`,
+        },
+      }
+    : { coupon, removed: null };
 }
 export class ApiError extends Error {
   constructor(
@@ -99,7 +120,9 @@ export function viewCart(state: CommerceState, cart: StoredCart): Cart {
     };
   });
   const subtotal = addEth(...items.map((i) => i.lineTotalEth));
-  const coupon = coupons.find((c) => c.code === cart.coupon) ?? null;
+  // An expired coupon stays stored (it is informational until the user
+  // applies another or removes it) but never applies.
+  const { coupon, removed } = couponStatus(state, cart.coupon);
   const discount = !coupon
     ? "0"
     : "basisPoints" in coupon.discount
@@ -114,6 +137,7 @@ export function viewCart(state: CommerceState, cart: StoredCart): Cart {
     coupon: coupon
       ? { code: coupon.code, description: coupon.description }
       : null,
+    couponRemoved: removed,
     summary: {
       subtotalEth: subtotal,
       discountEth: discount,
@@ -279,7 +303,7 @@ export function applyCoupon(
     throw new ApiError(400, "VALIDATION", "Cupom inexistente.", {
       coupon: "Este código promocional não existe.",
     });
-  if (Date.parse(coupon.expiresAt) <= Date.parse(logicalTime(state.tick)))
+  if (couponStatus(state, coupon.code).removed)
     throw new ApiError(400, "VALIDATION", "Cupom expirado.", {
       coupon: "Este código promocional expirou.",
     });

@@ -50,3 +50,14 @@ Uma execução completa teve uma falha "Target crashed" do navegador num teste d
 - Teclado virtual e safe areas em dispositivo físico.
 - Zoom de 200% além da varredura de larguras.
 - Cotação com várias abas abertas (segue a política de abas do retrato simulado).
+
+## Correções da revisão de `ca0fd2f`
+
+Rodada guiada por `docs/handoffs/coding-agent-checkout-fixes-draft-pt-br.md`.
+
+1. **Cupom expirado sem explicação:** uma única regra de validade (`couponStatus`) para aplicar, exibir o carrinho e cotar (a cotação reaproveita o desconto de `viewCart`). O carrinho passou a responder `couponRemoved`, sem desconto; o código expirado fica guardado só como informação (decisão em `docs/cart.md`). Carrinho e checkout mostram o motivo em região de status, inclusive na primeira cotação. Novo teste 8c (cupom expirado antes de abrir: carrinho e primeira cotação com o motivo e o mesmo total); o caso de expiração durante o checkout continua exigindo nova confirmação.
+2. **Conflito de carteira pelo texto:** `validateWallet` devolve `duplicate` explicitamente; o handler escolhe 409 ou 400 por esse indicador. Novo projeto `contracts-unit` (`tests/integration/wallets.spec.ts`) verifica o indicador independentemente das mensagens; os testes de 400 e 409 da API continuam.
+3. **BOM:** removido dos seis arquivos apontados (somente os 3 primeiros bytes). A causa foi a escrita por `Set-Content`/`Add-Content` do PowerShell do agente, que grava BOM; arquivos passam a ser escritos sem ele. `npm run lint` agora executa `check:bom` (`scripts/check-bom.mjs`), que falha com arquivo versionado iniciado por BOM.
+4. **Workers:** as duas configurações do Playwright usam `workers: 2` por padrão (sobrescrevível com `PW_WORKERS` ou `--workers`), documentado no README.
+
+Resultados, com 2 workers: tipos, lint (com `check:bom`), formatação, build normal e de integração aprovados; 122 testes de integração aprovados e 2 ignorados (casos só de mobile no projeto desktop), em 1,6 min (antes, sem limite, ~55 s); 10 E2E aprovados. **Erros de infraestrutura:** nenhum ("Target crashed", navegador fechado, timeout do servidor de pré-visualização, falta de memória ou processo encerrado) nas execuções desta rodada. Antes e depois de cada suíte não havia processos Chromium do Playwright nem `vite preview` órfãos. Lighthouse não executado, conforme o handoff.

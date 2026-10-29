@@ -3,6 +3,8 @@ export default defineConfig({
   testDir: "./tests/e2e",
   outputDir: "test-results/e2e",
   fullyParallel: true,
+  // Same bound as the integration suite (see playwright.integration.config.ts).
+  workers: Number(process.env.PW_WORKERS) || 2,
   forbidOnly: !!process.env.CI,
   retries: 0,
   reporter: [

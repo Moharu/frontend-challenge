@@ -447,6 +447,10 @@ function CartSummary({ cart }: { cart: Cart }) {
             </button>
           </p>
         )}
+        {/* An applied coupon that expired: no discount, and the reason. */}
+        <p className="coupon-removed" role="status">
+          {cart.couponRemoved?.reason ?? ""}
+        </p>
         <p className="sr-only" role="status">
           {couponStatus}
         </p>

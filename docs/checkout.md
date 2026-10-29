@@ -58,6 +58,7 @@ Regra de nova confirmação (`useCheckoutQuote`):
 - Mudanças feitas pelo usuário (carteira, cupom, conteúdo do carrinho) geram nova cotação diretamente.
 - Atualizações que o usuário não causou — `nft.updated` de um item (que busca o carrinho de novo), a renovação automática da cotação expirada e a revalidação de "Confirmar compra" — são comparadas com a cotação exibida. Se preço, quantidade, cupom, taxa ou total mudaram, **nada prossegue**: um aviso lista o que mudou (valor anterior e atual, cupom removido) e exige "Revisei, confirmar com os novos valores". Os valores exibidos não são trocados em silêncio.
 - Itens indisponíveis mostram as linhas afetadas e levam ao carrinho para ajuste.
+- Um cupom expirado aparece com o motivo no resumo sempre que a cotação exibida tem `couponRemoved`, inclusive a primeira (região de status, sem depender de comparação). Carrinho e cotação usam a mesma regra de validade (`couponStatus`, ver `docs/cart.md`), então os valores coincidem.
 - Sem mudanças e com conexão ativa, "Confirmar compra" abre o diálogo "Revisão concluída", informando que nenhum pedido foi criado e que carrinho e rascunho continuam salvos.
 
 ## Decisões e desvios do Figma

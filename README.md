@@ -20,7 +20,7 @@ No Windows, copie `.env.example` pelo terminal ou editor. No Linux, se faltarem 
 | `dev` / `dev:mocks`               | Desenvolvimento / desenvolvimento com mocks explicitamente habilitados                       |
 | `build` / `preview`               | Tipos e build otimizado / pré-visualização local                                             |
 | `typecheck`                       | Tipos da aplicação, configuração e testes                                                    |
-| `lint`                            | ESLint sem avisos                                                                            |
+| `lint`                            | ESLint sem avisos e `check:bom` (falha com arquivo versionado iniciado por BOM UTF-8)        |
 | `format` / `format:check`         | Formatar / verificar arquivos mantidos                                                       |
 | `test:e2e`                        | Fluxo básico e regressão visual de início/detalhe/carrinho em desktop/mobile no build normal |
 | `test:e2e:ui` / `test:e2e:report` | Executor interativo / relatório HTML E2E                                                     |
@@ -28,7 +28,7 @@ No Windows, copie `.env.example` pelo terminal ou editor. No Linux, se faltarem 
 | `test:integration`                | ETH, infraestrutura, descoberta, carrinho, sessão e checkout desktop/mobile (integração)     |
 | `audit:lighthouse`                | Três medições de início/detalhe por perfil mobile/desktop                                    |
 
-Execute `npm run build` antes de E2E e Lighthouse; para integração, execute primeiro `npm run build:integration`. Os testes gerenciam seus próprios servidores locais. Referências visuais são versionáveis e devem ser inspecionadas antes de atualização.
+Execute `npm run build` antes de E2E e Lighthouse; para integração, execute primeiro `npm run build:integration`. Os testes gerenciam seus próprios servidores locais. As duas configurações do Playwright usam **2 workers** por padrão: com Chromium em paralelo sem limite, o navegador caiu ("Target crashed") e o editor travou sob WSL. Com folga de memória, sobrescreva com `PW_WORKERS=4 npm run test:integration` ou `npm run test:integration -- --workers=4`. Referências visuais são versionáveis e devem ser inspecionadas antes de atualização.
 
 `VITE_API_BASE_URL` usa `/api` por padrão. `VITE_ENABLE_MOCKS` aceita exatamente `true`/`false` e agora usa `true` por padrão: sem backend real, a demonstração depende dos mocks. Desabilitá-los exige uma API compatível; não há dados fictícios alternativos no cliente. `VITE_ENABLE_TEST_HARNESS=true` pertence exclusivamente ao modo integration e nunca deve ser usado na demonstração pública. `.env.local` e variáveis do processo sobrescrevem padrões do modo. Todos os `VITE_*` são públicos e definidos no build; nunca incluir segredos.
 

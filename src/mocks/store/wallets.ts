@@ -1,23 +1,21 @@
 import type { Network } from "@/contracts/common";
-import { addEth, minEth, percentOfEth, subtractEth } from "@/contracts/eth";
+import { addEth, subtractEth } from "@/contracts/eth";
 import type { Quote } from "@/contracts/quotes";
 import {
-  walletErrors,
+  validateWallet,
   type Wallet,
   type WalletConnection,
 } from "@/contracts/wallets";
 import type { AccountsState } from "./accounts";
 import { activeSession } from "./accounts";
-import { ApiError, logicalTime, viewCart, type StoredCart } from "./cart";
-import { coupons, networkFees } from "./seed";
+import { ApiError, viewCart, type StoredCart } from "./cart";
+import { networkFees } from "./seed";
 export interface StoredConnection extends WalletConnection {
   userId: string;
 }
 export interface WalletsState extends AccountsState {
   wallets: Record<string, Wallet>;
   connections: Record<string, StoredConnection>;
-  // Coupons expired by a scenario control (besides their own expiry date).
-  expiredCoupons: string[];
 }
 // Quotes are short-lived: 2 minutes by the real clock. A scenario control
 // shortens it to exercise the automatic renewal.
@@ -48,7 +46,7 @@ export function createWallet(
   const text = (key: string) =>
     typeof input[key] === "string" ? (input[key] as string) : "";
   const own = Object.values(state.wallets).filter((w) => w.userId === userId);
-  const fields = walletErrors(
+  const { fields, duplicate } = validateWallet(
     {
       address: text("address"),
       network: text("network"),
@@ -57,14 +55,12 @@ export function createWallet(
     },
     own,
   );
+  // Only an address already registered is a conflict; everything else is a
+  // validation error (other fields may fail alongside a duplicate).
   if (Object.keys(fields).length)
     throw new ApiError(
-      fields.address === "Esta carteira já está cadastrada na sua conta."
-        ? 409
-        : 400,
-      fields.address === "Esta carteira já está cadastrada na sua conta."
-        ? "CONFLICT"
-        : "VALIDATION",
+      duplicate ? 409 : 400,
+      duplicate ? "CONFLICT" : "VALIDATION",
       "Revise os dados da carteira.",
       fields,
     );
@@ -155,25 +151,10 @@ export function getConnection(
 export function disconnectAll(state: WalletsState) {
   for (const c of Object.values(state.connections)) c.status = "disconnected";
 }
-function couponState(state: WalletsState, code: string | null) {
-  const coupon = coupons.find((c) => c.code === code);
-  if (!coupon) return { coupon: null, removed: null };
-  const expired =
-    state.expiredCoupons.includes(coupon.code) ||
-    Date.parse(coupon.expiresAt) <= Date.parse(logicalTime(state.tick));
-  return expired
-    ? {
-        coupon: null,
-        removed: {
-          code: coupon.code,
-          reason: `O cupom ${coupon.code} expirou e foi removido do pedido.`,
-        },
-      }
-    : { coupon, removed: null };
-}
 // Server-side quote: checks ownership, the active wallet connection, the cart
-// version and current availability (never reducing quantities), revalidates
-// the coupon (including expiry) and adds the fee of the wallet's network.
+// version and current availability (never reducing quantities) and adds the
+// fee of the wallet's network. Coupon validity and the discount come from
+// viewCart (`couponStatus`), the same rule the cart shows.
 export function createQuote(
   state: WalletsState,
   token: string | null,
@@ -228,12 +209,8 @@ export function createQuote(
       ),
     );
   const subtotal = current.summary.subtotalEth;
-  const { coupon, removed } = couponState(state, cart.coupon);
-  const discount = !coupon
-    ? "0"
-    : "basisPoints" in coupon.discount
-      ? percentOfEth(subtotal, coupon.discount.basisPoints)
-      : minEth(coupon.discount.amountEth, subtotal);
+  const discount = current.summary.discountEth;
+  const removed = current.couponRemoved;
   const fee = networkFees[wallet.network];
   return {
     id: `quote-${sequence}`,
@@ -244,9 +221,7 @@ export function createQuote(
     network: wallet.network,
     expiresAt: new Date(Date.now() + ttlMs).toISOString(),
     items: current.items,
-    coupon: coupon
-      ? { code: coupon.code, description: coupon.description }
-      : null,
+    coupon: current.coupon,
     couponRemoved: removed,
     amounts: {
       subtotalEth: subtotal,

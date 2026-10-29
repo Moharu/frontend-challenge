@@ -277,3 +277,13 @@ Mantenha este diário de alto nível nos próximos trabalhos do projeto com assi
 **Revisão manual do usuário durante a etapa:** espaço vazio no fim das páginas do checkout mobile e o aviso cobrindo o botão (corrigidos: sem reserva da navegação inferior; avisos no topo no checkout mobile e estado da conexão anunciado pela própria região de status); rótulos apenas com ou sem asterisco, sem "(opcional)"; placeholder de "ENS ou carteira secundária" cortado; ajudas de formato só após envio inválido; "Nome ENS" como lista, como no frame.
 
 **Verificação:** tipos, lint, formatação, builds, 118 testes de integração (25 novos do checkout, repetidos 3 vezes) e 10 E2E (com as referências visuais do pagamento) aprovados; varredura de 390, 414, 768 e 1440px sem overflow horizontal. Lighthouse não executado, conforme o handoff. Detalhes em `docs/checkout-verification.md`. Nenhum commit ou push.
+
+**Autorização de commit:** o usuário fez testes exploratórios das telas, aprovou e autorizou commit e push (`ca0fd2f`).
+
+## 2026-10-29 — Correções da revisão do checkout (`docs/handoffs/coding-agent-checkout-fixes-draft-pt-br.md`)
+
+**Orientação do usuário:** executar o handoff de correções da revisão de `ca0fd2f`, sem commit/push.
+
+**Resolução:** regra única de validade do cupom no servidor simulado, com `couponRemoved` no carrinho e motivo exibido no carrinho e na primeira cotação; duplicidade de carteira sinalizada explicitamente (status 409/400 não depende mais do texto); BOM removido de seis arquivos e verificação `check:bom` no lint; Playwright limitado a 2 workers por padrão, com sobrescrita documentada.
+
+**Verificação:** 122 testes de integração e 10 E2E aprovados com 2 workers, sem erros de infraestrutura e sem processos órfãos. Detalhes em `docs/checkout-verification.md`. Nenhum commit ou push.

@@ -31,6 +31,17 @@ export interface AppliedCoupon {
   code: string;
   description: string;
 }
+export interface CouponRemoval {
+  code: string;
+  reason: string;
+}
+export function isCouponRemoval(value: unknown): value is CouponRemoval {
+  return (
+    record(value) &&
+    typeof value.code === "string" &&
+    typeof value.reason === "string"
+  );
+}
 // Fee is estimated for the default network until checkout picks a wallet.
 export interface CartSummary extends Amounts {
   feeNetwork: Network;
@@ -42,6 +53,9 @@ export interface Cart {
   items: CartLine[];
   itemCount: number;
   coupon: AppliedCoupon | null;
+  // The applied coupon is no longer valid (expired): it stays stored but
+  // never discounts; the reason is shown next to the coupon field.
+  couponRemoved: CouponRemoval | null;
   summary: CartSummary;
   hasConflicts: boolean;
   updatedAt: string;
@@ -104,6 +118,7 @@ export function isCart(value: unknown): value is Cart {
       (record(value.coupon) &&
         typeof value.coupon.code === "string" &&
         typeof value.coupon.description === "string")) &&
+    (value.couponRemoved === null || isCouponRemoval(value.couponRemoved)) &&
     isEth(s.subtotalEth) &&
     isEth(s.discountEth) &&
     isEth(s.networkFeeEth) &&

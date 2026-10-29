@@ -64,18 +64,22 @@ export const ensNamePattern = /^([a-z0-9-]{1,63}\.)*[a-z0-9-]{3,63}\.eth$/;
 export const sameAddress = (a: string, b: string) =>
   a.toLowerCase() === b.toLowerCase();
 export const walletLabelMax = 40;
+type WalletInput = {
+  address: string;
+  network: string;
+  provider: string;
+  label: string;
+};
 // Shared by the simulated server and the form. `existing` are the user's
-// current wallets, for the one-address-per-user rule.
-export function walletErrors(
-  input: {
-    address: string;
-    network: string;
-    provider: string;
-    label: string;
-  },
+// current wallets, for the one-address-per-user rule. Messages are for
+// display only; `duplicate` tells the conflict case apart explicitly, so the
+// server's status (409 vs 400) never depends on the wording.
+export function validateWallet(
+  input: WalletInput,
   existing: Pick<Wallet, "address">[] = [],
-): Record<string, string> {
+): { fields: Record<string, string>; duplicate: boolean } {
   const fields: Record<string, string> = {};
+  let duplicate = false;
   const network = input.network as Network;
   if (!(network in networkNames))
     fields.network = "Escolha a rede da carteira.";
@@ -88,14 +92,21 @@ export function walletErrors(
       network === "solana"
         ? "Use um endereço Solana válido (base58, de 32 a 44 caracteres)."
         : "Use um endereço 0x seguido de 40 caracteres hexadecimais.";
-  else if (existing.some((w) => sameAddress(w.address, address)))
+  else if (existing.some((w) => sameAddress(w.address, address))) {
+    duplicate = true;
     fields.address = "Esta carteira já está cadastrada na sua conta.";
+  }
   const label = input.label.trim();
   if (!label) fields.label = "Dê um nome para identificar a carteira.";
   else if (label.length > walletLabelMax)
     fields.label = `Use no máximo ${walletLabelMax} caracteres.`;
-  return fields;
+  return { fields, duplicate };
 }
+// Field messages only (the form).
+export const walletErrors = (
+  input: WalletInput,
+  existing: Pick<Wallet, "address">[] = [],
+) => validateWallet(input, existing).fields;
 // Display form of an address: 0xA91F…E82C.
 export const shortAddress = (address: string) =>
   address.length > 12 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address;
