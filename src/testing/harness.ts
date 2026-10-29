@@ -109,6 +109,8 @@ export function installHarness(controls: MockControls, baseURL: string) {
       realtime = createCatalogRealtime(queryClient, baseURL);
     },
     update: controls.update,
+    persistUpdate: controls.store.update,
+    replay: controls.replay,
     duplicate: controls.duplicate,
     older: controls.older,
     interrupt: controls.interrupt,

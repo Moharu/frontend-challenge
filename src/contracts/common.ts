@@ -26,7 +26,8 @@ export interface PageResponse<T> {
 }
 export interface UserIdentity {
   id: string;
-  displayName: string;
+  username: string;
+  displayName: string | null;
   email: string;
 }
 export function record(value: unknown): value is Record<string, unknown> {

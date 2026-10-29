@@ -12,7 +12,7 @@ A restauração aborta requisições de cenário pendentes, limpa falhas de uso 
 
 IDs da massa de dados: `nft-001`..`nft-024`; cada NFT possui `edition-N-limited` (limite de emissão 20 / disponibilidade 10) e `edition-N-unique` (1 / 1). São três categorias (art/music/photography), duas redes (ethereum/polygon), vários preços e três páginas padrão de oito itens. Os nomes alternam entre Aurora/Rhythm/Lens. Os dois primeiros preços limitados são `1.000000000000000001` e `1.000000000000000002`, deliberadamente indistinguíveis como números de ponto flutuante em JS. Os demais preços limitados alternam de 1 a 7 ETH; edições únicas custam 12 ETH. Valores de arte são apenas identificadores. Datas/horários derivam de `2026-01-01T00:00:00.000Z`; atualizações avançam um segundo por incremento lógico persistido, e versões aumentam por NFT. IDs de eventos usam esse contador global. A restauração reinicia intencionalmente o histórico de identidade/versão e exige consumidores novos, como os fornecidos pela estrutura de testes.
 
-`fixtureUsers` contém `user-ada` / `ada@example.test` e `user-lin` / `lin@example.test`, com nomes fictícios, sem senhas ou comportamento de autenticação. Não existe estado de carrinho, perfil, carteira ou pedido.
+`fixtureUsers` contém `user-ada` / `ada@example.test` e `user-lin` / `lin@example.test`, com usernames `ada_example` e `lin_example` e nomes fictícios, sem senhas ou comportamento de autenticação. Não existe estado de carrinho, perfil, carteira ou pedido.
 
 ## Cenários nomeados e controles
 
@@ -53,7 +53,7 @@ npm run test:integration
 
 Somente esse build habilitado explicitamente importa dinamicamente `src/testing/harness.ts` e expõe **`window.__KURIO_TEST__`** após a inicialização. Builds normais removem essa importação e seu arquivo; os testes normais da tela provisória verificam que a ponte está ausente. O ambiente do processo ou `.env.local` podem sobrescrever valores do modo, então evite configurações conflitantes ao reproduzir as verificações.
 
-Métodos da ponte: `reset`, `list(query)`, `detail(id)`, `rawDetail(id)`, `request(relativeApiPath)`, `select(query)` (um QueryObserver ativo), `watchDetail(id)`, `state(id?)`, `connect`, `disconnect`, `dispose`, `recreate`, `update`, `duplicate`, `older`, `interrupt`, `restore`, `scenario(name)`, `delay(search, ms)`, `failNext(kind)`, `snapshot`, `compareEth`. `state()` expõe o estado da consulta selecionada, detalhe em cache, contagens reais de conexões/listeners do socket, requisições/cancelamentos e diagnósticos do consumidor. `reset()` limpa o estado Query e o dos mocks. Os controles de cenário emitem pela conexão interceptada; nunca atualizam Query diretamente. `request` captura falhas HTTP/de rede esperadas para as verificações. Não existe endpoint de API de produção para controles de teste.
+Métodos da ponte: `reset`, `list(query)`, `detail(id)`, `rawDetail(id)`, `request(relativeApiPath)`, `select(query)` (um QueryObserver ativo), `watchDetail(id)`, `state(id?)`, `connect`, `disconnect`, `dispose`, `recreate`, `update`, `persistUpdate`, `replay`, `duplicate`, `older`, `interrupt`, `restore`, `scenario(name)`, `delay(search, ms)`, `failNext(kind)`, `snapshot`, `compareEth`. `state()` expõe o estado da consulta selecionada, detalhe em cache, contagens reais de conexões/listeners do socket, requisições/cancelamentos e diagnósticos do consumidor. `reset()` limpa o estado Query e o dos mocks. Os controles de cenário emitem pela conexão interceptada; nunca atualizam Query diretamente. `request` captura falhas HTTP/de rede esperadas para as verificações. Não existe endpoint de API de produção para controles de teste.
 
 A suíte de integração cobre filtros/ordenação/paginação, erros de consulta/404/endpoints não suportados, precisão de ETH, recarregamento persistido/restauração/esquema corrompido, seleção fora de ordem/cancelamento, recuperação de falhas, atualização real Socket.IO consistente com REST/persistência, eventos duplicados/antigos, reconciliação após reconexão, limpeza de listeners e manutenção de conexões ociosas.
 
@@ -67,3 +67,5 @@ npm run test:e2e
 ```
 
 A aplicação continua renderizando somente a tela provisória existente nos dois modos. Esta etapa não adiciona telas, fluxos de compra, assinaturas privadas ou alvos Lighthouse. A configuração Lighthouse permanece inalterada; as auditorias anteriores da tela provisória são medições históricas da inicialização.
+
+Para testar versões diferentes entre caches, `persistUpdate` persiste uma atualização sem emitir evento; `replay(envelope)` envia o envelope pela conexão Socket.IO interceptada. Assim, o teste pode atualizar o detalhe via REST enquanto a lista permanece antiga e só então entregar o evento real. Esses controles não alteram o cache Query diretamente.

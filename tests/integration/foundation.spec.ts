@@ -448,3 +448,89 @@ test("reset clears scenario failures, latency and event history along with persi
   });
   expect(replay).toBe("no history");
 });
+
+for (const detailVersion of [2, 3]) {
+  test(`event reconciles an old list while preserving REST detail version ${detailVersion}`, async ({
+    page,
+  }) => {
+    await page.evaluate(() => {
+      const h = window.__KURIO_TEST__;
+      h.select({ maxPrice: "2" });
+      h.connect();
+    });
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => window.__KURIO_TEST__.state().stats.reconciliations,
+        ),
+      )
+      .toBe(1);
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          window.__KURIO_TEST__.state().selected?.ids.includes("nft-001"),
+        ),
+      )
+      .toBe(true);
+
+    // Persist without emitting yet, so REST detail can advance independently
+    // while the active filtered list still contains the original version.
+    const event = await page.evaluate(() =>
+      window.__KURIO_TEST__.persistUpdate("nft-001", "edition-1-limited", {
+        priceEth: "9",
+      }),
+    );
+    if (detailVersion === 3) {
+      await page.evaluate(() =>
+        window.__KURIO_TEST__.persistUpdate("nft-001", "edition-1-limited", {
+          priceEth: "8",
+        }),
+      );
+    }
+    const freshDetail = await page.evaluate(() =>
+      window.__KURIO_TEST__.detail("nft-001"),
+    );
+    expect(freshDetail.data.version).toBe(detailVersion);
+    expect(
+      (await page.evaluate(() => window.__KURIO_TEST__.state())).selected?.ids,
+    ).toContain("nft-001");
+
+    // Delivery still goes through the binding and the actual Socket.IO client.
+    await page.evaluate(
+      (envelope) => window.__KURIO_TEST__.replay(envelope),
+      event,
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          window.__KURIO_TEST__.state().selected?.ids.includes("nft-001"),
+        ),
+      )
+      .toBe(false);
+    await expect
+      .poll(() =>
+        page.evaluate(() => window.__KURIO_TEST__.state().stats.applied),
+      )
+      .toBe(1);
+    expect(
+      (await page.evaluate(() => window.__KURIO_TEST__.state())).detail,
+    ).toEqual(freshDetail.data);
+
+    // Replaying an already processed envelope must not trigger another refetch.
+    const requests = (await page.evaluate(() => window.__KURIO_TEST__.state()))
+      .transport.requests;
+    await page.evaluate(
+      (envelope) => window.__KURIO_TEST__.replay(envelope),
+      event,
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(() => window.__KURIO_TEST__.state().stats.ignored),
+      )
+      .toBe(1);
+    expect(
+      (await page.evaluate(() => window.__KURIO_TEST__.state())).transport
+        .requests,
+    ).toBe(requests);
+  });
+}

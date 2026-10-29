@@ -2,7 +2,7 @@ import type { UserIdentity } from "./common";
 // Contract only: no account/session backend or client behavior yet.
 export interface RegisterRequest {
   email: string;
-  displayName: string;
+  username: string;
   password: string;
 }
 export interface LoginRequest {

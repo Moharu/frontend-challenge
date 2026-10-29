@@ -27,3 +27,5 @@ As implementações futuras devem preservar estas restrições:
 - Compartilhar a lógica de negócio entre as futuras composições desktop/mobile.
 
 Comportamento de sessão, estado privado, carrinhos, checkout, cotações, pedidos, alterações de conta, autorização de API, cenários completos de backend, suporte a múltiplas abas e telas do marketplace continuam adiados.
+
+Os contratos de conta/perfil/carteira/checkout foram complementados exclusivamente a partir do inventário de campos fornecido pelo usuário, sem consulta ao Figma. Username integra cadastro e identidade; campos opcionais ainda não preenchidos são null na leitura. O pedido e seu recibo propõem snapshots imutáveis dos dados do colecionador e da carteira resolvida pelo backend. A propriedade dos campos, a limpeza em atualizações, os desvios de obrigatoriedade do layout e a participação do corpo completo na idempotência estão em `docs/contracts/rest.md`. Essa complementação não implementa validadores ou comportamentos privados.

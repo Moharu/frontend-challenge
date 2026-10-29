@@ -83,3 +83,25 @@ Mantenha este diário de alto nível nos próximos trabalhos do projeto com assi
 ## 2026-10-29 — Commit e push da base de dados autorizados
 
 **Orientação do usuário:** fazer commit e push desta etapa para `origin/main` (`Moharu/frontend-challenge`). A entrega inclui contratos, estado persistido e cenários de mocks, integração REST/Socket.IO, testes e documentação atualizada. O arquivo `docs/challenge-requirements.md` permanece inalterado. Resultados anteriores de validação e a revisão dos testes pelo usuário estão registrados acima; `git diff --check` passou antes do commit. Os resultados de commit e push serão informados na conversa e no histórico Git. Pushes futuros continuam exigindo autorização.
+
+## 2026-10-29 — Reconciliação de caches com versões diferentes
+
+**Problema relatado:** uma versão recente no detalhe ou em outra lista fazia o consumidor ignorar todo o evento e deixava listas antigas sem invalidação.
+
+**Correção:** a deduplicação passa a considerar somente IDs e versões de eventos já recebidos, separadamente das versões de cada cache. O detalhe de versão igual ou superior é preservado; listas continuam sendo invalidadas e reconciliadas via REST. Os controles exclusivos de mocks/testes permitem persistir sem emitir e reenviar um envelope pelo Socket.IO real para preparar o cenário de regressão. A documentação de eventos e controles foi atualizada.
+
+**Verificação:** build otimizado de integração, tipos, lint, formatação dos arquivos alterados e `git diff --check` aprovados. Os 14 testes de integração passaram, incluindo dois novos casos com lista antiga e detalhe atualizado via REST nas versões 2 e 3, recebendo evento de versão 2. Ambos verificam atualização da lista, preservação do detalhe e ausência de nova busca ao repetir o evento. Nenhum commit ou push foi realizado.
+
+## 2026-10-29 — Complementação dos contratos pelos campos inventariados
+
+**Correção da especificação:** o usuário forneceu o inventário de campos dos formulários e esclareceu que a orientação anterior proibia consultar Figma sem fornecer todos os campos. Essa lacuna é da especificação, não da implementação. Não foi aberto o Figma. A complementação permanece junto da correção de sincronização de cache, sem implementar novos fluxos.
+
+**Tipos:** cadastro recebe username, email e password; identidade inclui username e permite displayName null. Perfil preserva identificação/versão/bio/avatar e inclui username, ensName e walletNickname, com atualização parcial e contratos específicos de avatar/senha. Carteiras incluem dados descritivos e provedor tipado MetaMask/WalletConnect/Coinbase Wallet; label continua representando o apelido. As duas identidades fictícias receberam usernames. Adicionado `src/contracts/checkout.ts` para dados do colecionador e snapshots compartilhados por pedido e recibo. O corpo de criação preserva cotação/carteira/rede/idempotência, acrescentando collector e collectorNote opcional; endereço e provedor são resolvidos futuramente pela carteira, não duplicados como entradas confiáveis. O contrato order.updated herda os snapshots de Order.
+
+**Decisões documentadas:** ausência é null na leitura e omissão na criação; em atualizações parciais, omitir preserva e null limpa campos anuláveis. ENS, indicação, endereço secundário e observação são opcionais, desviando explicitamente dos asteriscos do layout nos dois primeiros casos. Confirmações de senha ficam no cliente. Bio foi mantida, embora não exigida pelo inventário. “Igual à carteira principal” é somente futura ação de preenchimento, sem estado persistido. Todos os campos do corpo participam da comparação canônica de idempotência; snapshots não são reconstruídos nas repetições, e alterações no checkout não atualizam perfil/carteira automaticamente. A tabela de acompanhamento REST continua marcando esses recursos como somente contratos.
+
+**Verificação:** `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm run build`, `npm run build:integration` e `git diff --check` aprovados. `npm run test:integration` passou nos 14 testes e `npm run test:e2e` nos dois projetos desktop/mobile. A tela provisória continua sem tráfego de negócio; não foram adicionados handlers, validadores ou comportamentos de conta/checkout/pedido. Documentação REST/eventos, arquitetura, cenários e diário foram atualizados em pt-BR. O arquivo de requisitos permanece inalterado. Nenhum commit ou push foi realizado.
+
+## 2026-10-29 — Commit e push da correção e complementação autorizados
+
+**Orientação do usuário:** fazer commit e push da correção de sincronização entre caches e da complementação dos contratos no mesmo commit, para `origin/main` (`Moharu/frontend-challenge`). As verificações e decisões estão registradas acima. `git diff --check` passou e `docs/challenge-requirements.md` permanece inalterado. Os resultados serão informados na conversa e no histórico Git. Pushes futuros continuam exigindo autorização.

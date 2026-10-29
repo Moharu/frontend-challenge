@@ -2,8 +2,18 @@ import type { Nft } from "@/contracts/nfts";
 import type { UserIdentity } from "@/contracts/common";
 export const baseline = "2026-01-01T00:00:00.000Z";
 export const fixtureUsers: UserIdentity[] = [
-  { id: "user-ada", displayName: "Ada Example", email: "ada@example.test" },
-  { id: "user-lin", displayName: "Lin Example", email: "lin@example.test" },
+  {
+    id: "user-ada",
+    username: "ada_example",
+    displayName: "Ada Example",
+    email: "ada@example.test",
+  },
+  {
+    id: "user-lin",
+    username: "lin_example",
+    displayName: "Lin Example",
+    email: "lin@example.test",
+  },
 ];
 export function seedNfts(): Nft[] {
   return Array.from({ length: 24 }, (_, i) => ({

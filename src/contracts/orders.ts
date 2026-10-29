@@ -1,3 +1,4 @@
+import type { CheckoutCollectorData, OrderCheckoutSnapshot } from "./checkout";
 import type { Amounts } from "./quotes";
 import type { Eth, Network } from "./common";
 export type OrderStatus = "pending" | "confirmed" | "declined";
@@ -7,6 +8,8 @@ export interface CreateOrderBody {
   quoteVersion: number;
   walletId: string;
   network: Network;
+  collector: CheckoutCollectorData;
+  collectorNote?: string;
 }
 export interface CreateOrderRequest {
   idempotencyKey: string;
@@ -20,14 +23,14 @@ export interface PurchasedItem {
   readonly unitPriceEth: Eth;
   readonly lineTotalEth: Eth;
 }
-export interface OrderReceipt {
+export interface OrderReceipt extends OrderCheckoutSnapshot {
   readonly orderId: string;
   readonly confirmedAt: string;
   readonly transactionReference: string;
   readonly items: ReadonlyArray<PurchasedItem>;
   readonly amounts: Readonly<Amounts>;
 }
-export interface Order {
+export interface Order extends OrderCheckoutSnapshot {
   id: string;
   userId: string;
   version: number;
@@ -39,5 +42,5 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
   receipt: OrderReceipt | null;
-  declineCode?: string;
+  declineCode: string | null;
 }

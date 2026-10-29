@@ -52,6 +52,9 @@ export async function startMocks(baseURL: string) {
       }
       return event;
     },
+    replay(event: NftUpdated) {
+      socket.emit(event);
+    },
     duplicate() {
       if (!last) throw new Error("No previous event");
       socket.emit(last);

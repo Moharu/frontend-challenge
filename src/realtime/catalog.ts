@@ -59,22 +59,10 @@ export function createCatalogRealtime(
       stats.invalid++;
       return;
     }
-    const cached = queryClient.getQueryData<DataResponse<Nft>>(
-      nftKeys.detail(value.resourceId),
-    );
-    const known = Math.max(
-      versions.get(value.resourceId) ?? 0,
-      cached?.data.version ?? 0,
-      ...queryClient
-        .getQueriesData<{ data: Nft[] }>({ queryKey: nftKeys.lists() })
-        .flatMap(
-          ([, list]) =>
-            list?.data
-              .filter((n) => n.id === value.resourceId)
-              .map((n) => n.version) ?? [],
-        ),
-    );
-    if (seen.has(value.eventId) || value.version <= known) {
+    // Only previously received events participate in deduplication. A fresh
+    // detail cache must not hide an event from older list caches.
+    const processedVersion = versions.get(value.resourceId) ?? 0;
+    if (seen.has(value.eventId) || value.version <= processedVersion) {
       stats.ignored++;
       return;
     }
@@ -85,17 +73,15 @@ export function createCatalogRealtime(
     work = work
       .then(async () => {
         if (disposed) return;
-        await queryClient.cancelQueries({
-          queryKey: nftKeys.detail(value.resourceId),
-        });
-        if (disposed) return;
-        const current = queryClient.getQueryData<DataResponse<Nft>>(
-          nftKeys.detail(value.resourceId),
-        );
-        if (!current || current.data.version < value.version)
-          queryClient.setQueryData(nftKeys.detail(value.resourceId), {
-            data: value.payload,
-          });
+        const key = nftKeys.detail(value.resourceId);
+        const cached = queryClient.getQueryData<DataResponse<Nft>>(key);
+        if (!cached || cached.data.version < value.version) {
+          await queryClient.cancelQueries({ queryKey: key });
+          if (disposed) return;
+          const current = queryClient.getQueryData<DataResponse<Nft>>(key);
+          if (!current || current.data.version < value.version)
+            queryClient.setQueryData(key, { data: value.payload });
+        }
         await queryClient.invalidateQueries({
           queryKey: nftKeys.lists(),
           refetchType: "active",

@@ -10,6 +10,7 @@ export interface EventEnvelope<Name extends string, Payload> {
   payload: Payload;
 }
 export type NftUpdated = EventEnvelope<"nft.updated", Nft>;
+// Inclui os snapshots imutáveis do colecionador e da carteira de Order.
 export type OrderUpdated = EventEnvelope<"order.updated", Order> & {
   audience: { userId: string; sessionId: string; sessionGeneration: number };
 };
