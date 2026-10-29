@@ -364,12 +364,12 @@ test("teclado mantém o foco e Conectar e finalizar leva ao login", async ({
   await expect(
     page.getByRole("link", { name: "Noon Verbal #044" }),
   ).toBeFocused();
-  // Signed out, checkout leads to the login with the cart as return target;
-  // Escape closes it back to the cart.
+  // Signed out, checkout opens the login over the cart, continuing to the
+  // checkout; Escape closes it back to the cart.
   const checkout = page.getByRole("link", { name: "Conectar e finalizar" });
   await checkout.focus();
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/\/login\?redirect=%2Fcart$/);
+  await expect(page).toHaveURL(/\/login\?redirect=%2Fcheckout$/);
   await expect(page.getByRole("textbox", { name: "E-mail" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(page).toHaveURL(/\/cart$/);

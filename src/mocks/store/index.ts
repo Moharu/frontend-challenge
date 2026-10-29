@@ -1,6 +1,12 @@
-import { isNft, type Nft } from "@/contracts/nfts";
+﻿import { isNft, type Nft } from "@/contracts/nfts";
 import { record, integer } from "@/contracts/common";
-import { fixturePasswords, fixtureUsers, seedNfts } from "./seed";
+import {
+  fixturePasswords,
+  fixtureUsers,
+  fixtureWallets,
+  seedNfts,
+} from "./seed";
+import { isWallet } from "@/contracts/wallets";
 import type { NftUpdated } from "@/contracts/events";
 import {
   addItem,
@@ -23,23 +29,32 @@ import {
   revokeSession,
   seedAccount,
   viewSession,
-  type AccountsState,
 } from "./accounts";
+import {
+  connectWallet,
+  createQuote,
+  createWallet,
+  defaultQuoteTtlMs,
+  disconnectAll,
+  getConnection,
+  listWallets,
+  type WalletsState,
+} from "./wallets";
 // Who a cart request belongs to: an authenticated session wins over a visitor.
 export interface CartIdentity {
   session: string | null;
   visitor: string | null;
 }
 export const storageKey = "kurio.mock.catalog.v1";
-export interface Snapshot extends AccountsState {
-  schemaVersion: 4;
+export interface Snapshot extends WalletsState {
+  schemaVersion: 5;
   seedVersion: 2;
   tick: number;
   nfts: Nft[];
 }
 function fresh(): Snapshot {
   const state: Snapshot = {
-    schemaVersion: 4,
+    schemaVersion: 5,
     seedVersion: 2,
     tick: 0,
     nfts: seedNfts(),
@@ -48,6 +63,11 @@ function fresh(): Snapshot {
     accounts: {},
     sessions: {},
     generation: 0,
+    wallets: Object.fromEntries(
+      fixtureWallets.map((w) => [w.id, structuredClone(w)]),
+    ),
+    connections: {},
+    expiredCoupons: [],
   };
   for (const user of fixtureUsers)
     seedAccount(state, {
@@ -81,7 +101,7 @@ function validCart(value: unknown): value is StoredCart {
 function valid(value: unknown): value is Snapshot {
   if (
     !record(value) ||
-    value.schemaVersion !== 4 ||
+    value.schemaVersion !== 5 ||
     value.seedVersion !== 2 ||
     !integer(value.tick) ||
     value.tick > 1000000 ||
@@ -89,7 +109,11 @@ function valid(value: unknown): value is Snapshot {
     !record(value.carts) ||
     !record(value.accounts) ||
     !record(value.sessions) ||
-    !integer(value.generation)
+    !integer(value.generation) ||
+    !record(value.wallets) ||
+    !Object.values(value.wallets).every(isWallet) ||
+    !record(value.connections) ||
+    !Array.isArray(value.expiredCoupons)
   )
     return false;
   const nfts = value.nfts;
@@ -119,6 +143,19 @@ function valid(value: unknown): value is Snapshot {
 export function createStore(storage: Storage) {
   let state: Snapshot;
   let queue = Promise.resolve();
+  // Quotes are not persisted: they are recomputed on every request. The
+  // test-only TTL override lives in sessionStorage so it survives the page
+  // loads of a test, like the session-check failures.
+  const ttlKey = "kurio.mock.quote-ttl";
+  const quoteTtl = () => {
+    try {
+      const value = Number(sessionStorage.getItem(ttlKey));
+      return value > 0 ? value : defaultQuoteTtlMs;
+    } catch {
+      return defaultQuoteTtlMs;
+    }
+  };
+  let quoteSequence = 0;
   function persist(next: Snapshot) {
     storage.setItem(storageKey, JSON.stringify(next));
     state = next;
@@ -186,6 +223,11 @@ export function createStore(storage: Storage) {
     },
     reset: () =>
       transaction(() => {
+        try {
+          sessionStorage.removeItem(ttlKey);
+        } catch {
+          // Nothing stored.
+        }
         persist(fresh());
       }),
     createVisitor: () =>
@@ -219,7 +261,41 @@ export function createStore(storage: Storage) {
     logout: (token: string | null) => write((draft) => logout(draft, token)),
     session: (token: string | null) =>
       transaction(() => viewSession(state, token ?? "")),
+    wallets: (token: string | null) =>
+      transaction(() => listWallets(state, token)),
+    createWallet: (token: string | null, body: unknown) =>
+      write((draft) => createWallet(draft, token, body)),
+    connectWallet: (token: string | null, body: unknown) =>
+      write((draft) => connectWallet(draft, token, body)),
+    connection: (token: string | null, id: string) =>
+      transaction(() => getConnection(state, token, id)),
+    quote: (identity: CartIdentity, body: unknown) =>
+      transaction(() =>
+        createQuote(
+          state,
+          identity.session,
+          cartFor(state, { session: identity.session, visitor: null }),
+          body,
+          quoteTtl(),
+          ++quoteSequence,
+        ),
+      ),
     // Test-only scenario controls (no public endpoint).
+    disconnectWallets: () => write((draft) => disconnectAll(draft)),
+    expireCoupon: (code: string) =>
+      write((draft) => {
+        if (!draft.expiredCoupons.includes(code))
+          draft.expiredCoupons.push(code);
+      }),
+    setQuoteTtl: (ms: number) => {
+      if (!Number.isSafeInteger(ms) || ms < 0 || ms > defaultQuoteTtlMs)
+        throw new Error("Quote TTL must be 0..120000 ms");
+      try {
+        sessionStorage.setItem(ttlKey, String(ms));
+      } catch {
+        // Storage unavailable: the default TTL applies.
+      }
+    },
     expireSession: (token: string) =>
       write((draft) => expireSession(draft, token)),
     revokeSession: (token: string) =>

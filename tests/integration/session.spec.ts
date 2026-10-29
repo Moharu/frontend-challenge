@@ -355,11 +355,11 @@ test("retorno ao fluxo: do carrinho e do catálogo com filtros, search e hash", 
   await addLines(page, [["nft-001", "edition-1-limited", 1]]);
   await page.goto("/cart");
   await ready(page);
+  // From the cart, the login continues to the checkout.
   await page.getByRole("link", { name: "Conectar e finalizar" }).click();
-  await expect(page).toHaveURL(/\/login\?redirect=%2Fcart$/);
+  await expect(page).toHaveURL(/\/login\?redirect=%2Fcheckout$/);
   await fillLogin(page, ada);
-  await expect(page).toHaveURL(/\/cart$/);
-  await expect(cartRows(page)).toHaveCount(1);
+  await expect(page).toHaveURL(/\/checkout/);
   await page.evaluate(() => window.__KURIO_TEST__.signOut());
   await page.goto("/?category=art&sort=price-desc#catalogo");
   await ready(page);
@@ -411,7 +411,8 @@ test("o login abre sobre a página atual, que continua igual atrás do diálogo"
   await expect(page).toHaveURL(/\/\?.*sort=price-desc.*page=2/);
   await expect(page.locator(".nft-card[data-marker]")).toHaveCount(1);
   expect(await page.evaluate(() => window.scrollY)).toBe(scroll);
-  // Logging in from the cart keeps the cart behind and returns to it.
+  // Logging in from the cart keeps the cart behind and continues to the
+  // checkout.
   await addLines(page, [["nft-001", "edition-1-limited", 1]]);
   await page.goto("/cart");
   await ready(page);
@@ -419,8 +420,7 @@ test("o login abre sobre a página atual, que continua igual atrás do diálogo"
   await authReady(page);
   await expect(cartRows(page)).toHaveCount(1);
   await fillLogin(page, ada);
-  await expect(page).toHaveURL(/\/cart$/);
-  await expect(cartRows(page)).toHaveCount(1);
+  await expect(page).toHaveURL(/\/checkout/);
   // Going back does not reopen the login.
   await page.goBack();
   await expect(dialog(page)).toHaveCount(0);

@@ -123,6 +123,13 @@ export function installHarness(controls: MockControls, baseURL: string) {
     failNextCart: controls.scenarios.failNextCart,
     cartDelay: controls.scenarios.setCartDelay,
     failSessionChecks: controls.scenarios.failSessionChecks,
+    // Checkout: wallet connection and quote scenarios.
+    rejectNextConnection: controls.scenarios.rejectNextConnection,
+    failNextCheckout: controls.scenarios.failNextCheckout,
+    checkoutDelay: controls.scenarios.setCheckoutDelay,
+    disconnectWallets: controls.store.disconnectWallets,
+    expireCoupon: controls.store.expireCoupon,
+    quoteTtl: controls.store.setQuoteTtl,
     // Drops the cached cart so the next observer starts from a pending query.
     forgetCart: () => queryClient.removeQueries({ queryKey: ["cart"] }),
     // Session controls act on the client's current session token.

@@ -9,6 +9,7 @@ import { PublicLayout } from "@/components/discovery/layout";
 import { discoverySearch } from "@/lib/discovery-search";
 import { IndexPage } from "@/routes/index";
 import { authSearch } from "@/lib/redirect";
+import { checkoutSearch } from "@/lib/checkout-search";
 import { redirectAuthenticated, requireSession } from "@/lib/route-guards";
 import { SessionCheckError } from "@/components/discovery/session-check";
 const rootRoute = createRootRoute({
@@ -38,6 +39,20 @@ const cartRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/cart",
   component: lazyRouteComponent(() => import("@/routes/cart"), "CartPage"),
+});
+// The first private route: the guard waits for the stored session, sends
+// anonymous users to the login (returning here) and shows a retry state when
+// the session could not be confirmed. `step` is the mobile flow's step.
+const checkoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/checkout",
+  validateSearch: checkoutSearch,
+  beforeLoad: requireSession,
+  errorComponent: SessionCheckError,
+  component: lazyRouteComponent(
+    () => import("@/routes/checkout"),
+    "CheckoutPage",
+  ),
 });
 // Login and signup have real URLs; the target travels in a validated param.
 const loginRoute = createRoute({
@@ -78,6 +93,7 @@ export const router = createRouter({
     indexRoute,
     detailRoute,
     cartRoute,
+    checkoutRoute,
     loginRoute,
     signupRoute,
     ...testRoutes,

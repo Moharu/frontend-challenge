@@ -11,6 +11,7 @@ import {
   type Session,
 } from "@/contracts/session";
 import { notify } from "./notices";
+import { discardDrafts } from "@/data/checkout/draft";
 // Client identity: the opaque session token (simulation only; production would
 // use an HttpOnly cookie), the verified session and the visitor token. Only
 // tokens are stored; cart and account data always come from the API.
@@ -95,11 +96,17 @@ export function identityHeaders(identity: Identity): Record<string, string> {
 // (so re-renders and new requests already use it), then in-flight private
 // requests are cancelled and their cache entries removed. Late responses land
 // on removed keys of an older scope and are discarded.
+// Every private query key is `[resource, scope, ...]`.
+const privateResources = new Set(["cart", "wallets", "quote"]);
+const privateQuery = (key: readonly unknown[]) =>
+  privateResources.has(key[0] as string);
 async function clearPrivate() {
-  await queryClient.cancelQueries({ queryKey: ["cart"] });
+  await queryClient.cancelQueries({
+    predicate: (query) => privateQuery(query.queryKey),
+  });
   queryClient.removeQueries({
-    queryKey: ["cart"],
     predicate: (query) =>
+      privateQuery(query.queryKey) &&
       !sameScope(query.queryKey[1] as CartScope, cartScope()),
   });
 }
@@ -111,6 +118,9 @@ export function onSessionExpired(listener: () => void) {
   };
 }
 export async function signIn(response: AuthResponse) {
+  // A different user never sees the previous user's checkout draft (it
+  // survives only an expiry followed by the same user signing in again).
+  discardDrafts(response.session.user.id);
   setState({
     sessionToken: response.token,
     session: response.session,
@@ -122,6 +132,7 @@ export async function signIn(response: AuthResponse) {
 }
 export async function signOut() {
   const token = state.sessionToken;
+  discardDrafts();
   setState({
     sessionToken: null,
     session: null,

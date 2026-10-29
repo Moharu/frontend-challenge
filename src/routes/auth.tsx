@@ -83,6 +83,12 @@ export function AuthOverlay({ mode }: { mode: Mode }) {
     // router's own href/hash lose the hash.
     select: (state) => safeRedirect(state.location.state.authTarget),
   });
+  const background = useRouterState({
+    select: (state) =>
+      safeRedirect(
+        state.location.state.authBackground ?? state.location.state.authTarget,
+      ),
+  });
   useEffect(
     () => () => {
       requestAnimationFrame(restoreFocus);
@@ -93,7 +99,7 @@ export function AuthOverlay({ mode }: { mode: Mode }) {
     <AuthDialog
       mode={mode}
       target={target}
-      overlay
+      overlay={background}
       close={() => {
         // After a reload, going back would land on the earlier load's entry
         // and the browser would restore its old scroll; stay on this page.
@@ -101,7 +107,7 @@ export function AuthOverlay({ mode }: { mode: Mode }) {
           ?.__TSR_index;
         if (loadedEntry !== undefined && entry === loadedEntry)
           void navigate({
-            ...targetLocation(target),
+            ...targetLocation(background),
             replace: true,
             hashScrollIntoView: false,
           }).then(() => requestAnimationFrame(resumeScrollRestoration));
@@ -115,12 +121,13 @@ export function AuthOverlay({ mode }: { mode: Mode }) {
 function AuthDialog({
   mode,
   target,
-  overlay = false,
+  overlay,
   close,
 }: {
   mode: Mode;
   target: string;
-  overlay?: boolean;
+  // In-app opening: the page kept behind the dialog.
+  overlay?: string;
   close: () => void;
 }) {
   const first = useRef<HTMLInputElement>(null);
@@ -132,8 +139,8 @@ function AuthDialog({
   });
   // Tabs switch mode in place (replacing the entry), never stacking history.
   const modeLink = (to: Mode) =>
-    overlay
-      ? { ...authLink(to, target), replace: true }
+    overlay !== undefined
+      ? { ...authLink(to, target, overlay), replace: true }
       : { to: `/${to}` as const, search: { redirect: target } };
   return (
     <>

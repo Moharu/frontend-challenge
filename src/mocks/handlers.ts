@@ -130,6 +130,53 @@ export function createHandlers(
         await store.logout(identity.session);
       }),
     ),
+    // Wallets, simulated connections and quotes: private, session required.
+    http.get(
+      `${base}/wallets`,
+      apiRoute((identity) => store.wallets(identity.session)),
+    ),
+    http.post(
+      `${base}/wallets`,
+      apiRoute(
+        async (identity, request) =>
+          store.createWallet(identity.session, await body(request)),
+        201,
+      ),
+    ),
+    http.post(
+      `${base}/wallet-connections`,
+      apiRoute(async (identity, request) => {
+        const input = await body(request);
+        // Validate ownership first, so a rejection is only ever for a wallet
+        // the user may connect.
+        const own = await store.wallets(identity.session);
+        const walletId = (input as { walletId?: unknown } | null)?.walletId;
+        if (!own.some((w) => w.id === walletId))
+          return store.connectWallet(identity.session, input); // 403 / 404
+        if (scenarios.takeConnectionRejection())
+          throw new ApiError(
+            409,
+            "CONNECTION_REJECTED",
+            "Conexão recusada na carteira.",
+          );
+        return store.connectWallet(identity.session, input);
+      }, 201),
+    ),
+    http.get(
+      `${base}/wallet-connections/:id`,
+      apiRoute((identity, request) =>
+        store.connection(
+          identity.session,
+          decodeURIComponent(new URL(request.url).pathname.split("/").pop()!),
+        ),
+      ),
+    ),
+    http.post(
+      `${base}/quotes`,
+      apiRoute(async (identity, request) =>
+        store.quote(identity, await body(request)),
+      ),
+    ),
     http.get(
       `${base}/cart`,
       apiRoute((identity) => store.cart(identity)),

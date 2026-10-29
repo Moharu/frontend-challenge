@@ -1,4 +1,4 @@
-import { delay } from "msw";
+﻿import { delay } from "msw";
 export type Scenario =
   "default" | "empty" | "http-error" | "network-error" | "out-of-order";
 export type Failure = "http" | "network";
@@ -35,6 +35,17 @@ export function createScenarios() {
     write: null,
   };
   let cartDelays = { read: 0, write: 0 };
+  // Checkout controls: one-shot failures and latency for quotes and wallet
+  // connections (a connection answers after a short, realistic latency), plus
+  // a one-shot rejection of the next connection.
+  type CheckoutKey = "quote" | "connection";
+  const defaultCheckoutDelays = { quote: 0, connection: 300 };
+  let checkoutFailures: Record<CheckoutKey, Failure | null> = {
+    quote: null,
+    connection: null,
+  };
+  let checkoutDelays = { ...defaultCheckoutDelays };
+  let rejectConnection = false;
   let generation = new AbortController();
   const stats = { started: 0, completed: 0, cancelled: 0 };
   // Abortable wait shared by request delays and cart response latency; aborts
@@ -71,6 +82,9 @@ export function createScenarios() {
       cartFailures = { read: null, write: null };
       cartDelays = { read: 0, write: 0 };
       storeSessionFailures(null);
+      checkoutFailures = { quote: null, connection: null };
+      checkoutDelays = { ...defaultCheckoutDelays };
+      rejectConnection = false;
       stats.started = 0;
       stats.completed = 0;
       stats.cancelled = 0;
@@ -111,6 +125,25 @@ export function createScenarios() {
         throw new Error("Count must be 0..10");
       storeSessionFailures({ kind, count });
     },
+    failNextCheckout(kind: Failure, key: CheckoutKey) {
+      if (kind !== "http" && kind !== "network")
+        throw new Error("Invalid failure");
+      checkoutFailures[key] = kind;
+    },
+    setCheckoutDelay(key: CheckoutKey, ms: number) {
+      if (!Number.isSafeInteger(ms) || ms < 0 || ms > 10000)
+        throw new Error("Delay must be 0..10000 ms");
+      checkoutDelays[key] = ms;
+    },
+    rejectNextConnection() {
+      rejectConnection = true;
+    },
+    // Consumed by the connection handler after the request is accepted.
+    takeConnectionRejection() {
+      const value = rejectConnection;
+      rejectConnection = false;
+      return value;
+    },
     setCartDelay(kind: "read" | "write", ms: number) {
       if (!Number.isSafeInteger(ms) || ms < 0 || ms > 10000)
         throw new Error("Delay must be 0..10000 ms");
@@ -139,16 +172,27 @@ export function createScenarios() {
           count: pendingSession.count - 1,
         });
       }
+      const checkout: CheckoutKey | null = /\/quotes$/.test(url.pathname)
+        ? "quote"
+        : /\/wallet-connections$/.test(url.pathname) && mutation
+          ? "connection"
+          : null;
+      if (checkout && checkoutFailures[checkout]) {
+        currentFailure = checkoutFailures[checkout];
+        checkoutFailures[checkout] = null;
+      }
       const key = (url.searchParams.get("search") ?? "").trim().toLowerCase();
       // Cart reads model response latency: the state is read first and the
       // response is delayed afterwards, so a slow read can carry older state.
       const cartRead = cart && !mutation;
-      const ms = cart
-        ? mutation
-          ? cartDelays.write
-          : 0
-        : (delays[key] ??
-          (activeScenario === "out-of-order" && key === "emerald" ? 300 : 0));
+      const ms = checkout
+        ? checkoutDelays[checkout]
+        : cart
+          ? mutation
+            ? cartDelays.write
+            : 0
+          : (delays[key] ??
+            (activeScenario === "out-of-order" && key === "emerald" ? 300 : 0));
       try {
         await pause(ms, request);
         stats.completed++;

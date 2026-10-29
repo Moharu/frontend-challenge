@@ -104,3 +104,18 @@ Contas (`accounts`), sessões (token opaco → usuário, geração, `expiresAt`,
 | `state().transport`                         | Contadores de requisições e de requisições canceladas pelo cliente                           |
 
 Gravações do retrato podem disparar uma nova leitura do carrinho (adoção do retrato mais recente). Por isso, depois de `expireSession()`, o aviso de expiração pode surgir sem nenhuma ação na interface; os testes aceitam qualquer uma das duas origens da requisição privada.
+
+## Extensões da etapa do checkout
+
+O retrato passa a `schemaVersion` 5: carteiras (seed de `ada_example` com "Principal" e "Reserva"; `lin_example` sem carteiras), conexões simuladas e cupons expirados por cenário. Retratos anteriores restauram a seed. As cotações não são persistidas: cada `POST /quotes` recalcula a partir do estado atual. Regras em [checkout](checkout.md).
+
+| Controle da ponte (`window.__KURIO_TEST__`)                      | Efeito                                                                                                           |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `rejectNextConnection()`                                         | A próxima conexão de carteira responde 409 `CONNECTION_REJECTED`                                                 |
+| `disconnectWallets()`                                            | Desconecta no servidor todas as conexões ativas (detectado ao confirmar, no foco e pela cotação)                 |
+| `checkoutDelay('quote' or 'connection', ms)`                     | Latência da cotação ou da conexão (a conexão tem 300ms por padrão)                                               |
+| `failNextCheckout('http' or 'network', 'quote' or 'connection')` | Falha transitória de uso único na próxima cotação ou conexão                                                     |
+| `quoteTtl(ms)`                                                   | Validade das próximas cotações (padrão 2 minutos); fica em `sessionStorage` para sobreviver às recargas do teste |
+| `expireCoupon(code)`                                             | Expira o cupom; a próxima cotação o remove com o motivo                                                          |
+
+Mudanças de preço e disponibilidade usam os controles existentes: `update` (persiste e emite `nft.updated`) e `persistUpdate` (persiste sem evento, para testar a revalidação ao confirmar).

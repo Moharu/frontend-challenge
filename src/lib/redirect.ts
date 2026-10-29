@@ -5,6 +5,7 @@ const origin = "https://kurio.invalid";
 const knownRoutes = [
   /^\/$/,
   /^\/cart$/,
+  /^\/checkout$/,
   /^\/nfts\/[^/]+$/,
   // Integration-only protected route (see app/router.tsx).
   ...(import.meta.env.VITE_ENABLE_TEST_HARNESS === "true"
@@ -43,6 +44,8 @@ declare module "@tanstack/history" {
     auth?: "login" | "signup";
     // Validated page behind the dialog, where it returns.
     authTarget?: string;
+    // The page behind the dialog (defaults to the target).
+    authBackground?: string;
   }
 }
 // History entry this document loaded on (TanStack's `__TSR_index`), read
@@ -92,10 +95,20 @@ export function targetLocation(target: string) {
 // without leaving it: the router stays on the page (flagged in history state)
 // while the address bar shows the masked /login or /signup URL. A reload of
 // that URL loads the real auth route.
-export function authLink(mode: "login" | "signup", target: string) {
+// `background` is the page kept behind the dialog when it differs from the
+// target (the cart, while the login leads on to the checkout).
+export function authLink(
+  mode: "login" | "signup",
+  target: string,
+  background = target,
+) {
   return {
-    ...targetLocation(target),
-    state: { auth: mode, authTarget: safeRedirect(target) },
+    ...targetLocation(background),
+    state: {
+      auth: mode,
+      authTarget: safeRedirect(target),
+      authBackground: safeRedirect(background),
+    },
     mask: { to: `/${mode}` as const, search: { redirect: target } },
   } as const;
 }

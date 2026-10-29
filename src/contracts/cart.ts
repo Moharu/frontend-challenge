@@ -65,7 +65,7 @@ export interface ApplyCouponRequest {
   code: string;
 }
 export const visitorHeader = "X-Visitor-Token";
-function isLine(value: unknown): value is CartLine {
+export function isCartLine(value: unknown): value is CartLine {
   if (!record(value)) return false;
   const conflict = value.conflict;
   const change = value.priceChange;
@@ -98,7 +98,7 @@ export function isCart(value: unknown): value is Cart {
     typeof value.id === "string" &&
     integer(value.version, 1) &&
     Array.isArray(value.items) &&
-    value.items.every(isLine) &&
+    value.items.every(isCartLine) &&
     integer(value.itemCount) &&
     (value.coupon === null ||
       (record(value.coupon) &&

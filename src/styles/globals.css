@@ -2254,3 +2254,502 @@ h3 {
     bottom: calc(110px + env(safe-area-inset-bottom));
   }
 }
+
+/* Checkout. Desktop (above 700px, 768px included): one page in two columns,
+   as in the frame. Up to 700px: three steps with a sticky action bar. */
+.checkout-page {
+  padding-bottom: 96px;
+}
+.checkout-waiting {
+  padding: 48px 0;
+  color: var(--muted-foreground);
+}
+.checkout-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 490px);
+  gap: 38px;
+  align-items: start;
+}
+.checkout-page h2 {
+  margin: 0 0 12px;
+  font-size: 20px;
+}
+.checkout-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 30px;
+}
+.checkout-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.checkout-field label {
+  font-size: 15px;
+}
+.checkout-field .required {
+  margin-left: 4px;
+  color: var(--accent);
+}
+.checkout-field input,
+.checkout-field select,
+.checkout-field textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+}
+.checkout-field select option {
+  background: var(--surface);
+}
+.checkout-field input::placeholder {
+  color: var(--muted-foreground);
+}
+.checkout-field textarea {
+  min-height: 160px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+.checkout-field [aria-invalid="true"] {
+  border-color: #e8705a;
+}
+/* Network, wallet type and address come from the selected wallet. */
+.checkout-readonly {
+  background: var(--surface) !important;
+  color: var(--muted-foreground) !important;
+  text-overflow: ellipsis;
+}
+.checkout-input-suffix {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.checkout-input-suffix input {
+  border: 0;
+}
+.checkout-suffix {
+  padding: 0 14px;
+  color: var(--muted-foreground);
+}
+.checkout-note {
+  grid-column: 1 / -1;
+  max-width: 420px;
+}
+.checkout-other {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+}
+.other-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.other-radio {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+}
+.other-radio[data-on="true"] {
+  background: radial-gradient(var(--accent) 45%, transparent 50%);
+}
+.other-wallets {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+.text-button {
+  color: var(--accent);
+  font-weight: 700;
+  text-align: left;
+}
+.checkout-hint {
+  margin: 8px 0 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.wallet-cards {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.wallet-card {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 16px 18px 20px;
+  border-radius: 16px;
+  background: var(--surface);
+}
+.wallet-card label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  cursor: pointer;
+}
+.wallet-card label span {
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+.wallet-card strong {
+  font-size: 17px;
+}
+.wallet-card input,
+.provider-option input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
+.wallet-menu {
+  display: grid;
+  place-items: center;
+  height: 32px;
+  font-size: 22px;
+  color: var(--accent);
+}
+.checkout-wallets-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.wallet-form {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.wallet-form h3 {
+  margin: 0;
+  font-size: 17px;
+}
+.wallet-form .auth-summary:empty {
+  display: none;
+}
+.wallet-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.checkout-summary {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.checkout-items-head {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 700;
+}
+.checkout-items {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.checkout-items li {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding-right: 12px;
+  background: var(--surface);
+}
+.checkout-items img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+}
+.checkout-items li div {
+  display: grid;
+  min-width: 0;
+}
+.checkout-items li div span {
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.checkout-qty {
+  color: var(--muted-foreground);
+}
+.checkout-line-total {
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.checkout-coupon {
+  text-align: center;
+}
+.checkout-coupon .coupon {
+  margin-top: 10px;
+  text-align: left;
+}
+.checkout-amounts dd {
+  overflow-wrap: anywhere;
+}
+.provider-group {
+  display: grid;
+  gap: 16px;
+  margin: 8px 0 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.provider-group legend {
+  margin-bottom: 16px;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  width: 100%;
+}
+.provider-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 54px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+.provider-option:has(input:checked) {
+  border-color: var(--accent);
+}
+.provider-option label {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-height: 54px;
+  cursor: pointer;
+}
+.provider-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--raised);
+  color: var(--accent);
+  font-weight: 700;
+}
+.provider-missing {
+  display: grid;
+  gap: 12px;
+}
+.connection-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+}
+.connection-status p {
+  margin: 0;
+}
+.connection-rejected,
+.connection-disconnected,
+.connection-error {
+  color: #f0a08f;
+}
+.quote-changes {
+  padding: 16px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--raised);
+}
+.quote-changes h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+.quote-changes ul {
+  margin: 0 0 12px;
+  padding-left: 18px;
+}
+.checkout-confirm {
+  width: 100%;
+  min-height: 54px;
+  margin-top: 8px;
+}
+.checkout-confirm[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.checkout-mobile,
+.checkout-mobile-header,
+.checkout-step {
+  display: none;
+}
+@media (max-width: 700px) {
+  .site:has(.checkout-page) + .mobile-nav,
+  .site:has(.checkout-page) .desktop-header,
+  .site:has(.checkout-page) footer {
+    display: none;
+  }
+  .site:has(.checkout-page) {
+    padding-top: 24px;
+  }
+  .checkout-page {
+    padding-bottom: 0;
+  }
+  .checkout-mobile {
+    display: grid;
+    gap: 20px;
+  }
+  .checkout-mobile-header {
+    display: grid;
+    grid-template-columns: 36px 1fr 36px;
+    align-items: center;
+  }
+  .checkout-mobile-header h1 {
+    margin: 0;
+    font-size: 19px;
+    text-align: center;
+  }
+  .checkout-page h2 {
+    font-size: 17px;
+  }
+  .checkout-step {
+    display: block;
+    margin: -12px 0 0;
+    color: var(--muted-foreground);
+    font-size: 13px;
+    text-align: center;
+  }
+  .checkout-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .checkout-note {
+    max-width: none;
+  }
+  .provider-group legend {
+    text-align: left;
+  }
+  .provider-option {
+    min-height: 82px;
+    border: 0;
+    border-radius: 16px;
+    background: var(--surface);
+  }
+  .provider-option {
+    flex-direction: row-reverse;
+  }
+  .checkout-mobile-total {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    text-align: right;
+  }
+  .checkout-mobile-total strong {
+    margin-left: 12px;
+    color: var(--accent);
+  }
+  .checkout-form {
+    display: grid;
+    gap: 20px;
+  }
+  /* Sticky, not fixed: it keeps its own space at the end of the step and
+     stays above the virtual keyboard and the safe area. */
+  .checkout-fixed {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    margin: 0 -16px;
+    padding: 16px 16px max(16px, env(safe-area-inset-bottom));
+    background: linear-gradient(transparent, var(--background) 30%);
+  }
+  .checkout-fixed .button {
+    width: 100%;
+    min-height: 60px;
+    border-radius: 40px;
+  }
+  .checkout-items li {
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+  }
+  .checkout-items img {
+    width: 64px;
+    height: 64px;
+  }
+  .checkout-qty {
+    display: none;
+  }
+}
+/* Notices never take clicks, and on the mobile checkout they sit above the
+   sticky action bar instead of covering it. */
+.notices {
+  pointer-events: none;
+}
+/* Long ETH values and addresses wrap instead of widening the page. */
+.checkout-items li {
+  grid-template-columns: 80px minmax(0, 1fr) auto minmax(0, max-content);
+}
+.checkout-line-total,
+.checkout-mobile-total,
+.checkout-amounts dd,
+.quote-changes li {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.checkout-amounts > div {
+  min-width: 0;
+  gap: 12px;
+}
+/* Between 701px and 1000px (768px included) the desktop page stacks its two
+   columns: the same single page, without squeezing the two-column fields. */
+@media (max-width: 1000px) and (min-width: 701px) {
+  .checkout-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 700px) {
+  .checkout-items li {
+    grid-template-columns: 64px minmax(0, 1fr) minmax(0, max-content);
+  }
+}
+@media (max-width: 700px) {
+  /* No bottom navigation on the checkout: no space reserved for it. */
+  .site:has(.checkout-page) {
+    padding-bottom: 0;
+  }
+  /* Notices on the mobile checkout show at the top, never over the sticky
+     action bar. */
+  body:has(.checkout-mobile) .notices {
+    top: max(16px, env(safe-area-inset-top));
+    bottom: auto;
+  }
+}
+/* "ENS ou carteira secundária" has no visible label (as in the frame): it
+   lines up with the address next to it, and its placeholder fits in full. */
+.checkout-unlabeled {
+  justify-content: flex-end;
+}
+#checkout-secondaryAddressOrEns {
+  padding-inline: 10px;
+}
+#checkout-secondaryAddressOrEns::placeholder {
+  font-size: 12.5px;
+}
+/* Nome ENS: the small ".eth" dropdown of the frame. */
+.checkout-field select.checkout-ens {
+  width: auto;
+  min-width: 94px;
+  max-width: 100%;
+  align-self: flex-start;
+}

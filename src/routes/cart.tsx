@@ -27,7 +27,7 @@ import { nftListOptions } from "@/data/nfts/queries";
 import { apiError } from "@/lib/api-error";
 import { authLink } from "@/lib/redirect";
 import { Button } from "@/components/ui/button";
-import { NftCard, Unavailable } from "@/components/discovery/shared";
+import { NftCard } from "@/components/discovery/shared";
 import { artImage, asset } from "@/components/discovery/assets";
 const eth = (value: string) => `${formatEth(value)} ETH`;
 const lineName = (line: CartLine) => `${line.name} (${line.editionLabel})`;
@@ -486,18 +486,19 @@ function CartSummary({ cart }: { cart: Cart }) {
           </p>
         </>
       ) : signedIn ? (
-        <Unavailable
-          className="button button-primary checkout-button"
-          label="Conectar e finalizar"
-          description="Você está conectado, mas o checkout ainda não está disponível nesta versão. Seu carrinho continua salvo na sua conta; carteira, pagamento e pedidos chegam na próxima etapa."
-        >
-          Conectar e finalizar
-        </Unavailable>
-      ) : (
-        // Checkout requires a session: sign in first, then return to the cart.
         <Link
           className="button button-primary checkout-button"
-          {...authLink("login", "/cart")}
+          to="/checkout"
+          search={{ step: "dados" }}
+        >
+          Conectar e finalizar
+        </Link>
+      ) : (
+        // Checkout requires a session: sign in over the cart, then continue
+        // to the checkout.
+        <Link
+          className="button button-primary checkout-button"
+          {...authLink("login", "/checkout", "/cart")}
         >
           Conectar e finalizar
         </Link>

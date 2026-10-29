@@ -2,6 +2,8 @@ import axios from "axios";
 import { record } from "@/contracts/common";
 export interface ApiErrorInfo {
   status: number;
+  // The envelope's error code; undefined for network and client failures.
+  code?: string;
   message: string;
   fields: Record<string, string>;
 }
@@ -16,6 +18,7 @@ export function apiError(error: unknown): ApiErrorInfo {
     const envelope = record(body) && record(body.error) ? body.error : null;
     return {
       status: error.response.status,
+      code: typeof envelope?.code === "string" ? envelope.code : undefined,
       message:
         typeof envelope?.message === "string"
           ? envelope.message

@@ -21,6 +21,11 @@ export type ErrorCode =
   | "FORBIDDEN"
   | "NOT_FOUND"
   | "CONFLICT"
+  // 409 refinements the checkout branches on (quote and wallet connection).
+  | "CART_CHANGED"
+  | "UNAVAILABLE_ITEMS"
+  | "WALLET_DISCONNECTED"
+  | "CONNECTION_REJECTED"
   | "TRANSIENT"
   | "NOT_IMPLEMENTED";
 export interface ErrorResponse {

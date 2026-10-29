@@ -1,5 +1,6 @@
 import { categories, type Nft } from "@/contracts/nfts";
 import type { UserIdentity } from "@/contracts/common";
+import type { Wallet } from "@/contracts/wallets";
 import type { PasswordHash } from "./passwords";
 export const baseline = "2026-01-01T00:00:00.000Z";
 export const fixtureUsers: UserIdentity[] = [
@@ -150,6 +151,42 @@ export const fixturePasswords: Record<string, PasswordHash> = {
     hash: "m5XQ5MPe5nqk95RjARCo68SZG1baSN+OiJNi0HKbD6Q=",
   },
 };
+// Ada's wallets, as in the mobile payment frame. Lin starts without wallets
+// to exercise registering one inside the checkout.
+export const fixtureWallets: Wallet[] = [
+  {
+    id: "wallet-ada-primary",
+    userId: "user-ada",
+    address: "0xA91F3c5e7B2d4a6F8091bC3d5E7f9A1b2C4dE82C",
+    network: "ethereum",
+    provider: "metamask",
+    role: "primary",
+    version: 1,
+    label: "Principal",
+    displayName: "Ada Example",
+    profileName: "Ada Colecionadora",
+    referralCode: null,
+    email: "ada@example.test",
+    ensName: null,
+    secondaryAddressOrEns: null,
+  },
+  {
+    id: "wallet-ada-reserve",
+    userId: "user-ada",
+    address: "0x7c3D9e1A5b8F2a4C6d0E9f1B3a5C7e9D1f2A4b6C",
+    network: "polygon",
+    provider: "coinbase-wallet",
+    role: "secondary",
+    version: 1,
+    label: "Reserva",
+    displayName: "Ada Example",
+    profileName: "Ada Colecionadora",
+    referralCode: null,
+    email: "ada@example.test",
+    ensName: "nova.kurio.eth",
+    secondaryAddressOrEns: null,
+  },
+];
 // Sessions last 7 days from login (real clock); scenario controls can expire
 // or revoke the current session for deterministic tests.
 export const sessionDurationMs = 7 * 24 * 60 * 60 * 1000;

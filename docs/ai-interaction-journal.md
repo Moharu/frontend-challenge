@@ -267,3 +267,13 @@ Mantenha este diário de alto nível nos próximos trabalhos do projeto com assi
 **Resolução:** desvios do Figma documentados e conferidos no código; guarda de rota privada com três casos (autenticado, anônimo, não confirmado por falha transitória) e estado de nova tentativa, testada por uma rota protegida exclusiva do build de integração; limitação de múltiplas abas registrada.
 
 **Verificação:** tipos, lint, formatação, builds, 93 testes de integração e 8 E2E aprovados; rota de teste ausente do build normal. Detalhes em `docs/session-verification.md`. Nenhum commit ou push.
+
+## 2026-10-29 — Checkout até a revisão validada (`docs/handoffs/coding-agent-checkout-draft-pt-br.md`)
+
+**Orientação do usuário:** executar o handoff do checkout, sem commit/push. O usuário forneceu as capturas dos frames Desktop / Pagamento e Mobile / Pagamento.
+
+**Entregue:** rota `/checkout` protegida (com pré-condições de carrinho e passos `?step=` no mobile), dados do colecionador com pré-preenchimento pela carteira e pela conta, rascunho em `sessionStorage` por usuário (sobrevive a refresh e expiração; descartado no logout e na troca de usuário), carteiras no MSW (seed, validação compartilhada, regra de primária/secundária, cadastro no checkout), conexão simulada com recusa e desconexão detectada pela API, cotação com `walletId` (titularidade, conexão, versão, disponibilidade, cupom com expiração, taxa da rede da carteira, validade curta) e regra de nova confirmação quando os valores mudam. "Confirmar compra" para na revisão validada; nenhum pedido é criado. Detalhes e desvios em `docs/checkout.md`.
+
+**Revisão manual do usuário durante a etapa:** espaço vazio no fim das páginas do checkout mobile e o aviso cobrindo o botão (corrigidos: sem reserva da navegação inferior; avisos no topo no checkout mobile e estado da conexão anunciado pela própria região de status); rótulos apenas com ou sem asterisco, sem "(opcional)"; placeholder de "ENS ou carteira secundária" cortado; ajudas de formato só após envio inválido; "Nome ENS" como lista, como no frame.
+
+**Verificação:** tipos, lint, formatação, builds, 118 testes de integração (25 novos do checkout, repetidos 3 vezes) e 10 E2E (com as referências visuais do pagamento) aprovados; varredura de 390, 414, 768 e 1440px sem overflow horizontal. Lighthouse não executado, conforme o handoff. Detalhes em `docs/checkout-verification.md`. Nenhum commit ou push.
