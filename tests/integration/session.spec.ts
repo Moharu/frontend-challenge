@@ -512,6 +512,65 @@ test("recarregar no mobile não mostra a página antes do diálogo; a primeira a
     ),
   ).toBe(false);
 });
+// `/__private` exists only in the integration build and is protected by
+// `requireSession`, the guard the checkout will use.
+const privateHeading = (page: Page) =>
+  page.getByRole("heading", { name: "Área privada de teste" });
+test("guarda de rota privada: sessão válida segue; sem sessão vai ao login com o destino", async ({
+  page,
+}) => {
+  await page.goto("/__private");
+  await expect(page).toHaveURL(/\/login\?redirect=%2F__private$/);
+  await authReady(page);
+  await fillLogin(page, ada);
+  await expect(page).toHaveURL(/\/__private$/);
+  await expect(privateHeading(page)).toBeVisible();
+  // A stored, valid session after a reload also goes straight in.
+  await page.reload();
+  await expect(privateHeading(page)).toBeVisible();
+});
+test("guarda de rota privada: falha transitória na verificação não desloga e permite nova tentativa", async ({
+  page,
+}) => {
+  await loginAt(page, "/");
+  const token = (await identity(page)).sessionToken;
+  // The first check after the next load fails with a 503 (then network).
+  for (const kind of ["http", "network"] as const) {
+    await page.evaluate(
+      (kind) => window.__KURIO_TEST__.failSessionChecks(kind, 1),
+      kind,
+    );
+    await page.goto("/__private");
+    const alert = page.getByRole("alert").filter({
+      hasText: "Não foi possível confirmar sua sessão",
+    });
+    await expect(alert).toBeVisible();
+    await expect(page).toHaveURL(/\/__private$/);
+    expect(await identity(page)).toMatchObject({
+      status: "checking",
+      sessionToken: token,
+    });
+    await alert.getByRole("button", { name: "Tentar novamente" }).click();
+    await expect(privateHeading(page)).toBeVisible();
+    await expect(page).toHaveURL(/\/__private$/);
+  }
+  // The login under a transient failure renders normally (no redirect, no
+  // sign-out), and the token is kept.
+  await page.evaluate(() => window.__KURIO_TEST__.failSessionChecks("http", 1));
+  await page.goto("/login?redirect=%2F__private");
+  await authReady(page);
+  await expect(page).toHaveURL(/\/login\?redirect=%2F__private$/);
+  expect((await identity(page)).sessionToken).toBe(token);
+});
+test("guarda de rota privada: sessão guardada inválida (401) vai ao login", async ({
+  page,
+}) => {
+  await loginAt(page, "/");
+  await page.evaluate(() => window.__KURIO_TEST__.revokeSession());
+  await page.goto("/__private");
+  await expect(page).toHaveURL(/\/login\?redirect=%2F__private$/);
+  expect((await identity(page)).status).toBe("anonymous");
+});
 test("redirecionamento aberto é rejeitado", async ({ page }) => {
   for (const target of [
     "https://evil.example/roubo",

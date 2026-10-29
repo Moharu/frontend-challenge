@@ -2,7 +2,15 @@
 // paths of known routes are accepted (with their search and hash), so the
 // login can never send the user to another site (open redirect).
 const origin = "https://kurio.invalid";
-const knownRoutes = [/^\/$/, /^\/cart$/, /^\/nfts\/[^/]+$/];
+const knownRoutes = [
+  /^\/$/,
+  /^\/cart$/,
+  /^\/nfts\/[^/]+$/,
+  // Integration-only protected route (see app/router.tsx).
+  ...(import.meta.env.VITE_ENABLE_TEST_HARNESS === "true"
+    ? [/^\/__private$/]
+    : []),
+];
 export const fallbackRedirect = "/";
 export function safeRedirect(value: unknown): string {
   if (

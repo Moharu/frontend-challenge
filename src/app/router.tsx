@@ -9,7 +9,8 @@ import { PublicLayout } from "@/components/discovery/layout";
 import { discoverySearch } from "@/lib/discovery-search";
 import { IndexPage } from "@/routes/index";
 import { authSearch } from "@/lib/redirect";
-import { redirectAuthenticated } from "@/lib/route-guards";
+import { redirectAuthenticated, requireSession } from "@/lib/route-guards";
+import { SessionCheckError } from "@/components/discovery/session-check";
 const rootRoute = createRootRoute({
   component: PublicLayout,
   notFoundComponent: () => (
@@ -53,6 +54,25 @@ const signupRoute = createRoute({
   beforeLoad: redirectAuthenticated,
   component: lazyRouteComponent(() => import("@/routes/auth"), "SignupPage"),
 });
+// Integration build only: a protected route that exercises `requireSession`
+// before the first real private route (checkout) exists. The flag is replaced
+// at build time, so the normal build drops this route entirely.
+const testRoutes =
+  import.meta.env.VITE_ENABLE_TEST_HARNESS === "true"
+    ? [
+        createRoute({
+          getParentRoute: () => rootRoute,
+          path: "/__private",
+          beforeLoad: requireSession,
+          errorComponent: SessionCheckError,
+          component: () => (
+            <main id="main">
+              <h1>Área privada de teste</h1>
+            </main>
+          ),
+        }),
+      ]
+    : [];
 export const router = createRouter({
   routeTree: rootRoute.addChildren([
     indexRoute,
@@ -60,6 +80,7 @@ export const router = createRouter({
     cartRoute,
     loginRoute,
     signupRoute,
+    ...testRoutes,
   ]),
 });
 declare module "@tanstack/react-router" {

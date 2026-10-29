@@ -61,3 +61,13 @@ Acessibilidade, boas práticas e SEO: 100 em todas as rotas e perfis. As variaç
 - Teclado virtual e safe areas em dispositivo físico nas telas mobile de login/cadastro.
 - Zoom de 200% e contraste do fundo sutil do modal, além do que o Lighthouse cobre.
 - Sessão em várias abas ao mesmo tempo (segue a política de abas do retrato simulado).
+
+## Correções da revisão de `0fedb5b`
+
+Rodada guiada por `docs/handoffs/coding-agent-session-fixes-draft-pt-br.md`, sem mudanças visuais nem funcionalidades novas.
+
+1. **Desvios do Figma:** a seção de desvios de `docs/session.md` passou a registrar texto do botão de cadastro por composição, rótulos ocultos, placeholder do e-mail, alinhamento do username, mostrar/ocultar em "Confirmar senha", regras visíveis antes de erros e a composição em 768px (modal; tela cheia só até 700px). Cada item foi conferido no código; nenhum precisou de implementação.
+2. **Guarda de rota privada:** `requireSession` distingue autenticado (segue), anônimo confirmado (login com destino) e sessão não confirmada por falha transitória, que lança `SessionUnconfirmed`; o `SessionCheckError` da rota mostra um alerta com "Tentar novamente" (e reexecuta a guarda também quando a verificação automática por foco/conexão termina), sem redirecionar nem descartar o token. `redirectAuthenticated` mostra o login normalmente nesse caso. Testes com a rota `/__private`, que só existe no build de integração (ausente do build normal, conferido no bundle), e o controle `failSessionChecks`, que sobrevive à recarga: sessão válida, sem sessão, falha transitória 503 e de rede com nova tentativa (inclusive no login) e sessão revogada (401).
+3. **Múltiplas abas:** limitação registrada em `docs/session.md`.
+
+Resultados: tipos, lint, formatação, build normal e de integração aprovados; 93 testes de integração (eram 87; +3 casos × desktop/mobile) e 8 E2E aprovados. Lighthouse não executado nesta rodada, conforme o handoff.

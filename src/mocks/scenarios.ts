@@ -2,6 +2,28 @@ import { delay } from "msw";
 export type Scenario =
   "default" | "empty" | "http-error" | "network-error" | "out-of-order";
 export type Failure = "http" | "network";
+// Session check failures must survive the reload that runs the first
+// `GET /session`, so (unlike the other controls) they live in sessionStorage.
+const sessionFailuresKey = "kurio.mock.session-failures";
+function sessionFailures(): { kind: Failure; count: number } | null {
+  try {
+    const value = JSON.parse(
+      sessionStorage.getItem(sessionFailuresKey) ?? "null",
+    ) as { kind: Failure; count: number } | null;
+    return value && value.count > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+function storeSessionFailures(value: { kind: Failure; count: number } | null) {
+  try {
+    if (value && value.count > 0)
+      sessionStorage.setItem(sessionFailuresKey, JSON.stringify(value));
+    else sessionStorage.removeItem(sessionFailuresKey);
+  } catch {
+    // Storage unavailable: the control simply has no effect.
+  }
+}
 export function createScenarios() {
   let scenario: Scenario = "default";
   let delays: Record<string, number> = {};
@@ -48,6 +70,7 @@ export function createScenarios() {
       failure = null;
       cartFailures = { read: null, write: null };
       cartDelays = { read: 0, write: 0 };
+      storeSessionFailures(null);
       stats.started = 0;
       stats.completed = 0;
       stats.cancelled = 0;
@@ -80,6 +103,14 @@ export function createScenarios() {
         throw new Error("Invalid failure");
       cartFailures[operation] = kind;
     },
+    // The next `count` session checks (`GET /session`) fail, across reloads.
+    failSessionChecks(kind: Failure, count: number) {
+      if (kind !== "http" && kind !== "network")
+        throw new Error("Invalid failure");
+      if (!Number.isSafeInteger(count) || count < 0 || count > 10)
+        throw new Error("Count must be 0..10");
+      storeSessionFailures({ kind, count });
+    },
     setCartDelay(kind: "read" | "write", ms: number) {
       if (!Number.isSafeInteger(ms) || ms < 0 || ms > 10000)
         throw new Error("Delay must be 0..10000 ms");
@@ -98,6 +129,15 @@ export function createScenarios() {
       if (cart && cartFailures[operation]) {
         currentFailure = cartFailures[operation];
         cartFailures[operation] = null;
+      }
+      const sessionCheck = /\/session$/.test(url.pathname) && !mutation;
+      const pendingSession = sessionCheck ? sessionFailures() : null;
+      if (pendingSession) {
+        currentFailure = pendingSession.kind;
+        storeSessionFailures({
+          ...pendingSession,
+          count: pendingSession.count - 1,
+        });
       }
       const key = (url.searchParams.get("search") ?? "").trim().toLowerCase();
       // Cart reads model response latency: the state is read first and the

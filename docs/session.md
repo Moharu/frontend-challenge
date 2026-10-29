@@ -63,5 +63,16 @@ Token de visitante desconhecido responde 401 **`VISITOR_INVALID`** e significa s
 
 - **Sem saída no mobile:** as telas mobile não têm voltar nem fechar; foi acrescentado "Voltar" no padrão do cabeçalho mobile do carrinho, levando ao destino de retorno ou ao catálogo.
 - **Modal sem fundo escurecido:** mantida a composição desktop sem escurecimento forte, com um fundo sutil para indicar o modal; o conteúdo atrás fica inerte para teclado e leitores de tela (`aria-modal`, foco preso).
+- **Texto do botão de cadastro:** "Criar conta" no desktop e "Criar perfil" no mobile (com o título "Criar perfil de colecionador"), mantidos como em cada frame por exigência do usuário; as duas variantes ficam no mesmo botão (`desktop-only`/`mobile-only`), e o formulário tem o mesmo nome acessível ("Criar conta") nas duas composições.
+- **Rótulos:** cada campo tem `<label>` associado, visualmente oculto, para preservar a composição do Figma só com placeholder sem deixar o campo sem nome acessível.
+- **Placeholder do e-mail no login:** "contato@email.com" virou "Digite seu e-mail", porque o exemplo parecia um valor já preenchido.
+- **Alinhamento:** o placeholder "Nome de usuário", centralizado no cadastro mobile do Figma, foi alinhado à esquerda como os demais campos, por consistência de leitura.
+- **Mostrar/ocultar senha:** aplicado também a "Confirmar senha", nas duas composições (no desktop o Figma só o mostra em "Senha"), para que o usuário possa conferir os dois valores.
+- **Regras de username e senha:** exibidas abaixo dos campos antes de qualquer erro, embora o layout não as mostre, para que as exigências sejam conhecidas antes do envio.
+- **Composição em 768px:** o limite é 700px; até 700px o diálogo ocupa a tela inteira (composição mobile), acima disso é o modal desktop. Em 768px, portanto, aparece o modal.
 - O botão "Entrar" do cabeçalho passou a usar o ícone do Figma (`home-Logout.svg`); as referências visuais desktop de início, detalhe e carrinho foram atualizadas por causa disso.
 - Continuam com aviso de indisponibilidade: login social, recuperação de senha, "Meu perfil", "Carteiras", favoritos e o checkout em si (conectado, "Conectar e finalizar" explica que carteira, pagamento e pedidos chegam na próxima etapa).
+
+## Limitações
+
+- **Login ou logout em outra aba não é percebido.** Cada aba mantém a própria identidade em memória; não há sincronização entre abas. Exemplo: depois de entrar em outra aba, a aba antiga ainda usa o token de visitante já consumido pela mesclagem e mostra "Seu carrinho anterior não está mais disponível", embora os itens estejam na conta. Recarregar a aba antiga resolve.

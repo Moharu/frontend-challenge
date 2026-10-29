@@ -259,3 +259,11 @@ Mantenha este diário de alto nível nos próximos trabalhos do projeto com assi
 **Correção:** classe `auth-restoring` no `<html>` desde a inicialização quando a página carrega com o diálogo aberto, cobrindo a tela no mobile até o diálogo montar; pré-carregamento do chunk depois do evento `load` (e imediato numa recarga com o diálogo aberto); componente renderizado diretamente depois de carregado. Primeira abertura ≈14 ms. Um pré-carregamento logo após a primeira renderização reduziu o Lighthouse mobile do detalhe (82 → 80); adiado para depois do `load`, voltou aos valores da etapa (87/82 mobile, 98/99 desktop).
 
 **Verificação:** novo teste de integração mobile (nenhum quadro descoberto; primeira abertura sem fallback); tipos, lint, formatação, builds, 87 testes de integração e 8 E2E aprovados; suíte de sessão repetida 3 vezes sem falhas. Nenhum commit ou push.
+
+## 2026-10-29 — Correções da revisão da sessão (`docs/handoffs/coding-agent-session-fixes-draft-pt-br.md`)
+
+**Orientação do usuário:** verificar o novo handoff e resolver os pontos da revisão de `0fedb5b`, sem commit/push. O usuário informou que fornece capturas do Figma quando necessário.
+
+**Resolução:** desvios do Figma documentados e conferidos no código; guarda de rota privada com três casos (autenticado, anônimo, não confirmado por falha transitória) e estado de nova tentativa, testada por uma rota protegida exclusiva do build de integração; limitação de múltiplas abas registrada.
+
+**Verificação:** tipos, lint, formatação, builds, 93 testes de integração e 8 E2E aprovados; rota de teste ausente do build normal. Detalhes em `docs/session-verification.md`. Nenhum commit ou push.
