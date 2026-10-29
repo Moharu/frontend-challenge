@@ -4,6 +4,8 @@ import type { DataResponse } from "@/contracts/common";
 import type { Nft } from "@/contracts/nfts";
 import { isNftUpdated } from "@/contracts/events";
 import { nftKeys } from "@/data/nfts/queries";
+import { cartKey } from "@/data/cart/queries";
+import type { Cart } from "@/contracts/cart";
 import { apiURL } from "@/lib/urls";
 export function createCatalogRealtime(
   queryClient: QueryClient,
@@ -52,6 +54,10 @@ export function createCatalogRealtime(
           queryKey: ["nfts", "related"],
           refetchType: "active",
         });
+        await queryClient.invalidateQueries({
+          queryKey: cartKey,
+          refetchType: "active",
+        });
         stats.reconciliations++;
       })
       .catch((e) => {
@@ -94,6 +100,13 @@ export function createCatalogRealtime(
           queryKey: ["nfts", "related"],
           refetchType: "active",
         });
+        // Cart values come from the API: refetch instead of recalculating.
+        const cart = queryClient.getQueryData<Cart | null>(cartKey);
+        if (cart?.items.some((i) => i.nftId === value.resourceId))
+          await queryClient.invalidateQueries({
+            queryKey: cartKey,
+            refetchType: "active",
+          });
         stats.applied++;
       })
       .catch((e) => {

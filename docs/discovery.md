@@ -49,13 +49,24 @@ Diferenças intencionais em relação aos desenhos:
 - A navegação inferior pertence ao início; no detalhe mobile, a área inferior é dedicada à quantidade/preço/ações. Há espaço reservado no fim da página e consideração de safe areas, sem altura fixa de aplicativo. A barra reproduz o recorte do Figma (`mobile-home-Vector.svg`) por máscara CSS: a curva central mantém a largura exata de 152px e as laterais se estendem, evitando distorção entre 390 e 700px; o botão central usa o gradiente de `mobile-home-Ellipse39.svg` e fica centralizado na borda superior, deixando o conteúdo visível pelo recorte como no desenho.
 - Blocos editoriais e rodapé continuam abaixo do catálogo no mobile, em fluxo natural. Textos e controles reais podem aumentar a altura em relação ao recorte do Figma. Não se usa captura da tela como interface.
 
+## Cabeçalho, navegação e rodapé (ajustes após revisão)
+
+- O cabeçalho desktop é fixo no topo (`position: sticky`) em todas as rotas públicas; saltos para âncoras e o foco por teclado no conteúdo reservam espaço para ele por `scroll-margin-top` nos alvos (links, botões, campos e elementos com `id`). Não se usa `scroll-padding-top` na página: com ele, focar qualquer elemento dentro do cabeçalho fixo (ou da barra fixa de busca mobile) rolava a página de volta ao topo.
+- Início e Mercado apontam para `/`, então o roteador marcaria os dois como ativos. O estado ativo (classe e `aria-current="page"`) vem da posição: Mercado enquanto o catálogo cruza o meio da tela, Início no restante da página inicial; no detalhe e no carrinho, Mercado.
+- Início, Mercado, o ícone de busca e o Início da navegação mobile **preservam filtros e ordenação** (reaproveitam e normalizam os parâmetros atuais). Na página inicial também rolam para o topo/catálogo; em outras rotas levam ao catálogo padrão. O logotipo KURIO continua levando ao catálogo sem filtros.
+- A busca desktop fica no cabeçalho: o ícone expande um campo inline. Escape fecha mantendo a busca; × ("Limpar busca") remove o termo da URL, mantendo os demais filtros, e fecha; ambos devolvem o foco ao ícone. Enviar mantém filtros/ordenação, aplica o termo e volta à página 1 do catálogo, em qualquer rota. A barra de busca da página inicial passou a existir só no mobile.
+- No mobile, a barra de busca e o botão de filtros ficam fixos no topo durante a navegação do catálogo, com fundo cobrindo as laterais; saltos para âncoras reservam espaço para ela. O drawer de filtros ocupa a tela inteira.
+- Estilos de hover só se aplicam a dispositivos com ponteiro real (`@media (hover: hover)`); em toque, eles ficavam presos após o toque (ex.: "Explorar" do hero mobile ganhava fundo laranja).
+- Campos de texto e selects desenham o anel de foco dentro da própria borda, acompanhando o raio, sem sobrepor botões acoplados (ex.: cupom).
+- "Carteiras compatíveis" usa o selo do Figma com preenchimento uniforme nos dois lados (o Figma tem padding menor à direita). No mobile, redes sociais e o selo ocupam a largura toda do rodapé para o selo caber numa linha.
+
 ## Tempo real e ações temporariamente indisponíveis
 
 `PublicLayout` é o proprietário de uma conexão pública para as rotas, nunca uma por cartão. Carrega o módulo Socket.IO dinamicamente depois de MSW estar pronto: o cliente captura a implementação WebSocket na importação, então carregá-lo antes da interceptação impede o protocolo. A limpeza lida com desmontagem e Strict Mode. Detalhe é carregado em um módulo separado; o cliente e MSW também têm arquivos separados no build.
 
 O consumidor preserva a correção de caches de versões diferentes. Eventos novos atualizam detalhe e invalidam listas/relacionados; reconexão invalida os recursos ativos e busca REST novamente. Eventos duplicados/antigos já recebidos não reaplicam efeitos. Falhas iniciais têm recuperação; atualizações em segundo plano mantêm os dados úteis e sinalizam erro sem escondê-los. Skeletons usam shimmer com dimensões reservadas e desativam animação por prefers-reduced-motion.
 
-Comprar, adicionar ao carrinho, favoritar, entrar, ações de conta/editoriais/newsletter/redes sociais e o ícone central mobile exibem o mesmo diálogo acessível de indisponibilidade. Não alteram favoritos, contadores ou estado privado e não simulam envio bem-sucedido. O badge ilustrativo de carrinho foi removido. Compartilhar usa a URL real com fallback de cópia e mensagem acessível; não cria transação ou link blockchain.
+Atualização da etapa do carrinho: comprar e adicionar ao carrinho agora são ações reais, e o badge do carrinho mostra a quantidade real (ver [carrinho](cart.md)). Na etapa de descoberta, comprar, adicionar ao carrinho, favoritar, entrar, ações de conta/editoriais/newsletter/redes sociais e o ícone central mobile exibem o mesmo diálogo acessível de indisponibilidade. Não alteram favoritos, contadores ou estado privado e não simulam envio bem-sucedido. O badge ilustrativo de carrinho foi removido. Compartilhar usa a URL real com fallback de cópia e mensagem acessível; não cria transação ou link blockchain.
 
 ## Reprodução e referências visuais
 

@@ -98,3 +98,38 @@ export function seedNfts(): Nft[] {
     ],
   }));
 }
+// Demo coupons. Validity uses the simulation's logical clock (baseline + tick
+// seconds), never the real clock. Discounts apply to the subtotal only.
+export interface CouponFixture {
+  code: string;
+  description: string;
+  discount: { basisPoints: number } | { amountEth: string };
+  expiresAt: string;
+}
+export const coupons: CouponFixture[] = [
+  {
+    code: "KURIO10",
+    description: "10% de desconto no subtotal",
+    discount: { basisPoints: 1000 },
+    expiresAt: "2027-01-01T00:00:00.000Z",
+  },
+  {
+    code: "LANCAMENTO",
+    description: "Desconto do lançamento de 0.1 ETH",
+    discount: { amountEth: "0.1" },
+    expiresAt: "2027-01-01T00:00:00.000Z",
+  },
+  {
+    code: "KURIO15",
+    description: "15% de desconto no subtotal",
+    discount: { basisPoints: 1500 },
+    expiresAt: "2025-12-31T00:00:00.000Z",
+  },
+];
+// Fixed fee per order and network, in ETH like every simulated amount.
+export const networkFees = {
+  ethereum: "0.016",
+  polygon: "0.002",
+  solana: "0.0005",
+} as const;
+export const defaultFeeNetwork = "ethereum" as const;

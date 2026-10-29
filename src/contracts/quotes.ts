@@ -1,15 +1,15 @@
 import type { Eth, Network } from "./common";
-import type { CartItem } from "./cart";
+import type { CartLine } from "./cart";
 export interface Amounts {
   subtotalEth: Eth;
   discountEth: Eth;
   networkFeeEth: Eth;
   totalEth: Eth;
 }
+// The coupon is read from the cart and revalidated; it is not sent again.
 export interface QuoteRequest {
   cartId: string;
   cartVersion: number;
-  coupon?: string;
   network: Network;
 }
 export interface Quote {
@@ -17,7 +17,7 @@ export interface Quote {
   version: number;
   cartVersion: number;
   expiresAt: string;
-  items: Array<CartItem & { nftVersion: number; available: number }>;
+  items: CartLine[];
   coupon: string | null;
   amounts: Amounts;
   requiresConfirmation: boolean;

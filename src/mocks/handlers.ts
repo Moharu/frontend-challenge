@@ -9,6 +9,8 @@ import {
   type Nft,
 } from "@/contracts/nfts";
 import type { ErrorResponse } from "@/contracts/common";
+import { visitorHeader, type Cart } from "@/contracts/cart";
+import { ApiError } from "./store/cart";
 import type { MockStore } from "./store";
 import type { ScenarioControls } from "./scenarios";
 function error(
@@ -34,7 +36,11 @@ export function createHandlers(
         return { response: HttpResponse.error(), empty: false };
       if (result.failure === "http")
         return {
-          response: error(503, "TRANSIENT", "Catalog temporarily unavailable"),
+          response: error(
+            503,
+            "TRANSIENT",
+            "Serviço temporariamente indisponível. Tente novamente.",
+          ),
           empty: false,
         };
       return { response: null, empty: result.empty };
@@ -42,7 +48,73 @@ export function createHandlers(
       return { response: HttpResponse.error(), empty: false };
     }
   }
+  // Cart routes: the visitor token header identifies the server-side cart.
+  function cartRoute(
+    run: (token: string | null, request: Request) => Promise<Cart> | Cart,
+  ) {
+    return async ({ request }: { request: Request }) => {
+      const { response } = await condition(request);
+      if (response) return response;
+      try {
+        const cart = await run(request.headers.get(visitorHeader), request);
+        return HttpResponse.json({ data: cart });
+      } catch (e) {
+        if (e instanceof ApiError)
+          return error(e.status, e.code, e.message, e.fields);
+        throw e;
+      }
+    };
+  }
+  async function body(request: Request): Promise<unknown> {
+    try {
+      return await request.json();
+    } catch {
+      throw new ApiError(400, "VALIDATION", "Corpo JSON inválido.");
+    }
+  }
   return [
+    http.post(`${base}/visitor-sessions`, async ({ request }) => {
+      const { response } = await condition(request);
+      if (response) return response;
+      return HttpResponse.json(
+        { data: { token: await store.createVisitor() } },
+        { status: 201 },
+      );
+    }),
+    http.get(
+      `${base}/cart`,
+      cartRoute((token) => store.cart(token)),
+    ),
+    http.post(
+      `${base}/cart/items`,
+      cartRoute(async (token, request) =>
+        store.addItem(token, await body(request)),
+      ),
+    ),
+    http.patch(`${base}/cart/items/:itemId`, (info) =>
+      cartRoute(async (token, request) =>
+        store.changeItem(
+          token,
+          String(info.params.itemId),
+          await body(request),
+        ),
+      )(info),
+    ),
+    http.delete(`${base}/cart/items/:itemId`, (info) =>
+      cartRoute((token) => store.removeItem(token, String(info.params.itemId)))(
+        info,
+      ),
+    ),
+    http.put(
+      `${base}/cart/coupon`,
+      cartRoute(async (token, request) =>
+        store.applyCoupon(token, await body(request)),
+      ),
+    ),
+    http.delete(
+      `${base}/cart/coupon`,
+      cartRoute((token) => store.removeCoupon(token)),
+    ),
     http.get(`${base}/nfts/:id/related`, async ({ request, params }) => {
       const { response } = await condition(request);
       if (response) return response;

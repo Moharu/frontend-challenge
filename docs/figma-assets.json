@@ -4,7 +4,9 @@
     "home": "2:2",
     "mobile-home": "14:5226",
     "detail": "10:244",
-    "mobile-detail": "15:5536"
+    "mobile-detail": "15:5536",
+    "cart": "11:1278",
+    "mobile-cart": "16:360"
   },
   "assets": [
     {
@@ -366,6 +368,31 @@
     {
       "name": "mobile-detail-Shop",
       "file": "mobile-detail-Shop.svg"
+    },
+    {
+      "name": "cart-Trash",
+      "file": "cart-Trash.svg",
+      "source": "Exportado pelo usuário a partir dos frames do carrinho"
+    },
+    {
+      "name": "cart-Minus",
+      "file": "cart-Minus.svg",
+      "source": "Exportado pelo usuário a partir dos frames do carrinho"
+    },
+    {
+      "name": "cart-Plus",
+      "file": "cart-Plus.svg",
+      "source": "Exportado pelo usuário a partir dos frames do carrinho"
+    },
+    {
+      "name": "cart-DotEmpty",
+      "file": "cart-DotEmpty.svg",
+      "source": "Exportado pelo usuário a partir dos frames do carrinho"
+    },
+    {
+      "name": "cart-DotFilled",
+      "file": "cart-DotFilled.svg",
+      "source": "Derivado de detail-CarouselDots.svg (Ellipse 29)"
     }
   ]
 }

@@ -14,6 +14,7 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
+    { name: "eth-unit", testMatch: "eth.spec.ts" },
     {
       name: "protocol-chromium",
       testMatch: "foundation.spec.ts",
@@ -30,6 +31,19 @@ export default defineConfig({
     {
       name: "discovery-mobile",
       testMatch: "discovery.spec.ts",
+      use: { ...devices["Pixel 7"], viewport: { width: 390, height: 844 } },
+    },
+    {
+      name: "cart-desktop",
+      testMatch: "cart.spec.ts",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1440, height: 900 },
+      },
+    },
+    {
+      name: "cart-mobile",
+      testMatch: "cart.spec.ts",
       use: { ...devices["Pixel 7"], viewport: { width: 390, height: 844 } },
     },
   ],

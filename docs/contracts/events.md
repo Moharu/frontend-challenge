@@ -30,3 +30,7 @@ O contrato `order.updated` herda os campos complementados de `Order`: dados do c
 ## Consumidor nas rotas públicas
 
 A etapa de descoberta monta um consumidor em `PublicLayout`, com conexão única por proprietário e limpeza sob Strict Mode. O módulo Socket.IO é importado dinamicamente após MSW estar pronto, evitando capturar o WebSocket original antes da interceptação. O placeholder foi substituído por catálogo/detalhe; eles agora consultam REST e recebem eventos reais. Listas de relacionados também são invalidadas em eventos e reconexão. O detalhe anuncia mudanças de preço/disponibilidade e mantém conflitos explícitos de edição/quantidade até o usuário corrigi-los. Não há assinatura por cartão ou comportamento privado.
+
+## Carrinho
+
+O mesmo consumidor atende o carrinho; não existe segunda conexão. Quando um `nft.updated` aceito pela deduplicação se refere a um NFT presente em alguma linha do carrinho em cache, o carrinho ativo é invalidado e buscado de novo por REST, sem recalcular valores no cliente. A reconexão também reconcilia o carrinho ativo. Eventos duplicados/antigos não disparam efeitos e, de qualquer forma, a resposta REST reflete o estado atual. A tela do carrinho anuncia mudanças de preço/disponibilidade por linha. Detalhes em [carrinho](../cart.md).

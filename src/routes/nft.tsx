@@ -1,12 +1,15 @@
 import { discoverySearch } from "@/lib/discovery-search";
 import { useEffect, useState } from "react";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import * as Tabs from "@radix-ui/react-tabs";
 import axios from "axios";
 import { nftDetailOptions, relatedOptions } from "@/data/nfts/queries";
 import type { Nft } from "@/contracts/nfts";
-import { ethUnits } from "@/contracts/eth";
+import { multiplyEth } from "@/contracts/eth";
+import { addCartItem } from "@/data/cart/api";
+import { useCartMutation } from "@/data/cart/hooks";
+import { apiError } from "@/lib/api-error";
 import {
   Dialog,
   DialogTrigger,
@@ -64,13 +67,35 @@ function NftDetails({ nft }: { nft: Nft }) {
     quantity > limit ||
     quantity < 1 ||
     !Number.isInteger(quantity);
-  const total =
-    edition && !conflict ? ethUnits(edition.priceEth) * BigInt(quantity) : 0n;
   const totalText =
-    `${total / 10n ** 18n}.${(total % 10n ** 18n).toString().padStart(18, "0")}`.replace(
-      /\.?0+$/,
-      "",
-    );
+    edition && !conflict ? multiplyEth(edition.priceEth, quantity) : "0";
+  const add = useCartMutation(addCartItem);
+  const navigate = useNavigate();
+  const [cartFeedback, setCartFeedback] = useState<{
+    ok: boolean;
+    text: string;
+  } | null>(null);
+  async function addToCart(buy: boolean) {
+    if (!edition || conflict) return;
+    setCartFeedback(null);
+    try {
+      await add.mutateAsync({
+        nftId: nft.id,
+        editionId: edition.id,
+        quantity,
+      });
+      if (buy) {
+        await navigate({ to: "/cart" });
+        return;
+      }
+      setCartFeedback({
+        ok: true,
+        text: `${quantity} × ${nft.name} (${edition.label}) adicionado ao carrinho.`,
+      });
+    } catch (error) {
+      setCartFeedback({ ok: false, text: apiError(error).message });
+    }
+  }
   useEffect(() => {
     document.title = `${nft.name} | KURIO`;
     return () => {
@@ -247,22 +272,28 @@ function NftDetails({ nft }: { nft: Nft }) {
               </Button>
             </div>
             <p className="price mobile-price">{edition?.priceEth ?? "—"} ETH</p>
-            {conflict ? (
-              <Button disabled>Comprar NFT</Button>
-            ) : (
-              <Unavailable
-                className="button button-primary"
-                label="Comprar NFT"
-              >
-                Comprar NFT
-              </Unavailable>
-            )}
-            <Unavailable
-              className="button button-outline"
-              label="Adicionar ao carrinho"
+            <Button
+              disabled={conflict || add.isPending}
+              onClick={() => void addToCart(true)}
             >
-              Adicionar ao carrinho
-            </Unavailable>
+              Comprar NFT
+            </Button>
+            <Button
+              variant="outline"
+              disabled={conflict || add.isPending}
+              aria-describedby="cart-feedback"
+              onClick={() => void addToCart(false)}
+            >
+              {add.isPending ? "Adicionando…" : "Adicionar ao carrinho"}
+            </Button>
+            <p
+              id="cart-feedback"
+              role="status"
+              className={`cart-feedback${cartFeedback?.ok === false ? " is-error" : ""}`}
+            >
+              {cartFeedback?.text}{" "}
+              {cartFeedback?.ok && <Link to="/cart">Ver carrinho</Link>}
+            </p>
           </div>
           {quantity > 1 && !conflict && (
             <p>

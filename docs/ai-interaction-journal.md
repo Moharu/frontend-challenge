@@ -143,3 +143,61 @@ Mantenha este diário de alto nível nos próximos trabalhos do projeto com assi
 **Revisão manual do usuário:** leitura do código das rotas `index` e `nft` e dos testes de descoberta E2E e de integração, aprovados sem alterações.
 
 **Orientação do usuário:** fazer commit e push da etapa de descoberta para `origin/main` (`Moharu/frontend-challenge`). As verificações estão registradas acima e em `docs/discovery-verification.md`; `git diff --check` passou. Pendência registrada para a passagem final de desempenho antes do deploy: encurtar a cadeia crítica do MSW no mobile. Pushes futuros continuam exigindo autorização.
+
+## 2026-10-29 — Carrinho persistente do visitante (`docs/handoffs/coding-agent-cart-draft-pt-br.md`)
+
+**Orientação do usuário:** executar o rascunho do carrinho sem commit/push. O limite da integração Figma foi atingido; o usuário forneceu capturas dos frames `11:1278` e `16:360` e os SVGs pedidos (lixeira, −/+, pontos do carrossel). O ponto preenchido foi derivado de `detail-CarouselDots.svg`, porque as duas exportações de ponto recebidas eram idênticas.
+
+**Decisão aprovada pelo usuário:** o cupom passa a pertencer ao carrinho; `QuoteRequest` deixa de recebê-lo e a cotação futura o lê do carrinho e o revalida. Nenhum outro conflito com o README ou o código foi encontrado nas decisões do rascunho.
+
+**Implementação:** aritmética ETH completa em `bigint` com desconto arredondado para baixo e formatação separada; contratos do carrinho com validador; token opaco de visitante emitido pela API e enviado pelo Axios; estado simulado `schemaVersion` 3 com carrinhos, visitantes, cupons e taxas, adoção do retrato mais recente entre abas; handlers REST com 400/401/404/409/503; rota `/cart` desktop/mobile, badge, adicionar/comprar no detalhe, cupom, conflitos, anúncios, foco, skeleton, estados de erro/vazio e recomendações; reconciliação por `nft.updated` e reconexão; plugin de `modulepreload` do MSW. Decisões e desvios em `docs/cart.md`.
+
+**Correções durante a verificação:** falha em atualização de fundo deixava de exibir o carrinho (agora mantém os dados com aviso); a margem da seção de recomendações colapsava antes do rodapé; regras de CSS existentes (`.related > div`, `td`) quebravam o carrossel e os cards mobile. Testes ajustados: nome "Comprar NFT" exato (colidia com "Como comprar NFTs"), clique por evento em botão `aria-disabled`, espera da carga inicial antes de eventos, atraso para compartilhar a requisição que falha.
+
+**Incidente:** um `prettier --write .` executado pelo agente reformatou o rascunho não versionado do usuário (uma linha em branco inserida). O arquivo foi restaurado byte a byte (18314 bytes, estrutura conferida com a leitura inicial) e `docs/handoffs` passou a ser ignorado pelo Prettier.
+
+**Verificação:** tipos, lint, formatação, builds normal e de integração aprovados; 52 testes de integração e 8 E2E aprovados. Referências visuais novas do carrinho e regeneradas do detalhe inspecionadas pelo agente. Lighthouse mobile antes/depois do pré-carregamento: início 88/88 (LCP 3369 → 3156 ms), detalhe 84/83 (LCP 3890 → 3803 ms); desktop 98–99; demais categorias 100. A meta de desempenho mobile continua não atingida; causas em `docs/cart-verification.md`. Não se declara revisão humana desta etapa.
+
+## 2026-10-29 — Revisão manual do carrinho e ajustes de navegação
+
+**Revisão manual do usuário:** zoom verificado e aprovado. Teclado virtual será verificado após o deploy na Vercel; duas abas simultâneas serão verificadas pelo usuário após estes ajustes.
+
+**Problemas relatados e correções:** (1) anel de foco do campo de cupom fora do lugar: campos de texto/selects agora desenham o anel dentro da borda; (2) Início e Mercado destacados juntos na página inicial: o TanStack Router marca como ativos todos os links para a rota atual, então os dois links passaram a usar `useLinkProps` com estado ativo e `aria-current` definidos pela posição do catálogo, e o cabeçalho desktop ficou fixo no topo com espaço reservado para âncoras; (3) selo de "Carteiras compatíveis" adicionado conforme o Figma, com padding uniforme e largura total no rodapé mobile; (4) clicar em Início descartava filtros/ordenação: Início, Mercado, busca e o Início mobile preservam os parâmetros atuais.
+
+**Verificação:** script do agente confirmou destaque correto no topo/catálogo/detalhe, parâmetros preservados e rolagem; capturas de foco (desktop/mobile), selo e cabeçalho fixo inspecionadas. Tipos, lint, formatação, 52 testes de integração e 8 E2E aprovados; as seis referências visuais foram regeneradas após inspecionar os diffs (selo no rodapé, Mercado não mais destacado no topo do início, rodapé mobile reorganizado). Nenhum commit ou push.
+
+## 2026-10-29 — Busca, hover, cupom, drawer e barra fixa mobile
+
+**Problemas relatados pelo usuário:** busca desktop fora do cabeçalho; "Explorar" mobile com aparência estranha após o toque; placeholder do cupom cortado no mobile; drawer de filtros com recorte lateral; pedido de barra de busca/filtros fixa no topo do catálogo mobile.
+
+**Correções:** busca desktop agora expande inline no cabeçalho (mantém filtros, volta à página 1, Escape/× devolvem o foco); a barra da página inicial ficou somente mobile e passou a ser fixa no topo com fundo de largura total; hover restrito a `@media (hover: hover)` (o hover preso em toque pintava o link do hero); cupom mobile com texto de 16px e placeholder de 12px; drawer de filtros em tela cheia no mobile.
+
+**Teste instável encontrado e corrigido:** o caso de falhas do carrinho falhava às vezes porque a carga inicial do carrinho no cabeçalho, após recarregar `/`, podia consumir a falha de uso único preparada pelo teste. O teste agora espera o cabeçalho carregar ("Carrinho, 3 itens") antes de preparar os controles; 20 repetições (desktop/mobile) aprovadas. Uma tentativa de usar `retryOnMount: false` no carrinho foi revertida por não ser a causa.
+
+**Verificação:** capturas do agente (busca no cabeçalho, Explorar após toque, drawer, cupom em 390px, barra fixa no topo e ao rolar); tipos, lint, formatação, 52 testes de integração e 8 E2E aprovados; referências mobile de início e carrinho regeneradas após inspecionar os diffs. Nenhum commit ou push.
+
+## 2026-10-29 — Abrir a busca do cabeçalho rolava ao topo
+
+**Problema relatado pelo usuário:** no desktop, clicar no botão de busca do cabeçalho rolava a página para o topo.
+
+**Causa confirmada:** o `scroll-padding-top` da página (adicionado para o cabeçalho fixo) fazia o navegador considerar encoberto qualquer elemento dentro do próprio cabeçalho; focar o campo (autoFocus) rolava a página até a posição original do cabeçalho. O agente reproduziu o salto (903 → 441) e verificou que Shift+Tab até o cabeçalho também saltava (900 → 0).
+
+**Correção:** o espaço para a área fixa passou a ser `scroll-margin-top` nos alvos de conteúdo (links, botões, campos e elementos com `id`), excluindo o cabeçalho e a barra fixa mobile; o campo recebe foco com `preventScroll`. O campo aberto tem a altura do botão "Entrar", sem alterar a altura do cabeçalho.
+
+**Verificação:** clique real e foco programático no cabeçalho, Shift+Tab até ele e foco na busca fixa mobile mantêm a posição; "Explorar" continua levando o catálogo para baixo do cabeçalho; foco por teclado no conteúdo permanece visível abaixo dele. Tipos, lint, formatação, 52 testes de integração e 8 E2E aprovados, sem mudança nas referências visuais. Nenhum commit ou push.
+
+## 2026-10-29 — × limpa a busca do cabeçalho
+
+**Orientação do usuário:** no desktop, clicar no × deve limpar a busca.
+
+**Alteração:** × ("Limpar busca") remove o termo ativo, mantém os demais filtros/ordenação, volta à página 1 e fecha o campo; sem termo ativo, apenas fecha. Escape continua só fechando. Corrigido também um problema encontrado na verificação: o campo era remontado ao enviar a busca e perdia o foco, impedindo o Escape; agora o campo não é remontado e o Escape é tratado no formulário.
+
+**Verificação:** script do agente (busca com categoria/ordenação, Escape mantém o termo, × limpa só o termo e devolve o foco); tipos, lint, formatação, 52 testes de integração e 8 E2E aprovados. Nenhum commit ou push.
+
+## 2026-10-29 — Verificação manual com duas abas
+
+**Revisão manual do usuário:** com duas abas visíveis ao mesmo tempo, alterações em uma não aparecem na outra; ao ocultar e voltar para uma aba (alternando abas na janela), elas ficam sincronizadas. O usuário considerou esse comportamento aceitável. A explicação (nova busca ao recuperar o foco + adoção do retrato mais recente pelo store) foi registrada em `docs/cart.md`. Nenhum código foi alterado.
+
+## 2026-10-29 — Commit e push do carrinho autorizados
+
+**Orientação do usuário:** fazer commit e push da etapa do carrinho e dos ajustes de navegação/interface para `origin/main` (`Moharu/frontend-challenge`). Verificações registradas acima e em `docs/cart-verification.md`; `git diff --check` aprovado. Pendências: teclado virtual após o deploy na Vercel; meta de desempenho mobile. Pushes futuros continuam exigindo autorização.

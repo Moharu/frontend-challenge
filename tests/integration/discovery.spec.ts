@@ -30,12 +30,15 @@ test("busca, filtros, modos, paginação e histórico são baseados na URL", asy
   await page
     .getByRole("button", { name: "Todos os NFTs", exact: true })
     .click();
+  // Desktop opens the search field inside the header; mobile shows it inline.
   if (
     await page
-      .getByRole("link", { name: "Buscar NFTs", exact: true })
+      .getByRole("button", { name: "Buscar NFTs", exact: true })
       .isVisible()
   )
-    await page.getByRole("link", { name: "Buscar NFTs", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Buscar NFTs", exact: true })
+      .click();
   await page
     .getByRole("textbox", { name: "Buscar NFTs", exact: true })
     .fill("Sage");

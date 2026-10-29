@@ -26,7 +26,6 @@
   }
   html {
     scroll-behavior: smooth;
-    scroll-padding-top: 24px;
   }
   body {
     margin: 0;
@@ -119,16 +118,30 @@
     outline: 2px solid var(--accent);
     outline-offset: 4px;
   }
-  button:hover,
-  a:hover {
-    color: var(--accent);
+  /* Text fields draw the ring inside their own border, following its radius,
+     so it never overlaps attached buttons. */
+  input:not([type="radio"], [type="checkbox"]):focus-visible,
+  select:focus-visible {
+    outline-offset: -2px;
+  }
+  /* Touch taps would leave hover styles stuck, so they need a real pointer. */
+  @media (hover: hover) {
+    button:hover,
+    a:hover {
+      color: var(--accent);
+    }
   }
 }
 .site {
   width: min(1200px, calc(100% - 48px));
   margin: auto;
 }
+/* Sticky on desktop; anchor jumps leave room for it. */
 .desktop-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--background);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -169,9 +182,11 @@
   background: var(--primary);
   color: var(--background);
 }
-.button-primary:hover {
-  background: var(--accent);
-  color: var(--background);
+@media (hover: hover) {
+  .button-primary:hover {
+    background: var(--accent);
+    color: var(--background);
+  }
 }
 .button-outline {
   border: 1px solid var(--primary);
@@ -549,6 +564,17 @@
 .footer-links small {
   font-size: 9px;
   color: var(--accent);
+}
+/* Figma pill around the compatible wallets, with even padding on both sides. */
+.footer-links .wallet-badge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--raised);
+  font-weight: 700;
+  letter-spacing: 0.4px;
 }
 .copyright {
   text-align: center;
@@ -1008,6 +1034,10 @@
     padding: 16px;
     gap: 24px;
   }
+  /* Socials and the wallet pill take the full width so the pill stays on one line. */
+  .footer-links > section:last-child {
+    grid-column: 1 / -1;
+  }
   .footer-links h3 {
     font-size: 13px;
   }
@@ -1198,12 +1228,17 @@
   }
 }
 
-.search-bar:target {
-  display: flex;
-}
 @media (max-width: 700px) {
+  /* Search and filters stay reachable while scrolling the marketplace; the
+     bleed covers the page gutters so cards never show beside the bar. */
   .search-bar {
     display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 35;
+    margin-inline: -24px;
+    padding: max(12px, env(safe-area-inset-top)) 24px 12px;
+    background: var(--background);
   }
 }
 
@@ -1244,10 +1279,6 @@
   .gallery {
     max-width: 650px;
   }
-}
-
-.search-bar.search-open {
-  display: flex;
 }
 
 .price-reviews a {
@@ -1315,4 +1346,648 @@ h3 {
 }
 .spotlight h2 {
   font-size: 18px;
+}
+
+/* Cart badge: home-Badge.svg geometry (copper circle, dark ring) with a count. */
+.cart-link {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+.cart-badge {
+  position: absolute;
+  top: -7px;
+  right: -9px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--primary);
+  box-shadow: 0 0 0 2px var(--background);
+  color: var(--background);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* Detail: add-to-cart feedback. */
+.cart-feedback {
+  flex-basis: 100%;
+  min-height: 1.6em;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.cart-feedback.is-error {
+  color: #ffb08a;
+}
+.cart-feedback a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* Cart page. */
+.cart-mobile-header {
+  display: none;
+}
+.cart-breadcrumbs {
+  margin-bottom: 4px;
+}
+.cart-page h1 {
+  font-size: 20px;
+}
+.cart-mobile-header h1 {
+  margin: 0;
+}
+.cart-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 332px;
+  gap: 86px;
+  align-items: start;
+}
+.cart-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 12px;
+  margin-top: -12px;
+}
+.cart-table th {
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+.cart-table th:first-child {
+  width: 40%;
+}
+.cart-table th:nth-child(2),
+.cart-table th:nth-child(3),
+.cart-table th:nth-child(4) {
+  width: 17.5%;
+}
+.cart-table td {
+  background: var(--surface);
+  padding: 0;
+  vertical-align: middle;
+  font-size: 15px;
+  font-weight: 500;
+}
+.cart-item {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+.cart-item img {
+  width: 70px;
+  height: 70px;
+  flex: none;
+  object-fit: cover;
+  border-radius: 4px 0 0 4px;
+  align-self: start;
+}
+.cart-item > div {
+  min-width: 0;
+  padding: 8px 8px 8px 0;
+}
+.cart-item a {
+  font-weight: 700;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+@media (hover: hover) {
+  .cart-item a:hover {
+    color: var(--accent);
+  }
+}
+.cart-token,
+.cart-edition {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.cart-refresh-error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #ffb08a;
+}
+.cart-notice,
+.cart-error {
+  font-size: 12px;
+  color: #ffb08a;
+}
+.cart-notice p {
+  margin: 4px 0 0;
+}
+.cart-notice .button {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.has-conflict td {
+  background: #3a1d14;
+}
+.cart-unit,
+.cart-line-total {
+  overflow-wrap: anywhere;
+  padding-right: 12px !important;
+}
+.cart-line-total {
+  color: var(--primary);
+  font-weight: 700;
+}
+.cart-quantity > div {
+  display: flex;
+  align-items: center;
+}
+.qty-button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 50px;
+  margin: -6px -10px -14px;
+}
+.qty-button img {
+  display: block;
+}
+.qty-button span {
+  display: none;
+}
+.qty-button[aria-disabled="true"],
+.cart-remove button[aria-disabled="true"],
+.cart-summary button[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.qty-value {
+  min-width: 2.5ch;
+  text-align: center;
+  margin: 0 10px;
+}
+.cart-remove {
+  text-align: center;
+  width: 56px;
+}
+.cart-remove button {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+}
+.cart-summary h2 {
+  font-size: 18px;
+  font-weight: 700;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.coupon label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.coupon > div {
+  display: flex;
+}
+.coupon input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 8px;
+  border: 1px solid var(--primary);
+  border-right: 0;
+  border-radius: 2px 0 0 2px;
+  background: transparent;
+  font-size: 12px;
+}
+.coupon input::placeholder {
+  color: var(--muted-foreground);
+}
+.coupon button[type="submit"] {
+  height: 40px;
+  padding: 0 18px;
+  background: var(--primary);
+  color: var(--background);
+  font-weight: 700;
+  border-radius: 0 2px 2px 0;
+}
+.coupon-applied {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.coupon-applied button {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.amounts {
+  margin: 24px 0;
+}
+.amounts > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.amounts dt {
+  font-size: 15px;
+  font-weight: 400;
+}
+.amounts dd {
+  margin: 0;
+  font-size: 17px;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.amounts small {
+  display: block;
+  font-size: 11px;
+  color: var(--accent);
+  margin-top: 8px;
+}
+.amount-total {
+  margin-top: 24px;
+}
+.amount-total dt {
+  font-weight: 700;
+  font-size: 16px;
+}
+.amount-total dd {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--primary);
+}
+.checkout-button {
+  width: 100%;
+  height: 40px;
+}
+.continue-link {
+  display: block;
+  margin-top: 14px;
+  text-align: center;
+  color: var(--accent);
+}
+.cart-empty h2 {
+  font-size: 20px;
+  font-weight: 700;
+}
+.cart-empty p {
+  color: var(--muted-foreground);
+  margin-bottom: 20px;
+}
+.cart-skeleton-lines {
+  display: grid;
+  gap: 12px;
+  padding-top: 52px;
+}
+.cart-skeleton-line {
+  min-height: 70px;
+  border-radius: 4px;
+}
+.cart-skeleton-summary {
+  min-height: 420px;
+}
+/* Padding, not the section margin: margins collapse through main and
+   .route-content and would vanish before the footer. */
+.cart-page {
+  padding-bottom: 96px;
+}
+.recommendations {
+  margin: 112px 0 0;
+}
+.recommendations > .carousel {
+  display: grid;
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 4 * 24px) / 5);
+  gap: 24px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.carousel > * {
+  scroll-snap-align: start;
+}
+.recommendations > .carousel-dots {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+.carousel-dots button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+}
+@media (max-width: 1100px) {
+  .cart-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+  .cart-summary {
+    max-width: 480px;
+    width: 100%;
+    justify-self: end;
+  }
+  .recommendations > .carousel {
+    grid-auto-columns: calc((100% - 2 * 24px) / 3);
+  }
+}
+@media (max-width: 700px) {
+  .site:has(.cart-page) + .mobile-nav {
+    display: none;
+  }
+  .site:has(.cart-page) {
+    padding-top: 24px;
+    padding-bottom: calc(var(--summary-space, 0px) + 24px);
+  }
+  .cart-breadcrumbs {
+    display: none;
+  }
+  .cart-mobile-header {
+    display: grid;
+    grid-template-columns: 36px 1fr 36px;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .cart-mobile-header h1 {
+    text-align: center;
+    font-size: 20px;
+  }
+  .cart-back {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--raised);
+  }
+  .cart-back img {
+    transform: rotate(90deg);
+    width: 13px;
+  }
+  .cart-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .cart-table,
+  .cart-table tbody {
+    display: block;
+    margin: 0;
+  }
+  /* Remove sits top-right and the quantity bottom-right so the name keeps the
+     full width, as in the frame, without the overlap drawn on "Ivory Baron". */
+  .cart-table tr {
+    display: block;
+    position: relative;
+    min-height: 100px;
+    margin-bottom: 20px;
+    border-radius: 12px;
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .has-conflict {
+    background: #3a1d14 !important;
+  }
+  .cart-table td {
+    display: block;
+    background: none;
+  }
+  .cart-table td.cart-item {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .cart-item img {
+    width: 100px;
+    height: 100px;
+    border-radius: 12px 0 0 12px;
+  }
+  .cart-item > div {
+    padding: 8px 40px 8px 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .cart-item a {
+    font-size: 15px;
+  }
+  .cart-token {
+    display: none;
+  }
+  .cart-edition {
+    font-size: 14px;
+  }
+  .cart-unit {
+    display: none !important;
+  }
+  .cart-line-total {
+    position: absolute;
+    left: 112px;
+    bottom: 10px;
+    font-size: 18px;
+  }
+  .cart-item > div {
+    padding-bottom: 36px;
+  }
+  .cart-remove {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: auto;
+  }
+  .cart-quantity {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+  }
+  .qty-button {
+    width: 32px;
+    height: 32px;
+    margin: 0;
+    border-radius: 50%;
+    background: var(--raised);
+    color: var(--foreground);
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .qty-button img {
+    display: none;
+  }
+  .qty-button span {
+    display: inline;
+  }
+  .qty-value {
+    margin: 0 8px;
+    font-size: 15px;
+  }
+  .cart-layout {
+    display: block;
+  }
+  .cart-summary {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    max-width: none;
+    max-height: 70svh;
+    overflow-y: auto;
+    padding: 24px 24px max(24px, env(safe-area-inset-bottom));
+    border-radius: 32px 32px 0 0;
+    background: var(--surface);
+    box-shadow: 0 -12px 30px #140d0a55;
+  }
+  .cart-summary h2,
+  .coupon label,
+  .continue-link {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    margin: 0;
+    padding: 0;
+  }
+  .coupon input {
+    height: 50px;
+    padding: 0 16px;
+    border: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    border-radius: 25px;
+    font-size: 14px;
+    margin-right: -48px;
+    padding-right: 56px;
+  }
+  .coupon button[type="submit"] {
+    position: relative;
+    height: 50px;
+    padding: 0 20px;
+    border-radius: 25px;
+    background: linear-gradient(90deg, #9b6237, var(--primary));
+    color: var(--foreground);
+    font-size: 16px;
+  }
+  .amounts {
+    margin: 16px 0;
+  }
+  .amounts > div {
+    margin-bottom: 8px;
+  }
+  .amounts small {
+    margin-top: 2px;
+  }
+  .amount-total {
+    margin-top: 12px;
+  }
+  .checkout-button {
+    height: 60px;
+    border-radius: 30px;
+    background: linear-gradient(90deg, var(--primary), #b97a45);
+    font-size: 17px;
+  }
+  .cart-skeleton-lines {
+    padding-top: 0;
+  }
+  .cart-skeleton-line {
+    min-height: 100px;
+    border-radius: 12px;
+  }
+  .cart-skeleton-summary {
+    display: none;
+  }
+  .recommendations > .carousel {
+    grid-auto-columns: calc((100% - 16px) / 2);
+    gap: 16px;
+  }
+  .recommendations {
+    margin-top: 48px;
+  }
+  .cart-page {
+    padding-bottom: 48px;
+  }
+}
+
+/* Desktop header search: icon expands to an inline field. */
+.header-search-toggle {
+  display: grid;
+  place-items: center;
+}
+.header-search {
+  display: flex;
+  align-items: center;
+  /* Not taller than "Entrar", so opening it never changes the header height. */
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.header-search input {
+  width: clamp(140px, 16vw, 240px);
+  height: 100%;
+  padding: 0 10px;
+  background: transparent;
+  font-size: 13px;
+}
+.header-search input::placeholder {
+  color: var(--muted-foreground);
+}
+.header-search button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 100%;
+  font-size: 18px;
+}
+.header-search img {
+  max-width: 18px;
+}
+@media (max-width: 700px) {
+  /* Full-screen filter drawer on phones. */
+  .filter-drawer {
+    inset: 0;
+    width: 100%;
+    height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    padding: max(24px, env(safe-area-inset-top)) 24px
+      max(24px, env(safe-area-inset-bottom));
+  }
+  /* 16px text avoids iOS zoom on focus; the smaller placeholder fits at 390px. */
+  .coupon input {
+    font-size: 16px;
+    padding-left: 14px;
+    padding-right: 50px;
+    text-overflow: ellipsis;
+  }
+  .coupon input::placeholder {
+    font-size: 12px;
+  }
+  .coupon button[type="submit"] {
+    padding: 0 16px;
+  }
+}
+
+/* Anchor jumps and keyboard focus keep content clear of the sticky header
+   (desktop) and the sticky search bar (mobile home). This is a scroll-margin on
+   the targets, not scroll-padding on the page: with page padding, focusing
+   anything inside the sticky bars scrolled the page back to their origin. */
+:root {
+  --sticky-offset: 112px;
+}
+@media (max-width: 700px) {
+  :root {
+    --sticky-offset: 96px;
+  }
+}
+.site
+  :is(a, button, input, select, textarea, [tabindex], [id]):not(
+    .desktop-header *,
+    .search-bar *
+  ) {
+  scroll-margin-top: var(--sticky-offset);
 }

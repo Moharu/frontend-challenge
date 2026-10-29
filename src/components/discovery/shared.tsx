@@ -16,10 +16,12 @@ export function Unavailable({
   children,
   label,
   className = "",
+  description,
 }: {
   children: ReactNode;
   label: string;
   className?: string;
+  description?: string;
 }) {
   return (
     <Dialog>
@@ -31,8 +33,9 @@ export function Unavailable({
       <DialogContent>
         <DialogTitle>Funcionalidade indisponível</DialogTitle>
         <DialogDescription>
-          {label} ainda não está disponível nesta versão. Esta demonstração
-          inclui somente a descoberta pública de NFTs.
+          {description ??
+            `${label} ainda não está disponível nesta versão. ` +
+              "Esta demonstração inclui a descoberta pública de NFTs e o carrinho de visitante."}
         </DialogDescription>
       </DialogContent>
     </Dialog>

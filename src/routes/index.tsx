@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSearch, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useSearch, useNavigate } from "@tanstack/react-router";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { categories, networks, type NftListQuery } from "@/contracts/nfts";
 import { nftListOptions } from "@/data/nfts/queries";
@@ -31,9 +31,6 @@ export function IndexPage() {
   const query = useSearch({ from: "/" });
   const navigate = useNavigate({ from: "/" });
   const [drawer, setDrawer] = useState(false);
-  const searchOpen = useRouterState({
-    select: (state) => state.location.hash === "busca",
-  });
   const result = useQuery({
     ...nftListOptions(query),
     placeholderData: keepPreviousData,
@@ -46,10 +43,7 @@ export function IndexPage() {
   }
   return (
     <main id="main">
-      <div
-        className={`search-bar ${searchOpen ? "search-open" : ""}`}
-        id="busca"
-      >
+      <div className="search-bar">
         <form
           role="search"
           onSubmit={(e) => {

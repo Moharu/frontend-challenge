@@ -10,6 +10,7 @@ import type { DataResponse } from "@/contracts/common";
 import { compareEth } from "@/contracts/eth";
 import { createCatalogRealtime } from "@/realtime/catalog";
 import type { MockControls } from "@/mocks/browser";
+import { cartKey } from "@/data/cart/queries";
 
 export function installHarness(controls: MockControls, baseURL: string) {
   let realtime = createCatalogRealtime(queryClient, baseURL);
@@ -118,6 +119,10 @@ export function installHarness(controls: MockControls, baseURL: string) {
     scenario: controls.scenarios.select,
     delay: controls.scenarios.setDelay,
     failNext: controls.scenarios.failNext,
+    failNextCart: controls.scenarios.failNextCart,
+    cartDelay: controls.scenarios.setCartDelay,
+    // Drops the cached cart so the next observer starts from a pending query.
+    forgetCart: () => queryClient.removeQueries({ queryKey: cartKey }),
     snapshot: controls.store.snapshot,
     compareEth,
   };

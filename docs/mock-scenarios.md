@@ -75,3 +75,18 @@ A seed 2 amplia NFTs/edições, categorias, redes, arte local, metadados, classi
 No build de integração, a suíte de protocolo acessa `/__protocol`, que inicializa a ponte sem montar o produto. Os testes públicos acessam `/` e `/nfts/...`, montando a interface, seus observadores e a conexão reais. Isso impede que o tráfego da aplicação altere diagnósticos/contagens da suíte isolada. A prontidão continua condicionada à inicialização do estado e do MSW. O modo padrão de desenvolvimento/build agora habilita mocks; a ponte continua somente na configuração explícita integration.
 
 A camada de tempo real invalida também relacionados após eventos e reconexões. Os 14 testes de protocolo foram preservados; novas suítes observam a interface em desktop/mobile. Saídas de execução usam `test-results/e2e` e `test-results/integration`, evitando que uma suíte remova traces da outra.
+
+## Extensões da etapa do carrinho
+
+O retrato passa a `schemaVersion: 3` (seed 2 mantida), na mesma chave `kurio.mock.catalog.v1`, com `visitors` (token → carrinho) e `carts` (linhas com quantidade e último preço reconhecido, cupom, versão e `updatedAt`). Retratos da versão 2 são incompatíveis e restauram somente essa chave; o token do visitante (`kurio.visitor.v1`) é do cliente e um token desconhecido recebe 401, sendo substituído. `reset()` restaura carrinhos e visitantes vazios. Toda gravação, inclusive do carrinho, avança o mesmo relógio lógico `tick`. Cupons e taxas por rede são fixtures em `src/mocks/store/seed.ts`; regras do carrinho em `src/mocks/store/cart.ts`.
+
+**Múltiplas abas (atualiza a regra de "somente uma aba"):** antes de cada leitura e de cada transação de escrita, o store adota o retrato persistido se seu `tick` for maior que o da memória. Não há notificação entre abas e gravações simultâneas no mesmo `tick` resolvem por última gravação. Ver [carrinho](cart.md).
+
+| Controle (mocks / ponte)                                           | Efeito                                                                                            |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `scenarios.failNextCart(kind, 'read' \| 'write')` / `failNextCart` | Falha uma vez a próxima leitura ou mutation do carrinho (`http` = 503, `network` = falha de rede) |
+| `scenarios.setCartDelay('read' \| 'write', ms)` / `cartDelay`      | Atraso de 0 a 10.000ms nas leituras ou mutations do carrinho, separado dos atrasos do catálogo    |
+| `forgetCart()` (somente ponte)                                     | Remove o carrinho do cache Query para que o próximo observador comece pendente (skeleton)         |
+| `update(...)` existente                                            | Altera preço/disponibilidade de um item do carrinho e emite `nft.updated`                         |
+
+Cupons inválido/expirado não precisam de controle: `KURIO15` é sempre expirado e qualquer código fora das fixtures é inexistente. A resposta 503 transitória passou a ter mensagem genérica em pt-BR ("Serviço temporariamente indisponível. Tente novamente."), pois também atende o carrinho. O projeto `eth-unit` do Playwright roda a aritmética de ETH em Node, sem navegador; `cart-desktop`/`cart-mobile` rodam os fluxos do carrinho na interface real.

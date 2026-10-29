@@ -1,15 +1,179 @@
 import { discoverySearch } from "@/lib/discovery-search";
-import { useEffect } from "react";
-import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
+import {
+  Link,
+  Outlet,
+  useLinkProps,
+  useNavigate,
+  useRouterState,
+} from "@tanstack/react-router";
 import { queryClient } from "@/lib/query-client";
 import { readEnv } from "@/lib/env";
 import type { CatalogRealtime } from "@/realtime/catalog";
 import { Unavailable } from "./shared";
 import { asset, artImage } from "./assets";
+import { badgeText, cartCountLabel, useCart } from "@/data/cart/hooks";
+// Início and Mercado both point at "/", so the router would mark both active.
+// The active state comes from the scroll position instead, and both links keep
+// the current filters (discoverySearch renormalizes the previous search, so other
+// routes fall back to defaults). On the home page they also scroll.
+function SectionLink({
+  active,
+  hash,
+  home,
+  children,
+}: {
+  active: boolean;
+  hash?: string;
+  home: boolean;
+  children: ReactNode;
+}) {
+  const props = useLinkProps({ to: "/", search: discoverySearch, hash });
+  function onClick(event: MouseEvent<HTMLAnchorElement>) {
+    props.onClick?.(event);
+    // Only plain clicks the router handled (not new-tab clicks) also scroll.
+    if (!home || !event.defaultPrevented) return;
+    if (hash) document.getElementById(hash)?.scrollIntoView();
+    else window.scrollTo({ top: 0 });
+  }
+  return (
+    <a
+      {...props}
+      onClick={onClick}
+      data-status={undefined}
+      className={active ? "active" : undefined}
+      aria-current={active ? "page" : undefined}
+    >
+      {children}
+    </a>
+  );
+}
+// Desktop search expands inside the header. Submitting keeps the current
+// filters, applies the term and returns to page 1 of the catalog.
+function HeaderSearch() {
+  const [open, setOpen] = useState(false);
+  const toggle = useRef<HTMLButtonElement>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
+  // Focus without scrolling: inside the sticky header, a plain focus() (or
+  // autoFocus) scrolls the page back to the header's original position.
+  useEffect(() => {
+    if (open) input.current?.focus({ preventScroll: true });
+  }, [open]);
+  const term = useRouterState({
+    select: (state) => discoverySearch(state.location.search).search,
+  });
+  function close() {
+    setOpen(false);
+    requestAnimationFrame(() => toggle.current?.focus({ preventScroll: true }));
+  }
+  function search(value: string) {
+    void navigate({
+      to: "/",
+      search: (previous) =>
+        discoverySearch({
+          ...discoverySearch(previous),
+          search: value,
+          page: 1,
+        }),
+      hash: "catalogo",
+    });
+  }
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    search(String(new FormData(event.currentTarget).get("search") ?? ""));
+  }
+  // × clears an active search (other filters stay) and closes; Escape only closes.
+  function clear() {
+    if (term) search("");
+    close();
+  }
+  if (!open)
+    return (
+      <button
+        ref={toggle}
+        className="header-search-toggle"
+        aria-label="Buscar NFTs"
+        aria-expanded={false}
+        onClick={() => setOpen(true)}
+      >
+        <img src={asset("home-SearchIcon.svg")} alt="" />
+      </button>
+    );
+  return (
+    // The field mounts with the current term each time it opens; it is not
+    // remounted on submit, so focus stays in it.
+    <form
+      role="search"
+      className="header-search"
+      onSubmit={submit}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") close();
+      }}
+    >
+      <input
+        name="search"
+        aria-label="Buscar NFTs"
+        placeholder="Explorar coleções"
+        defaultValue={term}
+        maxLength={100}
+        ref={input}
+      />
+      <button type="submit" aria-label="Buscar">
+        <img src={asset("home-SearchIcon.svg")} alt="" />
+      </button>
+      <button type="button" aria-label="Limpar busca" onClick={clear}>
+        ×
+      </button>
+    </form>
+  );
+}
+// Mercado is current while the catalog crosses the middle of the viewport.
+function useCatalogInView(home: boolean) {
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    if (!home) return;
+    const catalog = document.getElementById("catalogo");
+    if (!catalog) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      { rootMargin: "-50% 0px -50% 0px" },
+    );
+    observer.observe(catalog);
+    return () => {
+      observer.disconnect();
+      setInView(false);
+    };
+  }, [home]);
+  return inView;
+}
+// Badge shows the summed quantity; the accessible name carries the exact count.
+function CartLink({ icon }: { icon: string }) {
+  const cart = useCart();
+  const count = cart.data?.itemCount ?? 0;
+  return (
+    <Link to="/cart" className="cart-link" aria-label={cartCountLabel(count)}>
+      <img src={asset(icon)} alt="" />
+      {count > 0 && (
+        <span className="cart-badge" aria-hidden="true">
+          {badgeText(count)}
+        </span>
+      )}
+    </Link>
+  );
+}
 export function PublicLayout() {
   const home = useRouterState({
     select: (state) => state.location.pathname === "/",
   });
+  const inCatalog = useCatalogInView(home);
   useEffect(() => {
     let disposed = false;
     let live: CatalogRealtime | undefined;
@@ -36,36 +200,22 @@ export function PublicLayout() {
             KURIO
           </Link>
           <nav aria-label="Principal">
-            <Link
-              className={home ? "active" : ""}
-              to="/"
-              search={discoverySearch({})}
-            >
+            <SectionLink home={home} active={home && !inCatalog}>
               Início
-            </Link>
-            <Link
-              className={!home ? "active" : ""}
-              to="/"
-              search={discoverySearch({})}
+            </SectionLink>
+            <SectionLink
+              home={home}
               hash="catalogo"
+              active={!home || inCatalog}
             >
               Mercado
-            </Link>
+            </SectionLink>
             <Unavailable label="Criadores">Criadores</Unavailable>
             <Unavailable label="Aprenda">Aprenda</Unavailable>
           </nav>
           <div className="header-actions">
-            <Link
-              to="/"
-              search={discoverySearch({})}
-              hash="busca"
-              aria-label="Buscar NFTs"
-            >
-              <img src={asset("home-SearchIcon.svg")} alt="" />
-            </Link>
-            <Unavailable label="Carrinho">
-              <img src={asset("home-CartIcon.svg")} alt="" />
-            </Unavailable>
+            <HeaderSearch />
+            <CartLink icon="home-CartIcon.svg" />
             <Unavailable className="button button-primary" label="Entrar">
               Entrar
             </Unavailable>
@@ -77,7 +227,7 @@ export function PublicLayout() {
         <Footer />
       </div>
       <nav className="mobile-nav" aria-label="Navegação mobile">
-        <Link to="/" search={discoverySearch({})} aria-label="Início">
+        <Link to="/" search={discoverySearch} aria-label="Início">
           <img src={asset("mobile-home-Home.svg")} alt="" />
         </Link>
         <Unavailable label="Favoritos">
@@ -98,9 +248,7 @@ export function PublicLayout() {
             ))}
           </span>
         </Unavailable>
-        <Unavailable label="Carrinho">
-          <img src={asset("mobile-home-Shop.svg")} alt="" />
-        </Unavailable>
+        <CartLink icon="mobile-home-Shop.svg" />
         <Unavailable label="Minha conta">
           <img src={asset("mobile-home-User.svg")} alt="" />
         </Unavailable>
@@ -218,7 +366,9 @@ function Footer() {
             ))}
           </div>
           <h3>Carteiras compatíveis</h3>
-          <small>METAMASK • WALLETCONNECT • COINBASE</small>
+          <small className="wallet-badge">
+            METAMASK • WALLETCONNECT • COINBASE
+          </small>
         </section>
       </div>
       <p className="copyright">© 2026 Kurio. Propriedade digital para todos.</p>

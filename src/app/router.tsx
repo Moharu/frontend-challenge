@@ -31,8 +31,13 @@ const detailRoute = createRoute({
   path: "/nfts/$nftId",
   component: lazyRouteComponent(() => import("@/routes/nft"), "NftPage"),
 });
+const cartRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/cart",
+  component: lazyRouteComponent(() => import("@/routes/cart"), "CartPage"),
+});
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([indexRoute, detailRoute]),
+  routeTree: rootRoute.addChildren([indexRoute, detailRoute, cartRoute]),
 });
 declare module "@tanstack/react-router" {
   interface Register {

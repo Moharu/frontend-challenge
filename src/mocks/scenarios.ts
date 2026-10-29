@@ -6,6 +6,13 @@ export function createScenarios() {
   let scenario: Scenario = "default";
   let delays: Record<string, number> = {};
   let failure: Failure | null = null;
+  // Cart controls: one-shot failures and delays for cart reads/writes, kept apart
+  // from catalog requests that run concurrently on the same page.
+  let cartFailures: Record<"read" | "write", Failure | null> = {
+    read: null,
+    write: null,
+  };
+  let cartDelays = { read: 0, write: 0 };
   let generation = new AbortController();
   const stats = { started: 0, completed: 0, cancelled: 0 };
   return {
@@ -16,6 +23,8 @@ export function createScenarios() {
       scenario = "default";
       delays = {};
       failure = null;
+      cartFailures = { read: null, write: null };
+      cartDelays = { read: 0, write: 0 };
       stats.started = 0;
       stats.completed = 0;
       stats.cancelled = 0;
@@ -43,18 +52,35 @@ export function createScenarios() {
         throw new Error("Invalid failure");
       failure = kind;
     },
+    failNextCart(kind: Failure, operation: "read" | "write") {
+      if (kind !== "http" && kind !== "network")
+        throw new Error("Invalid failure");
+      cartFailures[operation] = kind;
+    },
+    setCartDelay(kind: "read" | "write", ms: number) {
+      if (!Number.isSafeInteger(ms) || ms < 0 || ms > 10000)
+        throw new Error("Delay must be 0..10000 ms");
+      cartDelays[kind] = ms;
+    },
     async before(request: Request) {
       stats.started++;
       const activeScenario = scenario;
-      const currentFailure = failure;
+      const url = new URL(request.url);
+      const mutation = request.method !== "GET";
+      const cart = /\/(cart|visitor-sessions)(\/|$)/.test(url.pathname);
+      let currentFailure = failure;
       failure = null;
+      const operation = mutation ? "write" : "read";
+      if (cart && cartFailures[operation]) {
+        currentFailure = cartFailures[operation];
+        cartFailures[operation] = null;
+      }
       const signal = generation.signal;
-      const key = (new URL(request.url).searchParams.get("search") ?? "")
-        .trim()
-        .toLowerCase();
-      const ms =
-        delays[key] ??
-        (activeScenario === "out-of-order" && key === "emerald" ? 300 : 0);
+      const key = (url.searchParams.get("search") ?? "").trim().toLowerCase();
+      const ms = cart
+        ? cartDelays[mutation ? "write" : "read"]
+        : (delays[key] ??
+          (activeScenario === "out-of-order" && key === "emerald" ? 300 : 0));
       try {
         if (request.signal.aborted || signal.aborted)
           throw new DOMException("Aborted", "AbortError");

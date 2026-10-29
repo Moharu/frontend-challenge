@@ -1,0 +1,388 @@
+import { test, expect, type Page } from "@playwright/test";
+import type { Harness } from "../../src/testing/harness";
+declare global {
+  interface Window {
+    __KURIO_TEST__: Harness;
+  }
+}
+type Line = [nftId: string, editionId: string, quantity: number];
+// Seeds the visitor's cart through the real REST handlers, as a client would.
+async function seed(page: Page, lines: Line[]) {
+  await page.evaluate(async (lines) => {
+    let token = localStorage.getItem("kurio.visitor.v1");
+    if (!token) {
+      const response = await fetch("/api/visitor-sessions", { method: "POST" });
+      token = ((await response.json()) as { data: { token: string } }).data
+        .token;
+      localStorage.setItem("kurio.visitor.v1", token);
+    }
+    for (const [nftId, editionId, quantity] of lines) {
+      const response = await fetch("/api/cart/items", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "X-Visitor-Token": token,
+        },
+        body: JSON.stringify({ nftId, editionId, quantity }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+    }
+  }, lines);
+}
+const row = (page: Page, name: string) =>
+  page.locator(".cart-table tbody tr").filter({ hasText: name });
+const amount = (page: Page, label: string) =>
+  page.locator(".amounts > div").filter({ hasText: label }).locator("dd");
+const total = (page: Page) => page.locator(".amount-total dd");
+async function openCart(page: Page) {
+  await page.goto("/cart");
+  await page.waitForFunction(() => !!window.__KURIO_TEST__);
+}
+test.beforeEach(async ({ page }) => {
+  await page.goto("/");
+  await page.waitForFunction(() => !!window.__KURIO_TEST__);
+});
+test("detalhe adiciona ao carrinho, atualiza o badge e Comprar leva ao carrinho", async ({
+  page,
+}) => {
+  await expect(
+    page.getByRole("link", { name: "Carrinho, vazio" }),
+  ).toBeVisible();
+  await expect(page.locator(".cart-badge:visible")).toHaveCount(0);
+  await page.goto("/nfts/nft-001");
+  await page.getByRole("button", { name: "Aumentar quantidade" }).click();
+  await page.getByRole("button", { name: "Adicionar ao carrinho" }).click();
+  await expect(page.locator("#cart-feedback")).toContainText(
+    "2 × Emerald Ape #042 (1/20) adicionado ao carrinho.",
+  );
+  await page.goto("/");
+  await page.getByRole("link", { name: "Carrinho, 2 itens" }).click();
+  await expect(page).toHaveURL(/\/cart$/);
+  await expect(row(page, "Emerald Ape #042")).toContainText("2.38 ETH");
+  await expect(row(page, "Emerald Ape #042").locator(".qty-value")).toHaveText(
+    "2",
+  );
+  await page.goto("/nfts/nft-002");
+  await page.getByRole("button", { name: "Comprar NFT", exact: true }).click();
+  await expect(page).toHaveURL(/\/cart$/);
+  await expect(row(page, "Sage Nomad #043")).toBeVisible();
+  await expect(page.locator(".cart-table tbody tr")).toHaveCount(2);
+});
+test("badge soma quantidades e exibe 99+ acima de 99", async ({ page }) => {
+  await seed(page, [
+    ["nft-001", "edition-1-limited", 1],
+    ...Array.from({ length: 11 }, (_, i): Line[] => [
+      [`nft-${String(i + 2).padStart(3, "0")}`, `edition-${i + 2}-limited`, 5],
+      [`nft-${String(i + 2).padStart(3, "0")}`, `edition-${i + 2}-unique`, 1],
+      [`nft-${String(i + 2).padStart(3, "0")}`, `edition-${i + 2}-open`, 3],
+    ]).flat(),
+  ]);
+  await page.reload();
+  const link = page.getByRole("link", { name: "Carrinho, 100 itens" });
+  await expect(link).toBeVisible();
+  await expect(link.locator(".cart-badge")).toHaveText("99+");
+});
+test("mesma edição soma à linha e exceder o limite não altera o carrinho", async ({
+  page,
+}) => {
+  await page.goto("/nfts/nft-001");
+  await page.getByRole("spinbutton", { name: "Qtd." }).fill("3");
+  await page.getByRole("button", { name: "Adicionar ao carrinho" }).click();
+  await expect(page.locator("#cart-feedback")).toContainText("3 ×");
+  await page.getByRole("spinbutton", { name: "Qtd." }).fill("3");
+  await page.getByRole("button", { name: "Adicionar ao carrinho" }).click();
+  await expect(page.locator("#cart-feedback")).toContainText(
+    "Você já tem 3 no carrinho e o limite atual é 5. É possível adicionar no máximo 2.",
+  );
+  await page.getByRole("spinbutton", { name: "Qtd." }).fill("2");
+  await page.getByRole("button", { name: "Adicionar ao carrinho" }).click();
+  await expect(page.locator("#cart-feedback")).toContainText("2 ×");
+  await openCart(page);
+  await expect(page.locator(".cart-table tbody tr")).toHaveCount(1);
+  await expect(row(page, "Emerald Ape #042").locator(".qty-value")).toHaveText(
+    "5",
+  );
+});
+test("quantidades respeitam limites, remover chega ao estado vazio e refresh preserva", async ({
+  page,
+}) => {
+  await seed(page, [
+    ["nft-001", "edition-1-limited", 2],
+    ["nft-003", "edition-3-limited", 1],
+  ]);
+  await openCart(page);
+  await page.reload();
+  const emerald = row(page, "Emerald Ape #042");
+  const decrease = emerald.getByRole("button", { name: /Diminuir quantidade/ });
+  const increase = emerald.getByRole("button", { name: /Aumentar quantidade/ });
+  await decrease.click();
+  await expect(emerald.locator(".qty-value")).toHaveText("1");
+  await expect(decrease).toHaveAttribute("aria-disabled", "true");
+  for (const expected of ["2", "3", "4", "5"]) {
+    await increase.click();
+    await expect(emerald.locator(".qty-value")).toHaveText(expected);
+  }
+  await expect(increase).toHaveAttribute("aria-disabled", "true");
+  // aria-disabled keeps focus but is not actionable for Playwright; dispatch
+  // the click directly to prove it does nothing at the limit.
+  await increase.dispatchEvent("click");
+  await expect(emerald.locator(".qty-value")).toHaveText("5");
+  await expect(emerald.locator(".cart-line-total")).toHaveText("5.95 ETH");
+  await expect(amount(page, "Subtotal")).toHaveText("8.95 ETH");
+  await expect(total(page)).toHaveText("8.966 ETH");
+  await page.reload();
+  await expect(emerald.locator(".qty-value")).toHaveText("5");
+  await emerald.getByRole("button", { name: /^Remover/ }).click();
+  await expect(
+    page.getByRole("link", { name: "Noon Verbal #044" }),
+  ).toBeFocused();
+  await row(page, "Noon Verbal #044")
+    .getByRole("button", { name: /^Remover/ })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Seu carrinho está vazio" }),
+  ).toBeFocused();
+  await expect(page.getByRole("link", { name: "Explorar NFTs" })).toBeVisible();
+});
+test("cupons: válido, fixo maior que o subtotal, inexistente, expirado, troca e remoção", async ({
+  page,
+}) => {
+  await seed(page, [["nft-001", "edition-1-limited", 2]]);
+  await openCart(page);
+  const input = page.getByRole("textbox", { name: "Código promocional" });
+  const apply = page.getByRole("button", { name: "Aplicar", exact: true });
+  await input.fill("nao-existe");
+  await apply.click();
+  await expect(page.locator("#coupon-error")).toHaveText(
+    "Este código promocional não existe.",
+  );
+  await expect(input).toHaveAttribute("aria-invalid", "true");
+  await input.fill("kurio15");
+  await apply.click();
+  await expect(page.locator("#coupon-error")).toHaveText(
+    "Este código promocional expirou.",
+  );
+  await input.fill("KURIO10");
+  await apply.click();
+  await expect(page.locator("#coupon-applied")).toContainText("KURIO10");
+  await expect(amount(page, "Desconto")).toHaveText("(-) 0.238 ETH");
+  await expect(total(page)).toHaveText("2.158 ETH");
+  await input.fill("LANCAMENTO");
+  await apply.click();
+  await expect(page.locator("#coupon-applied")).toContainText("LANCAMENTO");
+  await expect(amount(page, "Desconto")).toHaveText("(-) 0.10 ETH");
+  await expect(total(page)).toHaveText("2.296 ETH");
+  await page.evaluate(() =>
+    window.__KURIO_TEST__.update("nft-001", "edition-1-limited", {
+      priceEth: "0.04",
+    }),
+  );
+  await expect(amount(page, "Subtotal")).toHaveText("0.08 ETH");
+  await expect(amount(page, "Desconto")).toHaveText("(-) 0.08 ETH");
+  await expect(total(page)).toHaveText("0.016 ETH");
+  await page.getByRole("button", { name: "Remover cupom" }).click();
+  await expect(amount(page, "Desconto")).toHaveText("0.00 ETH");
+  await expect(page.locator("#coupon-applied")).toHaveCount(0);
+});
+test("valores preservam precisão decimal sem ponto flutuante", async ({
+  page,
+}) => {
+  await page.evaluate(async () => {
+    const h = window.__KURIO_TEST__;
+    await h.update("nft-001", "edition-1-limited", { priceEth: "0.1" });
+    await h.update("nft-003", "edition-3-limited", { priceEth: "0.2" });
+    await h.update("nft-005", "edition-5-limited", {
+      priceEth: "1.000000000000000001",
+    });
+  });
+  await seed(page, [
+    ["nft-001", "edition-1-limited", 1],
+    ["nft-003", "edition-3-limited", 1],
+  ]);
+  await openCart(page);
+  await expect(amount(page, "Subtotal")).toHaveText("0.30 ETH");
+  await expect(total(page)).toHaveText("0.316 ETH");
+  await seed(page, [["nft-005", "edition-5-limited", 3]]);
+  await page.reload();
+  await expect(
+    row(page, "Violet Nomad #046").locator(".cart-line-total"),
+  ).toHaveText("3.000000000000000003 ETH");
+  await expect(amount(page, "Subtotal")).toHaveText("3.300000000000000003 ETH");
+  await expect(total(page)).toHaveText("3.316000000000000003 ETH");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
+test("nft.updated altera preço e disponibilidade; conflito bloqueia; eventos antigos não regridem", async ({
+  page,
+}) => {
+  await seed(page, [["nft-001", "edition-1-limited", 2]]);
+  await openCart(page);
+  const emerald = row(page, "Emerald Ape #042");
+  await expect(emerald.locator(".cart-line-total")).toHaveText("2.38 ETH");
+  const update = (patch: { priceEth?: string; available?: number }) =>
+    page.evaluate(
+      (patch) =>
+        window.__KURIO_TEST__.update("nft-001", "edition-1-limited", patch),
+      patch,
+    );
+  await update({ priceEth: "1.5" });
+  await expect(emerald.locator(".cart-line-total")).toHaveText("3.00 ETH");
+  await expect(emerald.locator(".cart-notice")).toContainText(
+    "Preço alterado de 1.19 ETH para 1.50 ETH.",
+  );
+  await expect(page.locator("#cart-announcer")).toContainText(
+    "Preço de Emerald Ape #042 (1/20) mudou para 1.50 ETH.",
+  );
+  await emerald.getByRole("button", { name: "Ciente do novo preço" }).click();
+  await expect(emerald.locator(".cart-notice")).toHaveCount(0);
+  await update({ available: 1 });
+  await expect(emerald.locator(".cart-notice")).toContainText(
+    "Disponível no máximo 1.",
+  );
+  const checkout = page.getByRole("button", { name: "Conectar e finalizar" });
+  await expect(checkout).toBeDisabled();
+  await expect(page.locator("#checkout-blocked")).toBeVisible();
+  await emerald.getByRole("button", { name: "Ajustar para 1" }).click();
+  await expect(emerald.locator(".qty-value")).toHaveText("1");
+  await expect(checkout).toBeEnabled();
+  await update({ available: 0 });
+  await expect(emerald.locator(".cart-notice")).toContainText(
+    "Esta edição esgotou.",
+  );
+  await expect(checkout).toBeDisabled();
+  await page.evaluate(() => {
+    window.__KURIO_TEST__.duplicate();
+    window.__KURIO_TEST__.older();
+  });
+  await page.waitForTimeout(300);
+  await expect(emerald.locator(".cart-notice")).toContainText(
+    "Esta edição esgotou.",
+  );
+  await expect(checkout).toBeDisabled();
+});
+test("reconexão reconcilia o carrinho por REST", async ({ page }) => {
+  await seed(page, [["nft-001", "edition-1-limited", 2]]);
+  await openCart(page);
+  const emerald = row(page, "Emerald Ape #042");
+  await expect(emerald.locator(".cart-line-total")).toHaveText("2.38 ETH");
+  await page.evaluate(() => window.__KURIO_TEST__.interrupt());
+  await page.evaluate(() =>
+    window.__KURIO_TEST__.update("nft-001", "edition-1-limited", {
+      priceEth: "7",
+    }),
+  );
+  await page.waitForTimeout(300);
+  await expect(emerald.locator(".cart-line-total")).toHaveText("2.38 ETH");
+  await page.evaluate(() => window.__KURIO_TEST__.restore());
+  await expect(emerald.locator(".cart-line-total")).toHaveText("14.00 ETH");
+});
+test("falhas preservam o estado, permitem nova tentativa e o skeleton aparece em resposta lenta", async ({
+  page,
+}) => {
+  await seed(page, [["nft-001", "edition-1-limited", 2]]);
+  await openCart(page);
+  const emerald = row(page, "Emerald Ape #042");
+  const increase = emerald.getByRole("button", { name: /Aumentar quantidade/ });
+  await page.evaluate(() =>
+    window.__KURIO_TEST__.failNextCart("http", "write"),
+  );
+  await increase.click();
+  await expect(emerald.getByRole("alert")).toHaveText(
+    "Serviço temporariamente indisponível. Tente novamente.",
+  );
+  await expect(emerald.locator(".qty-value")).toHaveText("2");
+  await increase.click();
+  await expect(emerald.locator(".qty-value")).toHaveText("3");
+  await expect(emerald.getByRole("alert")).toHaveCount(0);
+  await page.evaluate(() =>
+    window.__KURIO_TEST__.failNextCart("network", "write"),
+  );
+  await increase.click();
+  await expect(emerald.getByRole("alert")).toContainText("Falha de conexão");
+  await expect(emerald.locator(".qty-value")).toHaveText("3");
+  await page.goto("/");
+  await page.waitForFunction(() => !!window.__KURIO_TEST__);
+  // Let the header finish its own cart load before arming one-shot controls.
+  await expect(
+    page.getByRole("link", { name: "Carrinho, 3 itens" }),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    window.__KURIO_TEST__.cartDelay("read", 1500);
+    window.__KURIO_TEST__.forgetCart();
+  });
+  await page.getByRole("link", { name: /^Carrinho/ }).click();
+  await expect(
+    page.getByRole("status", { name: "Carregando carrinho" }),
+  ).toBeVisible();
+  await expect(emerald.locator(".qty-value")).toHaveText("3");
+  await page.goto("/");
+  await page.waitForFunction(() => !!window.__KURIO_TEST__);
+  await expect(
+    page.getByRole("link", { name: "Carrinho, 3 itens" }),
+  ).toBeVisible();
+  // The delay makes the header and the page share the same failing request.
+  await page.evaluate(() => {
+    window.__KURIO_TEST__.cartDelay("read", 500);
+    window.__KURIO_TEST__.failNextCart("http", "read");
+    window.__KURIO_TEST__.forgetCart();
+  });
+  await page.getByRole("link", { name: /^Carrinho/ }).click();
+  await expect(
+    page.getByRole("heading", { name: "Não foi possível carregar o carrinho" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Tentar novamente" }).click();
+  await expect(emerald.locator(".qty-value")).toHaveText("3");
+});
+test("teclado mantém o foco e Conectar e finalizar informa indisponibilidade", async ({
+  page,
+}) => {
+  await seed(page, [
+    ["nft-001", "edition-1-limited", 2],
+    ["nft-003", "edition-3-limited", 1],
+  ]);
+  await openCart(page);
+  const emerald = row(page, "Emerald Ape #042");
+  const increase = emerald.getByRole("button", { name: /Aumentar quantidade/ });
+  await increase.focus();
+  for (const expected of ["3", "4", "5"]) {
+    await page.keyboard.press("Enter");
+    await expect(emerald.locator(".qty-value")).toHaveText(expected);
+    await expect(increase).toBeFocused();
+  }
+  await expect(increase).toHaveAttribute("aria-disabled", "true");
+  await emerald.getByRole("button", { name: /^Remover/ }).focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("link", { name: "Noon Verbal #044" }),
+  ).toBeFocused();
+  const checkout = page.getByRole("button", { name: "Conectar e finalizar" });
+  await checkout.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("dialog")).toContainText(
+    "O checkout ainda não está disponível",
+  );
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(checkout).toBeFocused();
+});
+test("um novo contexto do navegador começa com carrinho vazio", async ({
+  page,
+  browser,
+}, testInfo) => {
+  await seed(page, [["nft-001", "edition-1-limited", 1]]);
+  await openCart(page);
+  await expect(page.locator(".cart-table tbody tr")).toHaveCount(1);
+  const other = await browser.newContext({
+    ...testInfo.project.use,
+    baseURL: testInfo.project.use.baseURL,
+  });
+  const fresh = await other.newPage();
+  await fresh.goto("/cart");
+  await expect(
+    fresh.getByRole("heading", { name: "Seu carrinho está vazio" }),
+  ).toBeVisible();
+  await other.close();
+});

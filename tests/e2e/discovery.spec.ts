@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-test("descoberta e detalhe carregam sem erros ou ponte de testes no build normal", async ({
+test("descoberta, detalhe e carrinho carregam sem erros ou ponte de testes no build normal", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -21,9 +21,18 @@ test("descoberta e detalhe carregam sem erros ou ponte de testes no build normal
   await expect(
     page.getByRole("button", { name: "Aberta — Esgotada" }),
   ).toBeDisabled();
-  await page.getByRole("button", { name: "Comprar NFT", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Adicionar ao carrinho", exact: true })
+    .click();
+  await expect(page.locator("#cart-feedback")).toContainText(
+    "adicionado ao carrinho",
+  );
+  await page.goto("/cart");
+  await page
+    .getByRole("button", { name: "Conectar e finalizar", exact: true })
+    .click();
   await expect(page.getByRole("dialog")).toContainText(
-    "ainda não está disponível",
+    "O checkout ainda não está disponível",
   );
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
