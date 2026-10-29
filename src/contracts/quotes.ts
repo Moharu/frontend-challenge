@@ -1,4 +1,4 @@
-import type { Eth } from "./common";
+import type { Eth, Network } from "./common";
 import type { CartItem } from "./cart";
 export interface Amounts {
   subtotalEth: Eth;
@@ -10,7 +10,7 @@ export interface QuoteRequest {
   cartId: string;
   cartVersion: number;
   coupon?: string;
-  network: "ethereum" | "polygon";
+  network: Network;
 }
 export interface Quote {
   id: string;

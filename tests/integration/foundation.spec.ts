@@ -7,7 +7,7 @@ declare global {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/__protocol");
   await page.waitForFunction(() => !!window.__KURIO_TEST__);
   await page.evaluate(() => window.__KURIO_TEST__.reset());
 });
@@ -31,7 +31,7 @@ test("REST filtering, stable sorting, pagination and named empty scenario", asyn
   );
   const filtered = await page.evaluate(() =>
     window.__KURIO_TEST__.list({
-      search: " AURORA ",
+      search: " EMERALD ",
       category: "art",
       network: "ethereum",
       minPrice: "2",
@@ -39,7 +39,7 @@ test("REST filtering, stable sorting, pagination and named empty scenario", asyn
       sort: "price-asc",
     }),
   );
-  expect(filtered.data.map((n) => n.id)).toEqual(["nft-019", "nft-013"]);
+  expect(filtered.data.map((n) => n.id)).toEqual(["nft-013"]);
   for (const nft of filtered.data) {
     expect(nft.category).toBe("art");
     expect(nft.network).toBe("ethereum");
@@ -109,6 +109,12 @@ test("ETH filtering distinguishes values beyond floating-point precision", async
 }) => {
   const result = await page.evaluate(async () => {
     const h = window.__KURIO_TEST__;
+    await h.persistUpdate("nft-001", "edition-1-limited", {
+      priceEth: "1.000000000000000001",
+    });
+    await h.persistUpdate("nft-002", "edition-2-limited", {
+      priceEth: "1.000000000000000002",
+    });
     return {
       comparison: h.compareEth(
         "9007199254740993.000000000000000001",
@@ -155,7 +161,7 @@ test("serialized writes persist across reload; full reset and corruption recover
   );
   expect(reset.data.version).toBe(1);
   expect(reset.data.editions[0]).toMatchObject({
-    priceEth: "1.000000000000000001",
+    priceEth: "1.19",
     available: 10,
   });
   expect(await page.evaluate(() => localStorage.getItem("unrelated"))).toBe(
@@ -187,34 +193,34 @@ test("out-of-order queries stay isolated and selection change forwards cancellat
   await page.evaluate(() => {
     const h = window.__KURIO_TEST__;
     h.scenario("out-of-order");
-    h.select({ search: "aurora" });
+    h.select({ search: "emerald" });
   });
   await expect
     .poll(() =>
       page.evaluate(() => window.__KURIO_TEST__.state().requests.started),
     )
     .toBeGreaterThan(0);
-  await page.evaluate(() => window.__KURIO_TEST__.select({ search: "rhythm" }));
+  await page.evaluate(() => window.__KURIO_TEST__.select({ search: "sage" }));
   await expect
     .poll(() =>
       page.evaluate(() => window.__KURIO_TEST__.state().selected?.fetching),
     )
     .toBe(false);
   const state = await page.evaluate(() => window.__KURIO_TEST__.state());
-  expect(state.selected?.search).toBe("rhythm");
-  expect(state.selected?.ids).toHaveLength(8);
+  expect(state.selected?.search).toBe("sage");
+  expect(state.selected?.ids).toHaveLength(4);
   expect(state.transport.aborted).toBeGreaterThan(0);
   const results = await page.evaluate(async () => {
     const h = window.__KURIO_TEST__;
     const completion: string[] = [];
     await Promise.all([
-      h.list({ search: "aurora" }).then(() => completion.push("aurora")),
-      h.list({ search: "lens" }).then(() => completion.push("lens")),
+      h.list({ search: "emerald" }).then(() => completion.push("emerald")),
+      h.list({ search: "ivory" }).then(() => completion.push("ivory")),
     ]);
     return { completion, state: h.state() };
   });
-  expect(results.completion).toEqual(["lens", "aurora"]);
-  expect(results.state.selected?.search).toBe("rhythm");
+  expect(results.completion).toEqual(["ivory", "emerald"]);
+  expect(results.state.selected?.search).toBe("sage");
 });
 
 test("one-shot and named HTTP/network failures recover without fabricated success", async ({

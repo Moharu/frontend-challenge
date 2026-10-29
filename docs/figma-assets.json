@@ -1,0 +1,371 @@
+{
+  "fileKey": "Zbw0vAAPU80HoDwKVfAcCR",
+  "frames": {
+    "home": "2:2",
+    "mobile-home": "14:5226",
+    "detail": "10:244",
+    "mobile-detail": "15:5536"
+  },
+  "assets": [
+    {
+      "name": "home-Ellipse5",
+      "file": "home-Ellipse5.svg"
+    },
+    {
+      "name": "home-Line6",
+      "file": "home-Line6.svg"
+    },
+    {
+      "name": "home-Line5",
+      "file": "home-Line5.svg"
+    },
+    {
+      "name": "home-Frame136",
+      "file": "home-Frame136.png"
+    },
+    {
+      "name": "home-NftArtwork18",
+      "file": "home-NftArtwork18.png"
+    },
+    {
+      "name": "home-NftArtwork05",
+      "file": "home-NftArtwork05.png"
+    },
+    {
+      "name": "home-NftArtwork09",
+      "file": "home-NftArtwork09.png"
+    },
+    {
+      "name": "home-ActiveUnderline",
+      "file": "home-ActiveUnderline.svg"
+    },
+    {
+      "name": "home-SearchIcon",
+      "file": "home-SearchIcon.svg"
+    },
+    {
+      "name": "home-CartIcon",
+      "file": "home-CartIcon.svg"
+    },
+    {
+      "name": "home-Badge",
+      "file": "home-Badge.svg"
+    },
+    {
+      "name": "home-Logout",
+      "file": "home-Logout.svg"
+    },
+    {
+      "name": "home-Line1",
+      "file": "home-Line1.svg"
+    },
+    {
+      "name": "home-Rectangle3",
+      "file": "home-Rectangle3.svg"
+    },
+    {
+      "name": "home-Group4",
+      "file": "home-Group4.svg"
+    },
+    {
+      "name": "home-ArrowDown2",
+      "file": "home-ArrowDown2.svg"
+    },
+    {
+      "name": "home-Line3",
+      "file": "home-Line3.svg"
+    },
+    {
+      "name": "home-ArrowRight2",
+      "file": "home-ArrowRight2.svg"
+    },
+    {
+      "name": "home-ArrowRight",
+      "file": "home-ArrowRight.svg"
+    },
+    {
+      "name": "home-MaskGroup",
+      "file": "home-MaskGroup.svg"
+    },
+    {
+      "name": "home-Frame108",
+      "file": "home-Frame108.svg"
+    },
+    {
+      "name": "home-Frame109",
+      "file": "home-Frame109.svg"
+    },
+    {
+      "name": "home-Frame110",
+      "file": "home-Frame110.svg"
+    },
+    {
+      "name": "home-Frame111",
+      "file": "home-Frame111.svg"
+    },
+    {
+      "name": "home-Frame112",
+      "file": "home-Frame112.svg"
+    },
+    {
+      "name": "mobile-home-Shop",
+      "file": "mobile-home-Shop.svg"
+    },
+    {
+      "name": "mobile-home-User",
+      "file": "mobile-home-User.svg"
+    },
+    {
+      "name": "mobile-home-Search",
+      "file": "mobile-home-Search.svg"
+    },
+    {
+      "name": "mobile-home-MobileNftArtwork1",
+      "file": "mobile-home-MobileNftArtwork1.png"
+    },
+    {
+      "name": "mobile-home-MobileNftArtwork2",
+      "file": "mobile-home-MobileNftArtwork2.png"
+    },
+    {
+      "name": "mobile-home-MobileNftArtwork5",
+      "file": "mobile-home-MobileNftArtwork5.png"
+    },
+    {
+      "name": "mobile-home-MobileNftArtwork6",
+      "file": "mobile-home-MobileNftArtwork6.png"
+    },
+    {
+      "name": "mobile-home-Filter",
+      "file": "mobile-home-Filter.svg"
+    },
+    {
+      "name": "mobile-home-MaskGroup",
+      "file": "mobile-home-MaskGroup.svg"
+    },
+    {
+      "name": "mobile-home-ArrowRight",
+      "file": "mobile-home-ArrowRight.svg"
+    },
+    {
+      "name": "mobile-home-Frame4",
+      "file": "mobile-home-Frame4.svg"
+    },
+    {
+      "name": "mobile-home-Line3",
+      "file": "mobile-home-Line3.svg"
+    },
+    {
+      "name": "mobile-home-Frame410",
+      "file": "mobile-home-Frame410.svg"
+    },
+    {
+      "name": "mobile-home-Group58",
+      "file": "mobile-home-Group58.svg"
+    },
+    {
+      "name": "mobile-home-Vector",
+      "file": "mobile-home-Vector.svg"
+    },
+    {
+      "name": "mobile-home-Ellipse39",
+      "file": "mobile-home-Ellipse39.svg"
+    },
+    {
+      "name": "mobile-home-Home",
+      "file": "mobile-home-Home.svg"
+    },
+    {
+      "name": "mobile-home-Vector1",
+      "file": "mobile-home-Vector1.svg"
+    },
+    {
+      "name": "mobile-home-Vector2",
+      "file": "mobile-home-Vector2.svg"
+    },
+    {
+      "name": "mobile-home-Vector3",
+      "file": "mobile-home-Vector3.svg"
+    },
+    {
+      "name": "mobile-home-Vector4",
+      "file": "mobile-home-Vector4.svg"
+    },
+    {
+      "name": "mobile-home-Vector5",
+      "file": "mobile-home-Vector5.svg"
+    },
+    {
+      "name": "mobile-home-Vector6",
+      "file": "mobile-home-Vector6.svg"
+    },
+    {
+      "name": "detail-Message",
+      "file": "detail-Message.svg"
+    },
+    {
+      "name": "detail-NftCollectionArtwork04",
+      "file": "detail-NftCollectionArtwork04.png"
+    },
+    {
+      "name": "detail-NftCollectionArtwork06",
+      "file": "detail-NftCollectionArtwork06.png"
+    },
+    {
+      "name": "detail-NftCollectionArtwork08",
+      "file": "detail-NftCollectionArtwork08.png"
+    },
+    {
+      "name": "detail-NftCollectionArtwork09",
+      "file": "detail-NftCollectionArtwork09.png"
+    },
+    {
+      "name": "detail-ActiveUnderline",
+      "file": "detail-ActiveUnderline.svg"
+    },
+    {
+      "name": "detail-SearchIcon",
+      "file": "detail-SearchIcon.svg"
+    },
+    {
+      "name": "detail-CartIcon",
+      "file": "detail-CartIcon.svg"
+    },
+    {
+      "name": "detail-Badge",
+      "file": "detail-Badge.svg"
+    },
+    {
+      "name": "detail-Logout",
+      "file": "detail-Logout.svg"
+    },
+    {
+      "name": "detail-Frame238",
+      "file": "detail-Frame238.svg"
+    },
+    {
+      "name": "detail-Star",
+      "file": "detail-Star.svg"
+    },
+    {
+      "name": "detail-Star1",
+      "file": "detail-Star1.svg"
+    },
+    {
+      "name": "detail-Line2",
+      "file": "detail-Line2.svg"
+    },
+    {
+      "name": "detail-Ellipse24",
+      "file": "detail-Ellipse24.svg"
+    },
+    {
+      "name": "detail-Ellipse25",
+      "file": "detail-Ellipse25.svg"
+    },
+    {
+      "name": "detail-Ellipse26",
+      "file": "detail-Ellipse26.svg"
+    },
+    {
+      "name": "detail-Ellipse27",
+      "file": "detail-Ellipse27.svg"
+    },
+    {
+      "name": "detail-Frame",
+      "file": "detail-Frame.svg"
+    },
+    {
+      "name": "detail-Frame1",
+      "file": "detail-Frame1.svg"
+    },
+    {
+      "name": "detail-Heart1",
+      "file": "detail-Heart1.svg"
+    },
+    {
+      "name": "detail-Linkedin",
+      "file": "detail-Linkedin.svg"
+    },
+    {
+      "name": "detail-Twitter",
+      "file": "detail-Twitter.svg"
+    },
+    {
+      "name": "detail-Line6",
+      "file": "detail-Line6.svg"
+    },
+    {
+      "name": "detail-Line5",
+      "file": "detail-Line5.svg"
+    },
+    {
+      "name": "detail-CarouselDots",
+      "file": "detail-CarouselDots.svg"
+    },
+    {
+      "name": "detail-Frame108",
+      "file": "detail-Frame108.svg"
+    },
+    {
+      "name": "detail-Frame109",
+      "file": "detail-Frame109.svg"
+    },
+    {
+      "name": "detail-Frame110",
+      "file": "detail-Frame110.svg"
+    },
+    {
+      "name": "detail-Frame111",
+      "file": "detail-Frame111.svg"
+    },
+    {
+      "name": "detail-Frame112",
+      "file": "detail-Frame112.svg"
+    },
+    {
+      "name": "mobile-detail-MobileNftHeroArtwork",
+      "file": "mobile-detail-MobileNftHeroArtwork.png"
+    },
+    {
+      "name": "mobile-detail-Group62",
+      "file": "mobile-detail-Group62.svg"
+    },
+    {
+      "name": "mobile-detail-ArrowLeft2",
+      "file": "mobile-detail-ArrowLeft2.svg"
+    },
+    {
+      "name": "mobile-detail-Vector",
+      "file": "mobile-detail-Vector.svg"
+    },
+    {
+      "name": "mobile-detail-Star",
+      "file": "mobile-detail-Star.svg"
+    },
+    {
+      "name": "mobile-detail-Ellipse25",
+      "file": "mobile-detail-Ellipse25.svg"
+    },
+    {
+      "name": "mobile-detail-Ellipse26",
+      "file": "mobile-detail-Ellipse26.svg"
+    },
+    {
+      "name": "mobile-detail-Ellipse27",
+      "file": "mobile-detail-Ellipse27.svg"
+    },
+    {
+      "name": "mobile-detail-Frame",
+      "file": "mobile-detail-Frame.svg"
+    },
+    {
+      "name": "mobile-detail-Frame1",
+      "file": "mobile-detail-Frame1.svg"
+    },
+    {
+      "name": "mobile-detail-Shop",
+      "file": "mobile-detail-Shop.svg"
+    }
+  ]
+}

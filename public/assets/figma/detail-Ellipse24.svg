@@ -1,0 +1,6 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="36" height="28" viewBox="0 0 36 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+<mask id="stroke0_0_177" fill="white">
+<path d="M36 14C36 21.732 27.9411 28 18 28C8.05887 28 0 21.732 0 14C0 6.26801 8.05887 0 18 0C27.9411 0 36 6.26801 36 14Z"/>
+</mask>
+<path id="Ellipse 24" d="M36 14C36 21.732 27.9411 28 18 28C8.05887 28 0 21.732 0 14C0 6.26801 8.05887 0 18 0C27.9411 0 36 6.26801 36 14Z" stroke-width="2" stroke="#3F2319" mask="url(#stroke0_0_177)"/>
+</svg>

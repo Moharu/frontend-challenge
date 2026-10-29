@@ -1,15 +1,17 @@
 import { http } from "@/lib/http";
-import { isNft, type Nft, type NftListQuery } from "@/contracts/nfts";
 import {
-  record,
-  integer,
-  type DataResponse,
-  type PageResponse,
-} from "@/contracts/common";
+  isNft,
+  categories,
+  networks,
+  type Nft,
+  type NftListQuery,
+  type NftListResponse,
+} from "@/contracts/nfts";
+import { record, integer, type DataResponse } from "@/contracts/common";
 export async function listNfts(
   query: NftListQuery,
   signal?: AbortSignal,
-): Promise<PageResponse<Nft>> {
+): Promise<NftListResponse> {
   const { data: value } = await http.get<unknown>("/nfts", {
     params: query,
     signal,
@@ -18,6 +20,21 @@ export async function listNfts(
     !record(value) ||
     !Array.isArray(value.data) ||
     !value.data.every(isNft) ||
+    !record(value.facets) ||
+    !record(value.facets.categories) ||
+    !record(value.facets.networks) ||
+    !categories.every(
+      (k) =>
+        record(value.facets) &&
+        record(value.facets.categories) &&
+        integer(value.facets.categories[k]),
+    ) ||
+    !networks.every(
+      (k) =>
+        record(value.facets) &&
+        record(value.facets.networks) &&
+        integer(value.facets.networks[k]),
+    ) ||
     !record(value.pagination) ||
     !integer(value.pagination.page, 1) ||
     !integer(value.pagination.pageSize, 1) ||
@@ -25,7 +42,7 @@ export async function listNfts(
     !integer(value.pagination.pages)
   )
     throw new Error("Invalid NFT list response");
-  return value as unknown as PageResponse<Nft>;
+  return value as unknown as NftListResponse;
 }
 export async function getNft(
   id: string,
@@ -38,4 +55,17 @@ export async function getNft(
   if (!record(value) || !isNft(value.data) || value.data.id !== id)
     throw new Error("Invalid NFT detail response");
   return { data: value.data };
+}
+
+export async function relatedNfts(
+  id: string,
+  signal?: AbortSignal,
+): Promise<Nft[]> {
+  const { data } = await http.get<{ data: unknown }>(
+    `/nfts/${encodeURIComponent(id)}/related`,
+    { signal },
+  );
+  if (!Array.isArray(data.data) || !data.data.every(isNft))
+    throw new Error("Resposta de relacionados inválida");
+  return data.data;
 }

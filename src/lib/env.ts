@@ -12,7 +12,7 @@ export function readEnv() {
       );
     }
   }
-  const mocks = import.meta.env.VITE_ENABLE_MOCKS ?? "false";
+  const mocks = import.meta.env.VITE_ENABLE_MOCKS ?? "true";
   if (mocks !== "true" && mocks !== "false")
     throw new Error("VITE_ENABLE_MOCKS must be true or false");
   return {

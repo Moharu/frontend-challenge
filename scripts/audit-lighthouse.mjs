@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { readdirSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { chromium } from "@playwright/test";
 const require = createRequire(import.meta.url);
@@ -15,5 +16,11 @@ for (const profile of ["mobile", "desktop"]) {
     stdio: "inherit",
     env: { ...process.env, CHROME_PATH: chromium.executablePath() },
   });
+  // Under WSL, chrome-launcher builds a Windows TEMP path that Linux Chromium
+  // resolves relative to the working directory and never removes.
+  for (const entry of readdirSync(".")) {
+    if (/^C:\\.*\\lighthouse\./.test(entry))
+      rmSync(entry, { recursive: true, force: true });
+  }
   if (result.status !== 0) process.exit(result.status ?? 1);
 }

@@ -4,7 +4,7 @@ Mantenha este diário de alto nível nos próximos trabalhos do projeto com assi
 
 ## 2026-10-28 — Inicialização solicitada
 
-**Orientação do usuário:** executar `coding-agent-bootstrap-draft.md`, manter um diário de alto nível e não enviar código ao remoto sem permissão explícita. O README local inicial corresponde aos requisitos do desafio fornecidos pelo usuário.
+**Orientação do usuário:** executar `docs/handoffs/coding-agent-bootstrap-draft.md`, manter um diário de alto nível e não enviar código ao remoto sem permissão explícita. O README local inicial corresponde aos requisitos do desafio fornecidos pelo usuário.
 
 **Escopo:** inicializar somente a tela provisória executável e a infraestrutura. Não abrir Figma, implementar funcionalidades do marketplace, criar repositórios remotos, implantar ou fazer push. Nenhum commit é necessário para esta entrega na árvore de trabalho; o arquivo de lock é mantido para um commit futuro.
 
@@ -54,7 +54,7 @@ Mantenha este diário de alto nível nos próximos trabalhos do projeto com assi
 
 ## 2026-10-29 — Contratos e base de dados simulada
 
-**Orientação do usuário:** executar `docs/coding-agent-data-foundation-draft.md`, manter a interface provisória e não fazer push. O rascunho também proíbe commits/implantação sem autorização separada. O trabalho partiu do commit revisado `c6940d4`; o novo rascunho do usuário e as convenções existentes foram preservados. Não houve acesso ao Figma, obtenção de recursos de design, commits, pushes, alterações remotas ou implantação.
+**Orientação do usuário:** executar `docs/handoffs/coding-agent-data-foundation-draft.md`, manter a interface provisória e não fazer push. O rascunho também proíbe commits/implantação sem autorização separada. O trabalho partiu do commit revisado `c6940d4`; o novo rascunho do usuário e as convenções existentes foram preservados. Não houve acesso ao Figma, obtenção de recursos de design, commits, pushes, alterações remotas ou implantação.
 
 **Escopo implementado:** contratos de transporte organizados por recurso para todos os recursos exigidos, com apenas listagem/detalhe REST de NFT e evento público `nft.updated` implementados. Adicionados comparação exata de ETH decimal, analisadores de fronteira para consultas/recursos/eventos, chamadas Axios, chaves Query normalizadas/cancelamento, cenários determinísticos e catálogo tipado persistido. Os demais endpoints de conta/compra são somente contratos e falham explicitamente em vez de simular sucesso. A interface normal permanece inalterada e não inicia tráfego de negócio.
 
@@ -105,3 +105,41 @@ Mantenha este diário de alto nível nos próximos trabalhos do projeto com assi
 ## 2026-10-29 — Commit e push da correção e complementação autorizados
 
 **Orientação do usuário:** fazer commit e push da correção de sincronização entre caches e da complementação dos contratos no mesmo commit, para `origin/main` (`Moharu/frontend-challenge`). As verificações e decisões estão registradas acima. `git diff --check` passou e `docs/challenge-requirements.md` permanece inalterado. Os resultados serão informados na conversa e no histórico Git. Pushes futuros continuam exigindo autorização.
+
+## 2026-10-29 — Organização dos rascunhos de orientação
+
+**Alteração solicitada:** movidos os três rascunhos `coding-agent-…-draft` para `docs/handoffs/`, preservando seus conteúdos. Referências no diário e caminhos de exclusão do Prettier foram atualizados.
+
+## 2026-10-29 — Descoberta pública (`docs/handoffs/coding-agent-discovery-draft-pt-br.md`)
+
+**Troca de agente:** a etapa foi iniciada com Codex, que ficou sem créditos antes de concluir; a retomada foi feita com Claude Code a partir do log da conversa e da árvore de trabalho. Nenhum commit, push ou deploy.
+
+**Estado encontrado:** implementação, testes, referências visuais, assets locais e `docs/discovery.md` já presentes; faltavam o relatório de verificação citado nesse documento e este registro. Havia 12 perfis temporários do Chromium (`C:\Users\…\lighthouse.*`) criados na raiz pelo Lighthouse sob WSL; foram removidos e o script de auditoria passou a limpá-los.
+
+**Alterações na retomada:** `preload` com `media` das imagens de fundo do hero em `index.html`; limpeza dos perfis temporários em `scripts/audit-lighthouse.mjs`; `docs/discovery-verification.md` criado.
+
+**Verificação:** tipos, lint, formatação, build normal e de integração aprovados; 26 testes de integração e 6 E2E aprovados. Lighthouse (medianas de 3 execuções): desktop 99/100/100/100 nas duas rotas; mobile início 88 e detalhe 86 em desempenho, abaixo da meta de 90, com 100 nas demais categorias. Causas e melhoria sugerida (derivados otimizados das artes PNG de ~2 MB) registradas no relatório, sem aplicação. As referências visuais foram inspecionadas pelo agente; a limitação de elementos fixos em capturas de página inteira está documentada. Não se declara revisão humana desta etapa.
+
+## 2026-10-29 — Artes responsivas em WebP
+
+**Orientação do usuário:** gerar versões menores das artes, mantendo os originais do Figma.
+
+**Alterações:** `scripts/optimize-artwork.mjs` gera WebP 240/480/800/1254px das quatro artes distintas (os 13 PNG versionados são cópias de quatro imagens) com o Chromium do Playwright, sem nova dependência. `artImage()` fornece `srcSet`/`sizes` a todos os usos; os PNG permanecem em `public/assets/figma/`. A troca revelou dependência do layout na largura intrínseca da imagem de promoção (1px a menos na página desktop); corrigida com `flex-shrink: 0`.
+
+**Verificação:** tipos, lint, builds, 26 testes de integração e 6 E2E aprovados. As quatro referências visuais foram regeneradas depois de inspecionar os diffs (somente pixels de compressão dentro das artes) e a captura do detalhe. Lighthouse mobile: início 89, detalhe 85; desktop 99 nas duas rotas. O download da arte principal caiu de ~1 s para ~170 ms, mas o LCP mobile continua limitado pela cadeia bundle → MSW → rota → API; a análise anterior que atribuía o déficit principalmente às imagens foi corrigida no relatório.
+
+## 2026-10-29 — Navegação inferior mobile conforme o Figma
+
+**Revisão manual do usuário:** com `npm run dev:mocks`, as artes WebP foram aprovadas visualmente. Comparando com o Figma, a navegação inferior mobile não correspondia ao desenho.
+
+**Correção:** a barra plana foi substituída pelo formato do Figma: recorte curvo central (caminho de `mobile-home-Vector.svg` aplicado como máscara de largura fixa, com laterais extensíveis), cantos de 29px, sombra superior e botão central com o gradiente de `mobile-home-Ellipse39.svg`, centralizado na borda da barra.
+
+**Verificação:** capturas da viewport em 390, 414 e 700px inspecionadas pelo agente, sem distorção da curva. Lint e formatação aprovados; 6 E2E e 26 testes de integração aprovados. Somente a referência visual do início mobile mudou; o diff foi inspecionado (restrito à barra) antes de regenerá-la.
+
+**Revisão manual do usuário:** a navegação inferior funciona e acompanha a rolagem corretamente em 390, 414 e 700px; tocar no botão central abre o diálogo de indisponibilidade.
+
+## 2026-10-29 — Revisão e commit da descoberta pública autorizados
+
+**Revisão manual do usuário:** leitura do código das rotas `index` e `nft` e dos testes de descoberta E2E e de integração, aprovados sem alterações.
+
+**Orientação do usuário:** fazer commit e push da etapa de descoberta para `origin/main` (`Moharu/frontend-challenge`). As verificações estão registradas acima e em `docs/discovery-verification.md`; `git diff --check` passou. Pendência registrada para a passagem final de desempenho antes do deploy: encurtar a cadeia crítica do MSW no mobile. Pushes futuros continuam exigindo autorização.

@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { normalizeNftQuery, type NftListQuery } from "@/contracts/nfts";
-import { getNft, listNfts } from "./api";
+import { getNft, listNfts, relatedNfts } from "./api";
 export const nftKeys = {
   all: ["nfts"] as const,
   lists: () => ["nfts", "list"] as const,
@@ -23,5 +23,13 @@ export function nftDetailOptions(id: string) {
     queryFn: ({ signal }) => getNft(id, signal),
     retry: false,
     staleTime: 0,
+  });
+}
+
+export function relatedOptions(id: string) {
+  return queryOptions({
+    queryKey: ["nfts", "related", id] as const,
+    queryFn: ({ signal }) => relatedNfts(id, signal),
+    retry: false,
   });
 }

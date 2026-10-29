@@ -4,19 +4,19 @@ import { baseline, seedNfts } from "./seed";
 import type { NftUpdated } from "@/contracts/events";
 export const storageKey = "kurio.mock.catalog.v1";
 export interface Snapshot {
-  schemaVersion: 1;
-  seedVersion: 1;
+  schemaVersion: 2;
+  seedVersion: 2;
   tick: number;
   nfts: Nft[];
 }
 function fresh(): Snapshot {
-  return { schemaVersion: 1, seedVersion: 1, tick: 0, nfts: seedNfts() };
+  return { schemaVersion: 2, seedVersion: 2, tick: 0, nfts: seedNfts() };
 }
 function valid(value: unknown): value is Snapshot {
   if (
     !record(value) ||
-    value.schemaVersion !== 1 ||
-    value.seedVersion !== 1 ||
+    value.schemaVersion !== 2 ||
+    value.seedVersion !== 2 ||
     !integer(value.tick) ||
     value.tick > 1000000
   )

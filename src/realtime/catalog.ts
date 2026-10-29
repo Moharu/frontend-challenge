@@ -48,6 +48,10 @@ export function createCatalogRealtime(
             refetchType: "active",
           }),
         ]);
+        await queryClient.invalidateQueries({
+          queryKey: ["nfts", "related"],
+          refetchType: "active",
+        });
         stats.reconciliations++;
       })
       .catch((e) => {
@@ -84,6 +88,10 @@ export function createCatalogRealtime(
         }
         await queryClient.invalidateQueries({
           queryKey: nftKeys.lists(),
+          refetchType: "active",
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["nfts", "related"],
           refetchType: "active",
         });
         stats.applied++;

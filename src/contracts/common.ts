@@ -1,6 +1,15 @@
 export type Eth = string;
-export type Network = "ethereum" | "polygon";
-export type Category = "art" | "music" | "photography";
+export type Network = "ethereum" | "polygon" | "solana";
+export type Category =
+  | "art"
+  | "music"
+  | "photography"
+  | "3d"
+  | "collectibles"
+  | "generative"
+  | "gaming"
+  | "memberships"
+  | "utility";
 export interface DataResponse<T> {
   data: T;
 }

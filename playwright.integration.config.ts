@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests/integration",
+  outputDir: "test-results/integration",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,
@@ -13,7 +14,24 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
-    { name: "protocol-chromium", use: { ...devices["Desktop Chrome"] } },
+    {
+      name: "protocol-chromium",
+      testMatch: "foundation.spec.ts",
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "discovery-desktop",
+      testMatch: "discovery.spec.ts",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1440, height: 900 },
+      },
+    },
+    {
+      name: "discovery-mobile",
+      testMatch: "discovery.spec.ts",
+      use: { ...devices["Pixel 7"], viewport: { width: 390, height: 844 } },
+    },
   ],
   webServer: {
     command:

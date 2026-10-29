@@ -6,8 +6,8 @@ playwright-report
 test-results
 .lighthouseci
 reports
-docs/coding-agent-bootstrap-draft.md
+docs/handoffs/coding-agent-bootstrap-draft.md
 docs/challenge-requirements.md
 
 dist-integration
-docs/coding-agent-data-foundation-draft.md
+docs/handoffs/coding-agent-data-foundation-draft.md

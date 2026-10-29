@@ -4,6 +4,8 @@ import {
   lowestPrice,
   parseNftQuery,
   QueryValidationError,
+  categories,
+  networks,
   type Nft,
 } from "@/contracts/nfts";
 import type { ErrorResponse } from "@/contracts/common";
@@ -41,6 +43,21 @@ export function createHandlers(
     }
   }
   return [
+    http.get(`${base}/nfts/:id/related`, async ({ request, params }) => {
+      const { response } = await condition(request);
+      if (response) return response;
+      const all = store.snapshot().nfts;
+      const nft = all.find((n) => n.id === params.id);
+      return nft
+        ? HttpResponse.json({
+            data: all
+              .filter(
+                (n) => n.id !== nft.id && n.collection.id === nft.collection.id,
+              )
+              .slice(0, 5),
+          })
+        : error(404, "NOT_FOUND", "NFT não encontrado");
+    }),
     http.get(`${base}/nfts`, async ({ request }) => {
       let query;
       try {
@@ -59,6 +76,9 @@ export function createHandlers(
             .nfts.filter(
               (n) =>
                 n.name.toLowerCase().includes(query.search) &&
+                (query.mode !== "new" || n.discovery.isNew) &&
+                (query.mode !== "trending" ||
+                  n.discovery.trendingScore >= 100) &&
                 (!query.category || n.category === query.category) &&
                 (!query.network || n.network === query.network) &&
                 (!query.minPrice ||
@@ -66,6 +86,17 @@ export function createHandlers(
                 (!query.maxPrice ||
                   compareEth(lowestPrice(n), query.maxPrice) <= 0),
             );
+      const facets = {
+        categories: Object.fromEntries(
+          categories.map((c) => [
+            c,
+            items.filter((n) => n.category === c).length,
+          ]),
+        ),
+        networks: Object.fromEntries(
+          networks.map((c) => [c, items.filter((n) => n.network === c).length]),
+        ),
+      };
       const compare = (a: Nft, b: Nft) =>
         query.sort === "price-asc"
           ? compareEth(lowestPrice(a), lowestPrice(b))
@@ -79,9 +110,15 @@ export function createHandlers(
                   : 0
               : Date.parse(b.createdAt) - Date.parse(a.createdAt);
       items = items.sort(
-        (a, b) => compare(a, b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+        (a, b) =>
+          (query.mode === "trending" && query.sort === "newest"
+            ? b.discovery.trendingScore - a.discovery.trendingScore
+            : 0) ||
+          compare(a, b) ||
+          (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
       );
       return HttpResponse.json({
+        facets,
         data: items.slice(
           (query.page - 1) * query.pageSize,
           query.page * query.pageSize,

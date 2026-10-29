@@ -7,13 +7,25 @@ import {
   type Eth,
 } from "./common";
 import { compareEth, isEth, normalizeEth } from "./eth";
-export const categories: Category[] = ["art", "music", "photography"];
-export const networks: Network[] = ["ethereum", "polygon"];
+export const categories: Category[] = [
+  "art",
+  "music",
+  "photography",
+  "3d",
+  "collectibles",
+  "generative",
+  "gaming",
+  "memberships",
+  "utility",
+];
+export const networks: Network[] = ["ethereum", "polygon", "solana"];
 export const sorts = ["newest", "price-asc", "price-desc", "name-asc"] as const;
 export type NftSort = (typeof sorts)[number];
 export interface Edition {
   id: string;
   type: "unique" | "limited" | "open";
+  label: string;
+  purchaseLimit: number;
   priceEth: Eth;
   supply: number;
   available: number;
@@ -24,12 +36,33 @@ export interface Nft {
   category: Category;
   network: Network;
   artwork: string;
+  tokenId: string;
+  collection: { id: string; name: string };
+  description: string;
+  fullDescription: string;
+  gallery: string[];
+  attributes: Array<{ name: string; value: string }>;
+  metadata: {
+    contract: string;
+    standard: string;
+    royalty: string;
+    provenance: string;
+  };
+  discovery: { isNew: boolean; trendingScore: number; rarity: string | null };
+  reviews: Array<{
+    id: string;
+    author: string;
+    rating: number;
+    content: string;
+  }>;
+
   createdAt: string;
   updatedAt: string;
   version: number;
   editions: Edition[];
 }
 export interface NftListQuery {
+  mode: "all" | "new" | "trending";
   search: string;
   category: Category | "";
   network: Network | "";
@@ -45,6 +78,7 @@ export class QueryValidationError extends Error {
   }
 }
 const allowed = [
+  "mode",
   "search",
   "category",
   "network",
@@ -60,6 +94,8 @@ export function parseNftQuery(params: URLSearchParams): NftListQuery {
     if (!allowed.includes(key)) fields[key] = "Unknown parameter";
     else if (params.getAll(key).length > 1) fields[key] = "Repeated parameter";
   }
+  const mode = params.get("mode") ?? "all";
+  if (!["all", "new", "trending"].includes(mode)) fields.mode = "Invalid mode";
   const search = (params.get("search") ?? "").trim().toLowerCase();
   if (search.length > 100) fields.search = "Maximum 100 characters";
   const category = params.get("category") ?? "",
@@ -99,6 +135,7 @@ export function parseNftQuery(params: URLSearchParams): NftListQuery {
     pageSize = pageNumber("pageSize", 8, 50);
   if (Object.keys(fields).length) throw new QueryValidationError(fields);
   return {
+    mode: mode as NftListQuery["mode"],
     search,
     category: category as NftListQuery["category"],
     network: network as NftListQuery["network"],
@@ -125,6 +162,44 @@ export function isNft(value: unknown): value is Nft {
     !categories.includes(value.category as Category) ||
     !networks.includes(value.network as Network) ||
     typeof value.artwork !== "string" ||
+    typeof value.tokenId !== "string" ||
+    !record(value.collection) ||
+    typeof value.collection.id !== "string" ||
+    typeof value.collection.name !== "string" ||
+    typeof value.description !== "string" ||
+    typeof value.fullDescription !== "string" ||
+    !Array.isArray(value.gallery) ||
+    value.gallery.length === 0 ||
+    !value.gallery.every((a) => typeof a === "string") ||
+    !Array.isArray(value.attributes) ||
+    !value.attributes.every(
+      (a) =>
+        record(a) && typeof a.name === "string" && typeof a.value === "string",
+    ) ||
+    !record(value.metadata) ||
+    !["contract", "standard", "royalty", "provenance"].every(
+      (k) =>
+        typeof value.metadata === "object" &&
+        value.metadata !== null &&
+        typeof Reflect.get(value.metadata, k) === "string",
+    ) ||
+    !record(value.discovery) ||
+    typeof value.discovery.isNew !== "boolean" ||
+    !integer(value.discovery.trendingScore) ||
+    !(
+      value.discovery.rarity === null ||
+      typeof value.discovery.rarity === "string"
+    ) ||
+    !Array.isArray(value.reviews) ||
+    !value.reviews.every(
+      (r) =>
+        record(r) &&
+        typeof r.id === "string" &&
+        typeof r.author === "string" &&
+        integer(r.rating, 1) &&
+        r.rating <= 5 &&
+        typeof r.content === "string",
+    ) ||
     !timestamp(value.createdAt) ||
     !timestamp(value.updatedAt) ||
     !integer(value.version, 1) ||
@@ -140,6 +215,8 @@ export function isNft(value: unknown): value is Nft {
       !e.id ||
       ids.has(e.id) ||
       !["unique", "limited", "open"].includes(String(e.type)) ||
+      typeof e.label !== "string" ||
+      !integer(e.purchaseLimit, 1) ||
       !isEth(e.priceEth) ||
       !integer(e.supply, 1) ||
       !integer(e.available) ||
@@ -155,4 +232,13 @@ export function lowestPrice(nft: Nft): Eth {
     (best, e) => (compareEth(e.priceEth, best) < 0 ? e.priceEth : best),
     nft.editions[0].priceEth,
   );
+}
+
+export interface NftListResponse {
+  data: Nft[];
+  pagination: { page: number; pageSize: number; total: number; pages: number };
+  facets: {
+    categories: Record<Category, number>;
+    networks: Record<Network, number>;
+  };
 }

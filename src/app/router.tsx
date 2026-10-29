@@ -2,15 +2,21 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  Outlet,
+  Link,
+  lazyRouteComponent,
 } from "@tanstack/react-router";
+import { PublicLayout } from "@/components/discovery/layout";
+import { discoverySearch } from "@/lib/discovery-search";
 import { IndexPage } from "@/routes/index";
 const rootRoute = createRootRoute({
-  component: Outlet,
+  component: PublicLayout,
   notFoundComponent: () => (
     <main className="p-6">
-      <h1 className="text-2xl font-semibold">Page not found</h1>
-      <p>This route does not exist.</p>
+      <h1 className="text-2xl font-semibold">Página não encontrada</h1>
+      <p>Esta rota não existe.</p>
+      <Link to="/" search={discoverySearch({})}>
+        Voltar ao catálogo
+      </Link>
     </main>
   ),
 });
@@ -18,9 +24,15 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: IndexPage,
+  validateSearch: discoverySearch,
+});
+const detailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/nfts/$nftId",
+  component: lazyRouteComponent(() => import("@/routes/nft"), "NftPage"),
 });
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([indexRoute]),
+  routeTree: rootRoute.addChildren([indexRoute, detailRoute]),
 });
 declare module "@tanstack/react-router" {
   interface Register {

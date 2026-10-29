@@ -54,7 +54,7 @@ export function createScenarios() {
         .toLowerCase();
       const ms =
         delays[key] ??
-        (activeScenario === "out-of-order" && key === "aurora" ? 300 : 0);
+        (activeScenario === "out-of-order" && key === "emerald" ? 300 : 0);
       try {
         if (request.signal.aborted || signal.aborted)
           throw new DOMException("Aborted", "AbortError");
