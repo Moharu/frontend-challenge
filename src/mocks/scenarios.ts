@@ -62,6 +62,28 @@ export function createScenarios() {
         throw new Error("Delay must be 0..10000 ms");
       cartDelays[kind] = ms;
     },
+    // Abortable wait shared by request delays and cart response latency.
+    async pause(ms: number, request: Request) {
+      const signal = generation.signal;
+      if (request.signal.aborted || signal.aborted)
+        throw new DOMException("Aborted", "AbortError");
+      await new Promise<void>((resolve, reject) => {
+        const abort = () => {
+          cleanup();
+          reject(new DOMException("Aborted", "AbortError"));
+        };
+        const cleanup = () => {
+          request.signal.removeEventListener("abort", abort);
+          signal.removeEventListener("abort", abort);
+        };
+        request.signal.addEventListener("abort", abort, { once: true });
+        signal.addEventListener("abort", abort, { once: true });
+        void delay(ms).then(() => {
+          cleanup();
+          resolve();
+        });
+      });
+    },
     async before(request: Request) {
       stats.started++;
       const activeScenario = scenario;
@@ -75,33 +97,21 @@ export function createScenarios() {
         currentFailure = cartFailures[operation];
         cartFailures[operation] = null;
       }
-      const signal = generation.signal;
       const key = (url.searchParams.get("search") ?? "").trim().toLowerCase();
+      // Cart reads model response latency: the state is read first and the
+      // response is delayed afterwards, so a slow read can carry older state.
+      const cartRead = cart && !mutation;
       const ms = cart
-        ? cartDelays[mutation ? "write" : "read"]
+        ? mutation
+          ? cartDelays.write
+          : 0
         : (delays[key] ??
           (activeScenario === "out-of-order" && key === "emerald" ? 300 : 0));
       try {
-        if (request.signal.aborted || signal.aborted)
-          throw new DOMException("Aborted", "AbortError");
-        await new Promise<void>((resolve, reject) => {
-          const abort = () => {
-            cleanup();
-            reject(new DOMException("Aborted", "AbortError"));
-          };
-          const cleanup = () => {
-            request.signal.removeEventListener("abort", abort);
-            signal.removeEventListener("abort", abort);
-          };
-          request.signal.addEventListener("abort", abort, { once: true });
-          signal.addEventListener("abort", abort, { once: true });
-          void delay(ms).then(() => {
-            cleanup();
-            resolve();
-          });
-        });
+        await this.pause(ms, request);
         stats.completed++;
         return {
+          responseDelay: cartRead ? cartDelays.read : 0,
           empty: activeScenario === "empty",
           failure:
             currentFailure ??

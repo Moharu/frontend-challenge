@@ -140,10 +140,10 @@ export function createStore(storage: Storage) {
         persist(next);
         return token;
       }),
-    cart: (token: string | null) => {
-      refresh();
-      return viewCart(state, cartFor(state, token));
-    },
+    // Reads share the write queue: a read never observes a state older than a
+    // write already enqueued before it.
+    cart: (token: string | null) =>
+      transaction(() => viewCart(state, cartFor(state, token))),
     addItem: (token: string | null, body: unknown) =>
       cartWrite(token, (draft, cart) => addItem(draft, cart, body)),
     changeItem: (token: string | null, itemId: string, body: unknown) =>

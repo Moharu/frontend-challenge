@@ -201,3 +201,13 @@ Mantenha este diário de alto nível nos próximos trabalhos do projeto com assi
 ## 2026-10-29 — Commit e push do carrinho autorizados
 
 **Orientação do usuário:** fazer commit e push da etapa do carrinho e dos ajustes de navegação/interface para `origin/main` (`Moharu/frontend-challenge`). Verificações registradas acima e em `docs/cart-verification.md`; `git diff --check` aprovado. Pendências: teclado virtual após o deploy na Vercel; meta de desempenho mobile. Pushes futuros continuam exigindo autorização.
+
+## 2026-10-29 — Correções da revisão do carrinho (`docs/handoffs/coding-agent-cart-fixes-draft-pt-br.md`)
+
+**Orientação do usuário:** verificar o novo handoff e resolver os três pontos da revisão de `480dbc7`, sem commit/push.
+
+**Resolução:** (1) leituras do carrinho na mesma fila das escritas no servidor simulado e regra única `keepNewestCart` no cliente para leituras e mutations; atraso de leitura dos cenários passou a ser latência de resposta para reproduzir o caso; teste de regressão com `nft.updated` real, comprovadamente falhando sem a correção; (2) `ARCHITECTURE.md` reescrito e documentos de cenários/REST/carrinho alinhados; (3) `fields.quantity` com mensagens legíveis, sem novo campo estruturado por não haver consumidor que precise do número, com teste das respostas 409.
+
+**Verificação:** tipos, lint, formatação, builds, 56 testes de integração e 8 E2E aprovados. Evidências em `docs/cart-verification.md`. Nenhum commit ou push.
+
+**Autorização de commit:** o usuário aprovou commit e push destas correções para `origin/main`, incluindo o handoff `docs/handoffs/coding-agent-cart-fixes-draft-pt-br.md`. Pushes futuros continuam exigindo autorização.

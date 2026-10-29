@@ -178,7 +178,9 @@ export function addItem(state: CommerceState, cart: StoredCart, body: unknown) {
       current
         ? `Você já tem ${current} no carrinho e o limite atual é ${max}. É possível adicionar no máximo ${Math.max(0, max - current)}.`
         : `O limite atual é ${max}.`,
-      { quantity: String(Math.max(0, max - current)) },
+      {
+        quantity: `É possível adicionar no máximo ${Math.max(0, max - current)}.`,
+      },
     );
   if (existing) {
     existing.quantity += amount;
@@ -232,7 +234,12 @@ export function changeItem(
         e.available === 0
           ? "Esta edição está esgotada. Remova o item."
           : `O limite atual é ${max}.`,
-        { quantity: String(max) },
+        {
+          quantity:
+            e.available === 0
+              ? "Edição esgotada."
+              : `A quantidade máxima atual é ${max}.`,
+        },
       );
     line.quantity = amount;
   }

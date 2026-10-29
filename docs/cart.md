@@ -18,7 +18,8 @@ O carrinho pertence ao servidor simulado. O cliente guarda somente um **token op
 - **Indisponibilidade:** a API nunca reduz nem remove linhas sozinha. Edição esgotada gera `SOLD_OUT`; quantidade acima do limite gera `QUANTITY_ABOVE_LIMIT` com o máximo atual. `hasConflicts` bloqueia "Conectar e finalizar" até a correção (ajustar ou remover).
 - **Sem reserva de estoque:** adicionar ao carrinho não reserva disponibilidade. Preço, disponibilidade e limites continuam pertencendo ao catálogo; o checkout deverá revalidar tudo na cotação.
 - **Quantidade:** inteiro de 1 a 1000 na API; a interface limita de 1 ao máximo efetivo. Diminuir abaixo de 1 não remove; remover é uma ação separada.
-- **Adicionar além do limite:** 409 `CONFLICT` com mensagem explicando quanto ainda é possível adicionar (`fields.quantity` traz o número); o carrinho não muda.
+- **Adicionar além do limite:** 409 `CONFLICT` com mensagem explicando quanto ainda é possível adicionar; `fields.quantity` traz uma mensagem legível ("É possível adicionar no máximo 2."), nunca um número solto. O carrinho não muda.
+- **Versão no cache:** uma única regra (`keepNewestCart`) vale para leituras e respostas de mutation: uma resposta com `version` menor que a do carrinho em cache (mesmo `id`) é descartada; versão igual é aceita, porque preço/disponibilidade do catálogo mudam sem escrita no carrinho; outro `id` (novo visitante) substitui. No servidor simulado, leituras passam pela mesma fila das escritas.
 - **Versão:** toda alteração incrementa `version` e `updatedAt` (relógio lógico). Operações são absolutas (definir quantidade, remover, aplicar cupom), então não exigem versão do cliente; o reconhecimento de preço é a única operação condicionada ao estado anterior e usa o próprio preço como verificação.
 
 ### Resumo, rede e taxa

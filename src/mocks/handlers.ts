@@ -32,8 +32,9 @@ export function createHandlers(
   async function condition(request: Request) {
     try {
       const result = await scenarios.before(request);
+      const responseDelay = result.responseDelay;
       if (result.failure === "network")
-        return { response: HttpResponse.error(), empty: false };
+        return { response: HttpResponse.error(), empty: false, responseDelay };
       if (result.failure === "http")
         return {
           response: error(
@@ -42,19 +43,18 @@ export function createHandlers(
             "Serviço temporariamente indisponível. Tente novamente.",
           ),
           empty: false,
+          responseDelay,
         };
-      return { response: null, empty: result.empty };
+      return { response: null, empty: result.empty, responseDelay };
     } catch {
-      return { response: HttpResponse.error(), empty: false };
+      return { response: HttpResponse.error(), empty: false, responseDelay: 0 };
     }
   }
   // Cart routes: the visitor token header identifies the server-side cart.
   function cartRoute(
     run: (token: string | null, request: Request) => Promise<Cart> | Cart,
   ) {
-    return async ({ request }: { request: Request }) => {
-      const { response } = await condition(request);
-      if (response) return response;
+    async function respond(request: Request) {
       try {
         const cart = await run(request.headers.get(visitorHeader), request);
         return HttpResponse.json({ data: cart });
@@ -63,6 +63,18 @@ export function createHandlers(
           return error(e.status, e.code, e.message, e.fields);
         throw e;
       }
+    }
+    return async ({ request }: { request: Request }) => {
+      const { response, responseDelay } = await condition(request);
+      const result = response ?? (await respond(request));
+      if (responseDelay) {
+        try {
+          await scenarios.pause(responseDelay, request);
+        } catch {
+          return HttpResponse.error();
+        }
+      }
+      return result;
     };
   }
   async function body(request: Request): Promise<unknown> {

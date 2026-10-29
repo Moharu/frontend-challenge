@@ -386,3 +386,82 @@ test("um novo contexto do navegador começa com carrinho vazio", async ({
   ).toBeVisible();
   await other.close();
 });
+test("leitura antiga do carrinho nunca sobrescreve uma alteração mais nova", async ({
+  page,
+}) => {
+  await seed(page, [["nft-001", "edition-1-limited", 2]]);
+  await openCart(page);
+  const emerald = row(page, "Emerald Ape #042");
+  await expect(emerald.locator(".qty-value")).toHaveText("2");
+  // Record every quantity the page shows, to detect any regression.
+  await page.evaluate(() => {
+    const seen: string[] = [];
+    Object.assign(window, { __qty: seen });
+    const target = document.querySelector(".cart-table tbody")!;
+    new MutationObserver(() => {
+      const value = document.querySelector(".qty-value")?.textContent ?? "";
+      if (seen.at(-1) !== value) seen.push(value);
+    }).observe(target, { subtree: true, childList: true, characterData: true });
+  });
+  // The PATCH waits 300ms before writing; the GET triggered by the event reads
+  // the state immediately (before the write) and answers only after 900ms.
+  await page.evaluate(() => {
+    window.__KURIO_TEST__.cartDelay("write", 300);
+    window.__KURIO_TEST__.cartDelay("read", 900);
+  });
+  await emerald.getByRole("button", { name: /Aumentar quantidade/ }).click();
+  await page.evaluate(() =>
+    window.__KURIO_TEST__.update("nft-001", "edition-1-limited", {
+      available: 9,
+    }),
+  );
+  await expect(emerald.locator(".qty-value")).toHaveText("3");
+  await page.waitForTimeout(1300);
+  await expect(emerald.locator(".qty-value")).toHaveText("3");
+  const seen = await page.evaluate(
+    () => (window as unknown as { __qty: string[] }).__qty,
+  );
+  expect(seen.slice(seen.indexOf("3"))).not.toContain("2");
+  await page.evaluate(() => window.__KURIO_TEST__.cartDelay("read", 0));
+  await page.reload();
+  await expect(emerald.locator(".qty-value")).toHaveText("3");
+});
+test("conflitos 409 trazem mensagens legíveis em fields.quantity", async ({
+  page,
+}) => {
+  await seed(page, [["nft-001", "edition-1-limited", 5]]);
+  const responses = await page.evaluate(async () => {
+    const token = localStorage.getItem("kurio.visitor.v1")!;
+    const headers = {
+      "content-type": "application/json",
+      "X-Visitor-Token": token,
+    };
+    const add = await fetch("/api/cart/items", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        nftId: "nft-001",
+        editionId: "edition-1-limited",
+        quantity: 1,
+      }),
+    });
+    const cart = await (await fetch("/api/cart", { headers })).json();
+    const change = await fetch(`/api/cart/items/${cart.data.items[0].id}`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ quantity: 9 }),
+    });
+    return [
+      { status: add.status, body: await add.json() },
+      { status: change.status, body: await change.json() },
+    ];
+  });
+  expect(responses[0].status).toBe(409);
+  expect(responses[0].body.error.fields.quantity).toBe(
+    "É possível adicionar no máximo 0.",
+  );
+  expect(responses[1].status).toBe(409);
+  expect(responses[1].body.error.fields.quantity).toBe(
+    "A quantidade máxima atual é 5.",
+  );
+});

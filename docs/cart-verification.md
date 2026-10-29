@@ -56,3 +56,13 @@ O plugin `kurio-preload-mocks` (`vite.config.ts`) adiciona `modulepreload` do ch
 - Comparação direta com o arquivo Figma (sem acesso pela integração nesta etapa; usadas capturas e SVGs fornecidos pelo usuário).
 - Leitores de tela reais, zoom de 200% e teclado virtual em dispositivo físico.
 - Duas abas gravando ao mesmo tempo no mesmo `tick` (limitação documentada).
+
+## Correções da revisão de `480dbc7`
+
+Rodada guiada por `docs/handoffs/coding-agent-cart-fixes-draft-pt-br.md`, sem mudanças visuais nem de carregamento (Lighthouse não repetido, conforme o handoff).
+
+1. **Leitura antiga sobrescrevendo alteração mais nova.** No servidor simulado, `cart(token)` passou a usar a mesma fila serializada das escritas. No cliente, `keepNewestCart` é a regra única aplicada às leituras (`structuralSharing` da consulta) e às respostas de mutation (`storeCart`): versão menor do mesmo `id` é descartada, versão igual e outro `id` substituem. O atraso de leitura do carrinho nos cenários passou a modelar latência de resposta (o estado é lido antes da espera), o que torna o cenário reproduzível. Novo teste "leitura antiga do carrinho nunca sobrescreve uma alteração mais nova": `+` com escrita atrasada em 300ms, `nft.updated` real disparando um `GET` que lê o estado anterior e responde após 900ms; um `MutationObserver` registra as quantidades exibidas e verifica que, depois de 3, nunca volta a 2. Com a regra do cliente desativada temporariamente, o teste falhou (quantidade 2), confirmando que reproduz o problema; com a regra, 5 repetições por viewport passaram.
+2. **`ARCHITECTURE.md` desatualizado.** Reescrito por inteiro: rotas atuais, esquema 3, endpoints de visitante/carrinho/cupom implementados, fila única de leitura/escrita, política de múltiplas abas, regra de versão no cache, o que continua somente contrato e limitações (incluindo rede de pagamento independente da rede do NFT). `docs/mock-scenarios.md` (esquema, abas, estado do carrinho, semântica do atraso de leitura), `docs/contracts/rest.md` (regra de `fields`) e `docs/cart.md` foram alinhados.
+3. **`fields.quantity` com número.** As respostas 409 de `addItem`/`changeItem` trazem mensagens ("É possível adicionar no máximo 0.", "A quantidade máxima atual é 5.", "Edição esgotada."). Nenhum campo estruturado novo foi adicionado ao envelope: a interface não interpreta essa informação (exibe `message` e usa `maxQuantity` da linha do carrinho). Novo teste verifica as duas respostas 409.
+
+Resultados: tipos, lint, formatação, build normal e de integração aprovados; 56 testes de integração (eram 52; +2 casos × desktop/mobile) e 8 E2E aprovados, sem mudança nas referências visuais.
