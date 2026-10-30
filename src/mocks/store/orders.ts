@@ -26,6 +26,8 @@ export interface StoredOrder extends Order {
   // reload resolves overdue orders instead of losing the timer.
   resolveAt: number;
   outcome: PaymentOutcome;
+  // The cart the order was created from: at most one pending order per cart.
+  cartId?: string;
 }
 export interface OrdersState extends WalletsState {
   orders: Record<string, StoredOrder>;
@@ -45,10 +47,27 @@ export class QuoteChangedError extends ApiError {
     );
   }
 }
+// A new key for a cart that already has a pending order (another tab, for
+// example): no second order, the client is sent to the existing one.
+export class OrderPendingError extends ApiError {
+  constructor(public orderId: string) {
+    super(
+      409,
+      "ORDER_PENDING",
+      "Já existe um pedido em andamento para este carrinho.",
+    );
+  }
+}
 export const view = (order: StoredOrder): Order => {
-  const { resolveAt: _resolveAt, outcome: _outcome, ...rest } = order;
+  const {
+    resolveAt: _resolveAt,
+    outcome: _outcome,
+    cartId: _cartId,
+    ...rest
+  } = order;
   void _resolveAt;
   void _outcome;
+  void _cartId;
   return structuredClone(rest);
 };
 const text = (value: unknown) => (typeof value === "string" ? value : "");
@@ -122,6 +141,14 @@ export function createOrder(
       nftIds: [],
     };
   }
+  // After the key check (a retry with the same key and body still gets its
+  // order): a cart has at most one pending order. Once it resolves, the cart
+  // accepts a new one.
+  const cart: StoredCart = accountCart(state, token);
+  const pending = Object.values(state.orders).find(
+    (o) => o.status === "pending" && o.cartId === cart.id,
+  );
+  if (pending) throw new OrderPendingError(pending.id);
   const input = record(body) ? body : {};
   const collector = record(input.collector) ? input.collector : {};
   if (
@@ -158,7 +185,6 @@ export function createOrder(
     );
   // The server recomputes the current quote and compares it with the one
   // the user confirmed (quoteId + quoteVersion).
-  const cart: StoredCart = accountCart(state, token);
   const fresh = computeQuote(state, token, cart, {
     cartId: cart.id,
     cartVersion: cart.version,
@@ -229,6 +255,7 @@ export function createOrder(
     collectorNote: orNull(input.collectorNote),
     resolveAt: options.now + options.delayMs,
     outcome: options.outcome,
+    cartId: cart.id,
   };
   state.orders[order.id] = order;
   state.idempotency[scoped] = { orderId: order.id, body: canonical };

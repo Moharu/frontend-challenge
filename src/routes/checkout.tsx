@@ -267,6 +267,16 @@ function Checkout({ session }: { session: Session }) {
           await sendOrder(orderBody(fresh), true);
           return;
         } else setSendError(info.message);
+      } else if (info.code === "ORDER_PENDING" && info.orderId) {
+        // Another tab (another key) already ordered this cart: this tab's key
+        // goes, and the user follows the existing order.
+        discardPendingOrder(userId);
+        await navigate({
+          to: "/orders/$orderId",
+          params: { orderId: info.orderId },
+          replace: true,
+        });
+        notify("Já existe um pedido em andamento para este carrinho.");
       } else if (info.status === 400 && Object.keys(info.fields).length) {
         discardPendingOrder(userId);
         setErrors(info.fields);

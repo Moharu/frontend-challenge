@@ -222,6 +222,9 @@ test("4. cliques repetidos rápidos e duas abas com a mesma chave: um único ped
   });
   await expect(page).toHaveURL(/\/orders\/order-1$/);
   expect(await orderCount(page)).toBe(1);
+  // The cart accepts a new order once the first resolves.
+  await resolvePayments(page);
+  await expect(heading(page)).toHaveText(confirmedTitle);
   // Second purchase whose response is lost, then a second tab (a copy of
   // this tab's session storage) resumes with the same key.
   await addLines(page, [noon]);
@@ -309,6 +312,14 @@ test("6. mesma chave com corpo diferente: 409 na API; mesmo corpo: o mesmo pedid
     walletId: "wallet-ada-primary",
     collector,
   };
+  // Collector data is validated on the server with the shared validators.
+  const invalid = await api(page, "/orders", {
+    method: "POST",
+    headers: { "Idempotency-Key": "key-0000-0000-0002" },
+    body: { ...body, collector: { ...collector, email: "não" } },
+  });
+  expect(invalid.status).toBe(400);
+  expect(invalid.body.error.fields.email).toBeTruthy();
   const headers = { "Idempotency-Key": "key-0000-0000-0001" };
   const first = await api(page, "/orders", { method: "POST", body, headers });
   expect(first.status).toBe(201);
@@ -332,14 +343,6 @@ test("6. mesma chave com corpo diferente: 409 na API; mesmo corpo: o mesmo pedid
   });
   expect(different.status).toBe(409);
   expect(different.body.error.code).toBe("CONFLICT");
-  // Collector data is validated on the server with the shared validators.
-  const invalid = await api(page, "/orders", {
-    method: "POST",
-    headers: { "Idempotency-Key": "key-0000-0000-0002" },
-    body: { ...body, collector: { ...collector, email: "não" } },
-  });
-  expect(invalid.status).toBe(400);
-  expect(invalid.body.error.fields.email).toBeTruthy();
   expect(await orderCount(page)).toBe(1);
 });
 test("7. cotação alterada entre a revisão e o envio: 409 no servidor e nova confirmação na interface", async ({
@@ -633,4 +636,116 @@ test("15. pendências: lista de definição válida e cupom expirado removível"
   await expect(summary.locator(".coupon-removed")).toHaveText("");
   const cart = (await api(page, "/cart")).body.data;
   expect(cart.couponRemoved).toBeNull();
+});
+test("16. duas abas com chaves diferentes: um único pedido; a segunda aba vai ao pedido existente", async ({
+  page,
+  context,
+}, testInfo) => {
+  const mobile = isMobile(testInfo.project.name);
+  await login(page);
+  await addLines(page, [emerald]);
+  await holdPayments(page);
+  const id = await placeOrder(page, mobile);
+  // A new tab has its own session storage: no key from the first tab.
+  const second = await context.newPage();
+  await second.goto("/");
+  await ready(second);
+  await toConfirm(second, mobile);
+  await confirmButton(second).click();
+  await expect(second).toHaveURL(new RegExp(`/orders/${id}$`));
+  await expect(second.locator(".notices")).toContainText(
+    "Já existe um pedido em andamento para este carrinho.",
+  );
+  expect(await orderCount(page)).toBe(1);
+  expect(
+    await second.evaluate(() =>
+      sessionStorage.getItem("kurio.checkout.order.v1:user-ada"),
+    ),
+  ).toBeNull();
+});
+test("17. API: 409 ORDER_PENDING com o pedido existente; a mesma chave segue idempotente; após a recusa, novo pedido", async ({
+  page,
+}) => {
+  await login(page);
+  await addLines(page, [emerald]);
+  await holdPayments(page, { status: "declined", reason: "Recusado" });
+  const quote = await quoteFor(page);
+  const body = {
+    quoteId: quote.id,
+    quoteVersion: quote.version,
+    walletId: "wallet-ada-primary",
+    collector,
+  };
+  const headers = { "Idempotency-Key": "key-pending-0000-0001" };
+  const first = await api(page, "/orders", { method: "POST", body, headers });
+  expect(first.status).toBe(201);
+  // The key check comes first: the same key and body still get the order.
+  const again = await api(page, "/orders", { method: "POST", body, headers });
+  expect(again.status).toBe(200);
+  expect(again.body.data.id).toBe(first.body.data.id);
+  const before = await available(page, "nft-001", "edition-1-limited");
+  const other = await api(page, "/orders", {
+    method: "POST",
+    body,
+    headers: { "Idempotency-Key": "key-pending-0000-0002" },
+  });
+  expect(other.status).toBe(409);
+  expect(other.body.error.code).toBe("ORDER_PENDING");
+  expect(other.body.error.orderId).toBe(first.body.data.id);
+  // No second order and no second reservation.
+  expect(await orderCount(page)).toBe(1);
+  expect(await available(page, "nft-001", "edition-1-limited")).toBe(before);
+  await resolvePayments(page);
+  const fresh = await quoteFor(page);
+  const next = await api(page, "/orders", {
+    method: "POST",
+    headers: { "Idempotency-Key": "key-pending-0000-0003" },
+    body: { ...body, quoteId: fresh.id, quoteVersion: fresh.version },
+  });
+  expect(next.status).toBe(201);
+  expect(await orderCount(page)).toBe(2);
+});
+test("18. edição única com pagamento pendente: sem esgotado falso no carrinho do comprador", async ({
+  page,
+}, testInfo) => {
+  const mobile = isMobile(testInfo.project.name);
+  const unique = "edition-2-unique";
+  // Public availability, as a visitor or another user sees it.
+  const publicAvailable = () =>
+    page.evaluate(async (unique) => {
+      const r = await fetch("/api/nfts/nft-002");
+      const nft = (await r.json()).data as {
+        editions: { id: string; available: number }[];
+      };
+      return nft.editions.find((e) => e.id === unique)!.available;
+    }, unique);
+  await login(page);
+  await addLines(page, [["nft-002", unique, 1]]);
+  // Declined first: the reservation is released for everyone.
+  await holdPayments(page, { status: "declined", reason: "Recusado" });
+  await placeOrder(page, mobile);
+  expect(await publicAvailable()).toBe(0);
+  const pending = (await api(page, "/cart")).body.data;
+  expect(pending.items[0].conflict).toBeNull();
+  expect(pending.hasConflicts).toBe(false);
+  expect(pending.pendingOrderId).toBe("order-1");
+  await page.goto("/cart");
+  await ready(page);
+  await expect(page.locator(".cart-pending-order")).toContainText(
+    "Há um pedido em andamento para este carrinho.",
+  );
+  await expect(page.getByText(/esgotou/)).toHaveCount(0);
+  await resolvePayments(page);
+  await page.goto("/orders/order-1");
+  await expect(heading(page)).toHaveText("Pagamento recusado");
+  expect(await publicAvailable()).toBe(1);
+  // Confirmed: the line leaves the cart, and the edition stays sold.
+  await holdPayments(page);
+  await placeOrder(page, mobile);
+  expect(await publicAvailable()).toBe(0);
+  expect((await api(page, "/cart")).body.data.hasConflicts).toBe(false);
+  await resolvePayments(page);
+  await expect(heading(page)).toHaveText(confirmedTitle);
+  expect(await cartLines(page)).toEqual([]);
+  expect(await publicAvailable()).toBe(0);
 });

@@ -34,6 +34,31 @@ export interface CommerceState {
   carts: Record<string, StoredCart>;
   // Coupons expired by a scenario control (besides their own expiry date).
   expiredCoupons: string[];
+  // Orders (from the orders module): their pending reservations count back
+  // into the availability shown to the cart they came from.
+  orders?: Record<string, PendingReservation>;
+}
+interface PendingReservation {
+  id: string;
+  status: string;
+  cartId?: string;
+  items: ReadonlyArray<{ editionId: string; quantity: number }>;
+}
+const pendingOrderOf = (state: CommerceState, cart: StoredCart) =>
+  Object.values(state.orders ?? {}).find(
+    (o) => o.status === "pending" && o.cartId === cart.id,
+  );
+// Availability for this cart: the public stock plus what this cart's own
+// pending order reserved (other users and visitors see the reduced stock).
+function cartEdition<E extends { id: string; available: number }>(
+  state: CommerceState,
+  cart: StoredCart,
+  e: E,
+): E {
+  const reserved = (pendingOrderOf(state, cart)?.items ?? [])
+    .filter((i) => i.editionId === e.id)
+    .reduce((sum, i) => sum + i.quantity, 0);
+  return reserved ? { ...e, available: e.available + reserved } : e;
 }
 // The single coupon validity rule, used when applying a coupon, when viewing
 // the cart and (through viewCart) when quoting: a coupon past its expiry date
@@ -90,7 +115,9 @@ export function visitorCart(state: CommerceState, token: string | null) {
 }
 export function viewCart(state: CommerceState, cart: StoredCart): Cart {
   const items = cart.items.map((item): CartLine => {
-    const { nft, edition: e } = edition(state, item.nftId, item.editionId);
+    const found = edition(state, item.nftId, item.editionId);
+    const nft = found.nft;
+    const e = cartEdition(state, cart, found.edition);
     const max = maxQuantity(e);
     return {
       id: item.id,
@@ -147,6 +174,7 @@ export function viewCart(state: CommerceState, cart: StoredCart): Cart {
       feeEstimated: true,
     },
     hasConflicts: items.some((i) => i.conflict !== null),
+    pendingOrderId: pendingOrderOf(state, cart)?.id ?? null,
     updatedAt: cart.updatedAt,
   };
 }
@@ -187,7 +215,11 @@ export function addItem(state: CommerceState, cart: StoredCart, body: unknown) {
       editionId: "Informe o NFT e a edição.",
     });
   const amount = quantity(input.quantity);
-  const { edition: e } = edition(state, input.nftId, input.editionId);
+  const e = cartEdition(
+    state,
+    cart,
+    edition(state, input.nftId, input.editionId).edition,
+  );
   const existing = cart.items.find(
     (i) => i.nftId === input.nftId && i.editionId === input.editionId,
   );
@@ -241,7 +273,11 @@ export function changeItem(
 ) {
   const input = (body ?? {}) as Record<string, unknown>;
   const line = item(cart, itemId);
-  const { edition: e } = edition(state, line.nftId, line.editionId);
+  const e = cartEdition(
+    state,
+    cart,
+    edition(state, line.nftId, line.editionId).edition,
+  );
   if (input.quantity === undefined && input.acknowledgePriceEth === undefined)
     throw new ApiError(400, "VALIDATION", "Nenhuma alteração informada.");
   if (input.acknowledgePriceEth !== undefined) {

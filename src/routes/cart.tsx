@@ -488,6 +488,14 @@ function CartSummary({ cart }: { cart: Cart }) {
           <dd>{eth(summary.totalEth)}</dd>
         </div>
       </dl>
+      {cart.pendingOrderId && (
+        <p className="cart-pending-order">
+          Há um pedido em andamento para este carrinho.{" "}
+          <Link to="/orders/$orderId" params={{ orderId: cart.pendingOrderId }}>
+            Acompanhar pedido
+          </Link>
+        </p>
+      )}
       {cart.hasConflicts ? (
         <>
           <Button

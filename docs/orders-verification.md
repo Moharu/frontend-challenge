@@ -55,3 +55,12 @@ Página do pedido pendente e confirmada em 390, 414, 768 e 1440px, nos projetos 
 - Leitores de tela reais (verificação por papéis, nomes acessíveis, foco e regiões `aria-live`).
 - Duas abas com chaves diferentes para o mesmo corpo (fora do escopo de `sessionStorage`; ver limitações em `docs/orders.md`).
 - Teclado virtual e safe areas em dispositivo físico.
+
+## Correções da revisão de `012829a`
+
+Rodada guiada por `docs/handoffs/coding-agent-orders-fixes-draft-pt-br.md`.
+
+1. **Pedido duplicado a partir de outra aba:** no máximo um pedido pendente por carrinho. Depois da verificação da chave de idempotência, uma chave nova para um carrinho com pedido pendente recebe 409 `ORDER_PENDING` com `error.orderId`, sem pedido nem reserva novos. O checkout descarta a chave da aba e leva ao pedido existente com aviso. Testes 16 (duas abas com chaves diferentes) e 17 (API: 409 com o id, a mesma chave ainda idempotente, novo pedido aceito após a recusa); o teste 5 continua cobrindo a resposta perdida. Os testes 4 e 6 foram ajustados à regra: o segundo pedido do teste 4 vem depois da confirmação do primeiro, e o envio inválido do teste 6 vem antes do primeiro pedido.
+2. **"Esgotado" falso no carrinho do comprador:** a disponibilidade das linhas do carrinho soma de volta a reserva do pedido pendente desse carrinho (`viewCart`, cotação, adicionar e alterar quantidade); o público continua vendo a reserva. O carrinho responde `pendingOrderId` e mostra link para o pedido. Teste 18 (edição única: a recusa libera para todos; a confirmação remove a linha e mantém a edição vendida).
+
+Resultados, com 2 workers: tipos, lint (com `check:bom`), formatação, build normal e de integração aprovados; 158 testes de integração aprovados e 2 ignorados (casos só de mobile no projeto desktop), em 2,3 min; suíte de pedidos (18 casos × desktop/mobile) repetida 3× (108/108); 12 E2E aprovados. **Erros de infraestrutura:** nenhum. Não ficaram navegadores do Playwright nem `vite preview` órfãos (o único Vite em execução era o servidor de desenvolvimento do usuário). Lighthouse não executado, conforme o handoff.

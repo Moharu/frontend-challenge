@@ -2768,6 +2768,16 @@ h3 {
   font-weight: 700;
   font-size: 14px;
 }
+.cart-pending-order {
+  margin: 0 0 12px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.cart-pending-order a {
+  color: var(--accent);
+  font-weight: 700;
+}
 .checkout-resuming {
   padding: 12px 16px;
   border: 1px solid var(--border);

@@ -10,6 +10,14 @@ Etapa guiada por `docs/handoffs/coding-agent-orders-draft-pt-br.md`. "Confirmar 
 - **Refresh durante o envio:** ao montar, o checkout encontra a entrada sem `orderId` e retoma o envio ("Retomando seu pedido…") com a mesma chave. Uma entrada com `orderId` não é retomada (é uma compra já criada).
 - **Respostas:** sucesso grava o `orderId` e substitui a URL pela do pedido; `QUOTE_CHANGED` descarta a chave e passa a cotação nova pela comparação do checkout; 400 mostra os campos no formulário; 409 `CONFLICT` descarta a chave e informa o erro.
 
+## Um pedido pendente por carrinho
+
+A chave fica em `sessionStorage`, separada por aba. Para que outra aba não crie um segundo pedido com outra chave, o servidor aceita **no máximo um pedido pendente por carrinho**: depois da verificação da chave, uma chave nova para um carrinho com pedido pendente recebe 409 `ORDER_PENDING` com o id do pedido existente, sem criar pedido nem reservar estoque. A aba que recebe o 409 descarta a própria chave e vai à página do pedido existente com o aviso "Já existe um pedido em andamento para este carrinho." (região de avisos). Depois da confirmação (carrinho já reduzido) ou da recusa (carrinho intacto), o carrinho aceita um novo pedido.
+
+## Reserva e o carrinho do comprador
+
+A reserva reduz a disponibilidade pública (e `nft.updated` reflete isso). No carrinho do próprio comprador, a disponibilidade de cada linha soma de volta o que o pedido pendente desse carrinho reservou, em `viewCart`, na cotação e na validação de quantidade: comprar uma edição única não mostra "esgotou" no próprio carrinho enquanto o pagamento é processado. Visitantes e outros usuários continuam vendo a disponibilidade reduzida. O carrinho informa `pendingOrderId`, e a página do carrinho mostra "Há um pedido em andamento para este carrinho." com o link "Acompanhar pedido", sem bloquear nada.
+
 ## Página do pedido
 
 - Rota protegida por `requireSession`, lazy; acesso direto e refresh funcionam. Sessão expirada leva ao login e volta à página do pedido.
@@ -40,5 +48,4 @@ Etapa guiada por `docs/handoffs/coding-agent-orders-draft-pt-br.md`. "Confirmar 
 ## Limitações
 
 - Pagamento simulado (sem rede real); o resultado e o atraso vêm de cenários.
-- A chave fica em `sessionStorage`: uma segunda aba criada depois do envio não conhece a chave da primeira, mas, enviando o mesmo corpo, uma nova chave criaria outro pedido. O teste de duas abas cobre a mesma chave compartilhada.
 - Não há histórico de pedidos nem cancelamento.

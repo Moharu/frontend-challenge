@@ -29,6 +29,9 @@ export type ErrorCode =
   // The quote referenced by an order is no longer valid; the error body
   // carries the fresh quote in `error.quote`.
   | "QUOTE_CHANGED"
+  // The cart already has a pending order (created with another key); the
+  // error body carries its id in `error.orderId`.
+  | "ORDER_PENDING"
   | "TRANSIENT"
   | "NOT_IMPLEMENTED";
 export interface ErrorResponse {
@@ -39,6 +42,8 @@ export interface ErrorResponse {
     retryable: boolean;
     // Only with QUOTE_CHANGED: the server's current quote.
     quote?: unknown;
+    // Only with ORDER_PENDING: the pending order of the same cart.
+    orderId?: string;
   };
 }
 export interface PageResponse<T> {

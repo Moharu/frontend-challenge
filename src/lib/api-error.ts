@@ -8,6 +8,8 @@ export interface ApiErrorInfo {
   fields: Record<string, string>;
   // QUOTE_CHANGED: the server's current quote (validated by the caller).
   quote?: unknown;
+  // ORDER_PENDING: the cart's pending order.
+  orderId?: string;
 }
 // Client-side failure whose message is meant for the user as-is.
 export class UserFacingError extends Error {}
@@ -29,6 +31,8 @@ export function apiError(error: unknown): ApiErrorInfo {
         ? (envelope.fields as Record<string, string>)
         : {},
       quote: envelope?.quote,
+      orderId:
+        typeof envelope?.orderId === "string" ? envelope.orderId : undefined,
     };
   }
   return {

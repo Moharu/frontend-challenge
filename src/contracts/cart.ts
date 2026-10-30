@@ -58,6 +58,9 @@ export interface Cart {
   couponRemoved: CouponRemoval | null;
   summary: CartSummary;
   hasConflicts: boolean;
+  // A pending order created from this cart (account carts only): its own
+  // reservation counts back into the lines' availability.
+  pendingOrderId?: string | null;
   updatedAt: string;
 }
 export interface VisitorSession {
@@ -126,6 +129,8 @@ export function isCart(value: unknown): value is Cart {
     networks.includes(s.feeNetwork as Network) &&
     typeof s.feeEstimated === "boolean" &&
     typeof value.hasConflicts === "boolean" &&
+    (value.pendingOrderId == null ||
+      typeof value.pendingOrderId === "string") &&
     timestamp(value.updatedAt)
   );
 }

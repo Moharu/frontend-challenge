@@ -12,7 +12,7 @@ import type { ErrorResponse } from "@/contracts/common";
 import { visitorHeader } from "@/contracts/cart";
 import { sessionHeader } from "@/contracts/session";
 import { ApiError } from "./store/cart";
-import { QuoteChangedError } from "./store/orders";
+import { OrderPendingError, QuoteChangedError } from "./store/orders";
 import type { NftUpdated } from "@/contracts/events";
 import { idempotencyHeader, type Order } from "@/contracts/orders";
 import type { CartIdentity, MockStore } from "./store";
@@ -22,15 +22,27 @@ function error(
   code: ErrorResponse["error"]["code"],
   message: string,
   fields?: Record<string, string>,
-  quote?: unknown,
+  extra?: { quote?: unknown; orderId?: string },
 ) {
   return HttpResponse.json<ErrorResponse>(
     {
-      error: { code, message, fields, retryable: code === "TRANSIENT", quote },
+      error: {
+        code,
+        message,
+        fields,
+        retryable: code === "TRANSIENT",
+        ...extra,
+      },
     },
     { status },
   );
 }
+// Store errors to the envelope, with the extras some codes carry.
+const fromApiError = (e: ApiError) =>
+  error(e.status, e.code, e.message, e.fields, {
+    quote: e instanceof QuoteChangedError ? e.quote : undefined,
+    orderId: e instanceof OrderPendingError ? e.orderId : undefined,
+  });
 // Events produced by REST mutations (stock reservation and release, order
 // transitions), delivered by the mock socket.
 export interface HandlerEvents {
@@ -84,14 +96,7 @@ export function createHandlers(
           ? new HttpResponse(null, { status: 204 })
           : HttpResponse.json({ data }, { status });
       } catch (e) {
-        if (e instanceof ApiError)
-          return error(
-            e.status,
-            e.code,
-            e.message,
-            e.fields,
-            e instanceof QuoteChangedError ? e.quote : undefined,
-          );
+        if (e instanceof ApiError) return fromApiError(e);
         throw e;
       }
     }
@@ -224,14 +229,7 @@ export function createHandlers(
           { status: result.created ? 201 : 200 },
         );
       } catch (e) {
-        if (e instanceof ApiError)
-          return error(
-            e.status,
-            e.code,
-            e.message,
-            e.fields,
-            e instanceof QuoteChangedError ? e.quote : undefined,
-          );
+        if (e instanceof ApiError) return fromApiError(e);
         return HttpResponse.error();
       }
     }),
