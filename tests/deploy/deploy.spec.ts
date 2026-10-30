@@ -12,24 +12,50 @@ const onlyRemote = () =>
 // Fictional credentials documented in the README.
 const ada = { email: "ada@example.test", password: "AdaKurio2026" };
 // Every test fails on a console error or an /api request that left the
-// browser (not answered by the service worker).
+// browser (not answered by the service worker). One exception: a request
+// still in flight when the page navigates away (goto, reload). MSW's client
+// sends CLIENT_CLOSED on unload and the worker forgets the page at once, so
+// that request reaches the network; it belongs to a discarded document and
+// its result is never used (the new page loads its own data).
 const test = base.extend<{ guard: void }>({
   guard: [
     async ({ page }, use) => {
       const problems: string[] = [];
-      page.on("console", (message) => {
-        if (message.type() === "error")
-          problems.push(`console: ${message.text()}`);
+      // Main-frame navigations, and bypassed /api requests with their 404
+      // console reports, judged at the end: excused only when a navigation
+      // starts within 2 s (beforeunload, and CLIENT_CLOSED, come first).
+      const navigations: number[] = [];
+      const bypassed: { at: number; text: string }[] = [];
+      page.on("request", (request) => {
+        if (
+          request.isNavigationRequest() &&
+          request.frame() === page.mainFrame()
+        )
+          navigations.push(Date.now());
       });
-      page.on("pageerror", (error) => problems.push(`page: ${error.message}`));
       page.on("response", (response) => {
         const path = new URL(response.url()).pathname;
         if (path.startsWith("/api/") && !response.fromServiceWorker())
-          problems.push(
-            `api outside the worker: ${response.url()} (page ${page.url()})`,
-          );
+          bypassed.push({
+            at: Date.now(),
+            text: `api outside the worker: ${response.url()} (page ${page.url()})`,
+          });
       });
+      page.on("console", (message) => {
+        if (message.type() !== "error") return;
+        if (/status of 404/.test(message.text()))
+          bypassed.push({ at: Date.now(), text: `console: ${message.text()}` });
+        else problems.push(`console: ${message.text()}`);
+      });
+      page.on("pageerror", (error) => problems.push(`page: ${error.message}`));
       await use();
+      for (const entry of bypassed) {
+        const leaving = navigations.some(
+          (at) => at >= entry.at - 50 && at - entry.at <= 2000,
+        );
+        if (leaving) console.log(`left behind by a navigation: ${entry.text}`);
+        else problems.push(entry.text);
+      }
       expect(problems).toEqual([]);
     },
     { auto: true },

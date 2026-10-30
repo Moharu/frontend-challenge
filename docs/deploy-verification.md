@@ -3,8 +3,8 @@
 Etapa guiada por `docs/handoffs/coding-agent-deploy-draft-pt-br.md`, com autorização do usuário para criar o projeto `jungle-gaming-challenge-joao` e implantar, e para o commit e o push da preparação.
 
 - **URL de produção:** https://jungle-gaming-challenge-joao.vercel.app
-- **Commit publicado:** `c757b34` (`c757b342c2bbc2e7abc24ba980efbbc075539a92`), branch `main`
-- **Implantação:** `dpl_phKy3itJdCiBsfuRyMjoH3BsS5xG`, região `iad1`, build de cerca de 26 s, estado READY
+- **Commit publicado:** primeira implantação `c757b34`; verificada por último `56365d3` (`56365d3b9d4b771a1a9e3dcde448b7a28b0832b4`), branch `main`
+- **Implantações:** primeira `dpl_phKy3itJdCiBsfuRyMjoH3BsS5xG` (criada pelo conector, build de cerca de 26 s); verificada por último `dpl_7pNttnhA25to6uWZwC9SDAb5n9yM` (criada pelo push), região `iad1`, estado READY. Este registro chega por um commit só de documentação e testes, que gera mais uma implantação com o mesmo código da aplicação.
 - **Data:** 2026-10-30
 - **Projeto:** conta pessoal (`joaovtelos-projects`), vinculado ao repositório `Moharu/frontend-challenge`; cada push em `main` implanta em produção
 
@@ -46,19 +46,30 @@ Pelo conector da Vercel: a primeira tentativa de criar o projeto falhou por falt
 Chromium desktop e mobile, 2 workers.
 
 - **Primeira execução** (logo após a implantação, cache da CDN frio): 8 aprovados e 2 falhas no desktop.
-  - "acesso direto e refresh": uma requisição `/api/nfts` da página inicial foi respondida pela rede (404) em vez do service worker. **Não se repetiu** em 34 execuções seguintes do mesmo teste (4 isoladas e 3 rodadas completas), nem em 6 sondagens com visitas novas e recargas. Hipótese: numa primeira visita, a promessa de início do MSW resolveu antes de o worker novo assumir o controle da página. Primeira correção (autorizada pelo usuário, commit `d06407d`): esperar algum `navigator.serviceWorker.controller` antes de renderizar. **Não bastou:** na implantação seguinte, o teste de favoritos (mobile) falhou 2 vezes em 6 com `/api/favorites` respondido pela rede logo após o login.
+  - "acesso direto e refresh": uma requisição `/api/nfts` foi respondida pela rede (404) em vez do service worker.
+  - "arquivos estáticos": a fonte ainda não tinha carregado quando o teste a procurou (problema do teste).
 
-**Causa identificada:** o worker do MSW 2.15 se desregistra quando sua última página descarrega (`CLIENT_CLOSED` ao recarregar ou navegar com carregamento completo) e esvazia a lista de páginas ativas. A página seguinte pode continuar controlada por esse worker antigo, que deixa passar para a rede tudo enquanto `activeClientIds` está vazio, até o worker novo registrado pelo MSW assumir o controle. Localmente o worker novo se instala quase na hora; na Vercel, buscar o script leva mais tempo e as primeiras requisições escapam.
+### Requisições `/api` fora do service worker: investigação
 
-**Correção:** antes de renderizar, `main.tsx` espera que a página seja controlada pelo worker ativo do registro atual (`navigator.serviceWorker.ready`, comparando com `navigator.serviceWorker.controller`; o worker novo chama `clients.claim()` ao ativar), por no máximo 3 s. Integração (184), E2E (14) e a suíte de implantação local seguiram aprovadas; o resultado em produção está abaixo.
+- **Primeira hipótese:** numa primeira visita, o MSW anunciaria estar pronto antes de o worker controlar a página. Correção defensiva (`d06407d`): esperar um controlador antes de renderizar.
+- **Segunda hipótese:** o worker do MSW 2.15 se desregistra quando a última página descarrega, e a página seguinte continuaria controlada pelo worker antigo. Correção (`56365d3`): esperar que a página seja controlada pelo worker ativo do registro atual (`navigator.serviceWorker.ready` comparado com `navigator.serviceWorker.controller`), por no máximo 3 s.
+- **Ocorrências seguiram raras** (1 em 50 e 2 em 50 rodadas), sempre no mobile ou desktop logo antes de um `goto` ou `reload` do teste, e com a URL da página ainda sendo a anterior ou a nova.
+- **Causa confirmada:** o cliente do MSW envia `CLIENT_CLOSED` no `beforeunload`, e o worker esquece a página na hora; requisições que essa página ainda faz ou conclui depois disso vão para a rede. Para confirmar, a verificação passou a registrar o horário de cada navegação e de cada requisição desviada: nas rodadas seguintes, **todas** as requisições desviadas ocorreram imediatamente antes do início de uma navegação da página principal. Elas pertencem ao documento que está sendo descartado; o resultado nunca é usado, e a página nova carrega os próprios dados. **Não afeta o usuário.**
+- **Verificação ajustada:** uma requisição `/api` fora do worker (e o 404 que o console registra) só é aceita se uma navegação começar até 2 s depois dela; qualquer outra continua reprovando o teste, e as aceitas são listadas no relatório.
+- **As duas correções em `main.tsx` permanecem** como precaução para a primeira visita (não houve como provar que eram necessárias); a integração (184), o E2E (14) e a verificação local seguiram aprovados com elas.
 
-- "arquivos estáticos": a fonte ainda não tinha carregado quando o teste a procurou (problema do teste). O teste passou a esperar `document.fonts.ready`; 6/6 em seguida.
-- **Execuções seguintes:** 3 rodadas completas, 30/30 aprovadas, sem erro no console e sem chamada `/api` fora do service worker; a compra chega ao recibo confirmado sem recarga (o evento `order.updated` pelo Socket.IO simulado); favoritos aparecem na Lista de interesse.
+### Resultado final
+
+Implantação de `56365d3`, criada automaticamente pelo push: `npm run test:deploy` com 8 repetições, **80/80 aprovados**, sem erro no console; duas requisições desviadas, ambas no instante de uma navegação (aceitas e listadas). A compra chega ao recibo confirmado sem recarga (evento `order.updated` pelo Socket.IO simulado) e os favoritos aparecem na Lista de interesse. O teste de arquivos estáticos passou a esperar fontes e artes carregarem.
 
 ## Diferenças em relação ao build local
 
 - Cabeçalhos e o 404 de `/api/*` só existem na Vercel (`vite preview` não aplica o `vercel.json`).
-- A falha única descrita acima só apareceu no ambiente publicado, na primeira execução.
+- As requisições desviadas na saída de uma página só aparecem na Vercel: localmente `/api/*` recebe o `index.html` do `vite preview` com status 200, e a resposta muito rápida faz o caso ser raro.
+
+## Implantação automática
+
+Confirmada: os pushes de `d06407d` e `56365d3` em `main` geraram implantações de produção (origem `git`) sem ação no painel, e a URL de produção passou a servir cada uma.
 
 ## Erros de infraestrutura
 
@@ -66,6 +77,5 @@ Nenhum ("Target crashed", navegador fechado, timeout, falta de memória ou proce
 
 ## Não verificado
 
-- O próximo push em `main` disparando a implantação automática (o vínculo com o repositório foi confirmado pela API; a primeira implantação foi criada pelo conector).
 - Navegadores além do Chromium e dispositivos físicos.
 - Lighthouse (fica para a etapa de desempenho).
