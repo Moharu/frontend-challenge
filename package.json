@@ -23,6 +23,10 @@
     "audit:lighthouse": "node scripts/audit-lighthouse.mjs",
     "build:integration": "npm run build -- --mode integration --outDir dist-integration",
     "test:integration": "playwright test --config playwright.integration.config.ts",
+    "test:integration:report": "playwright show-report playwright-report/integration",
+    "test:a11y": "playwright test --config playwright.integration.config.ts --project=a11y-desktop --project=a11y-mobile",
+    "test:all": "npm run build && npm run test:e2e && npm run build:integration && npm run test:integration",
+    "test": "npm run test:all",
     "test:deploy": "playwright test --config playwright.deploy.config.ts"
   },
   "dependencies": {
@@ -43,6 +47,7 @@
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@eslint/js": "^10.0.1",
     "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.64.1",

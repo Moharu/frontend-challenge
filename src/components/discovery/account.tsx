@@ -27,7 +27,10 @@ export function AccountArea() {
   const target = useReturnTarget();
   if (identity.status === "checking")
     return (
-      <span className="account-pending" role="status">
+      <span
+        className="account-pending inline-block w-[96px] h-[37px]"
+        role="status"
+      >
         <span className="sr-only">Verificando sua sessão</span>
       </span>
     );
@@ -66,7 +69,7 @@ function AccountMenu({ session }: { session: Session }) {
     >
       <button
         ref={toggle}
-        className="account-toggle"
+        className="account-toggle flex items-center gap-[6px] min-h-[37px] py-[0] px-[12px] font-bold text-[color:var(--accent)]"
         aria-expanded={open}
         aria-controls="account-menu"
         onClick={() => setOpen((value) => !value)}
@@ -76,7 +79,10 @@ function AccountMenu({ session }: { session: Session }) {
         <span aria-hidden="true">▾</span>
       </button>
       {open && (
-        <ul id="account-menu" className="account-panel">
+        <ul
+          id="account-menu"
+          className="account-panel absolute z-[45] min-w-[180px] p-[8px] m-[0] list-none bg-[color:var(--surface)]"
+        >
           <li>
             <Link to="/account/profile" onClick={() => setOpen(false)}>
               Meu perfil

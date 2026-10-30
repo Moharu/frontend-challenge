@@ -67,11 +67,13 @@ Token de visitante desconhecido responde 401 **`VISITOR_INVALID`** e significa s
 - **Rótulos:** cada campo tem `<label>` associado, visualmente oculto, para preservar a composição do Figma só com placeholder sem deixar o campo sem nome acessível.
 - **Placeholder do e-mail no login:** "contato@email.com" virou "Digite seu e-mail", porque o exemplo parecia um valor já preenchido.
 - **Alinhamento:** o placeholder "Nome de usuário", centralizado no cadastro mobile do Figma, foi alinhado à esquerda como os demais campos, por consistência de leitura.
-- **Mostrar/ocultar senha:** aplicado também a "Confirmar senha", nas duas composições (no desktop o Figma só o mostra em "Senha"), para que o usuário possa conferir os dois valores.
+- **Mostrar/ocultar senha:** ícone de olho como no Figma (riscado enquanto a senha está oculta), com o nome acessível "Mostrar senha". A pedido do usuário, também em "Confirmar senha", nas duas composições (no desktop o Figma só o mostra em "Senha").
+- **Diálogo desktop (Figma):** abas e descrição centralizadas, campos estreitos, divisória "Ou continue com" de borda a borda e botões sociais discretos com os ícones do Google e do Facebook.
+- **Regras dos campos no cadastro desktop:** o Figma não as mostra. Continuam na descrição acessível de cada campo e aparecem na tela quando o campo está em uso ou inválido.
 - **Regras de username e senha:** exibidas abaixo dos campos antes de qualquer erro, embora o layout não as mostre, para que as exigências sejam conhecidas antes do envio.
 - **Composição em 768px:** o limite é 700px; até 700px o diálogo ocupa a tela inteira (composição mobile), acima disso é o modal desktop. Em 768px, portanto, aparece o modal.
 - O botão "Entrar" do cabeçalho passou a usar o ícone do Figma (`home-Logout.svg`); as referências visuais desktop de início, detalhe e carrinho foram atualizadas por causa disso.
-- Continuam com aviso de indisponibilidade: login social, recuperação de senha, "Meu perfil", "Carteiras", favoritos e o checkout em si (conectado, "Conectar e finalizar" explica que carteira, pagamento e pedidos chegam na próxima etapa).
+- Continuam com aviso de indisponibilidade, fora do escopo: login social e recuperação de senha. Perfil, carteiras, favoritos, checkout e pedidos estão implementados ([conta](account.md), [checkout](checkout.md), [pedidos](orders.md)).
 
 ## Limitações
 

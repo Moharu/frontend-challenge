@@ -151,7 +151,7 @@ function HeaderSearch() {
     return (
       <button
         ref={toggle}
-        className="header-search-toggle"
+        className="header-search-toggle grid place-items-center"
         aria-label="Buscar NFTs"
         aria-expanded={false}
         onClick={() => setOpen(true)}
@@ -164,7 +164,7 @@ function HeaderSearch() {
     // remounted on submit, so focus stays in it.
     <form
       role="search"
-      className="header-search"
+      className="header-search flex items-center h-[36px] bg-[color:var(--surface)]"
       onSubmit={submit}
       onKeyDown={(e) => {
         if (e.key === "Escape") close();
@@ -211,10 +211,17 @@ function CartLink({ icon }: { icon: string }) {
   const cart = useCart();
   const count = cart.data?.itemCount ?? 0;
   return (
-    <Link to="/cart" className="cart-link" aria-label={cartCountLabel(count)}>
+    <Link
+      to="/cart"
+      className="cart-link relative inline-grid place-items-center"
+      aria-label={cartCountLabel(count)}
+    >
       <img src={asset(icon)} alt="" />
       {count > 0 && (
-        <span className="cart-badge" aria-hidden="true">
+        <span
+          className="cart-badge absolute min-w-[18px] h-[18px] py-[0] px-[4px] rounded-[9px] bg-[color:var(--primary)] text-[color:var(--background)] leading-[18px] text-center"
+          aria-hidden="true"
+        >
           {badgeText(count)}
         </span>
       )}
@@ -265,12 +272,19 @@ export function PublicLayout() {
 
   return (
     <>
-      <a className="skip-link" href="#main">
+      <a
+        className="skip-link fixed z-[100] bg-[color:var(--primary)] text-[color:var(--background)] p-[8px]"
+        href="#main"
+      >
         Pular para o conteúdo
       </a>
       <div className="site">
-        <header className="desktop-header">
-          <Link className="brand" to="/" search={discoverySearch({})}>
+        <header className="desktop-header sticky top-[0] z-[40] bg-[color:var(--background)] py-[24px] px-[0] border-b-[1px] border-solid border-b-[color:var(--border)] mb-[32px] gap-[24px]">
+          <Link
+            className="brand font-bold tracking-[1.4px]"
+            to="/"
+            search={discoverySearch({})}
+          >
             KURIO
           </Link>
           <nav aria-label="Principal">
@@ -287,18 +301,21 @@ export function PublicLayout() {
             <Unavailable label="Criadores">Criadores</Unavailable>
             <Unavailable label="Aprenda">Aprenda</Unavailable>
           </nav>
-          <div className="header-actions">
+          <div className="header-actions flex gap-[28px] items-center">
             <HeaderSearch />
             <CartLink icon="home-CartIcon.svg" />
             <AccountArea />
           </div>
         </header>
-        <div className="route-content">
+        <div className="route-content min-h-[100svh]">
           <Outlet />
         </div>
         <Footer />
       </div>
-      <nav className="mobile-nav" aria-label="Navegação mobile">
+      <nav
+        className="mobile-nav max-[701px]:w-[100%] max-[701px]:min-h-[95px] max-[701px]:text-[color:var(--muted-foreground)]"
+        aria-label="Navegação mobile"
+      >
         <Link to="/" search={discoverySearch} aria-label="Início">
           <img src={asset("mobile-home-Home.svg")} alt="" />
         </Link>
@@ -308,7 +325,7 @@ export function PublicLayout() {
           label="Ação central indisponível"
           className="central-action"
         >
-          <span className="central-symbol">
+          <span className="central-symbol relative block w-[27px] h-[24px]">
             {[2, 3, 4, 5, 6].map((n) => (
               <img
                 key={n}
@@ -358,7 +375,7 @@ const footerRoutes: Record<
 function Footer() {
   return (
     <footer>
-      <section className="footer-benefits">
+      <section className="footer-benefits grid grid-cols-[repeat(3,1fr)_1.4fr] bg-[color:var(--surface)] p-[32px] max-[1101px]:grid-cols-[1fr_1fr] max-[1101px]:gap-[32px] max-[701px]:hidden">
         {[
           [
             "W",
@@ -377,7 +394,9 @@ function Footer() {
           ],
         ].map(([icon, title, text]) => (
           <div key={title}>
-            <span className="benefit-icon">{icon}</span>
+            <span className="benefit-icon grid place-items-center rounded-[50%] bg-[color:var(--primary)] text-[color:var(--background)] w-[74px] h-[74px] mb-[12px]">
+              {icon}
+            </span>
             <h2>{title}</h2>
             <p>{text}</p>
           </div>
@@ -402,8 +421,8 @@ function Footer() {
           </p>
         </div>
       </section>
-      <div className="footer-contact">
-        <span className="brand">KURIO</span>
+      <div className="footer-contact flex gap-[24px] bg-[#38220f] py-[24px] px-[32px] text-[12px] max-[701px]:flex-wrap max-[701px]:p-[16px] max-[701px]:text-[10px]">
+        <span className="brand font-bold tracking-[1.4px]">KURIO</span>
         <p>
           Feito para colecionadores,
           <br />
@@ -414,7 +433,7 @@ function Footer() {
         </Unavailable>
         <span>+55 11 4002 8922</span>
       </div>
-      <div className="footer-links">
+      <div className="footer-links bg-[color:var(--surface)] p-[32px] grid grid-cols-[repeat(4,1fr)] gap-[48px] max-[1101px]:gap-[16px] max-[701px]:grid-cols-[1fr_1fr] max-[701px]:p-[16px] max-[701px]:gap-[24px]">
         {[
           [
             "Meu perfil",
@@ -459,7 +478,7 @@ function Footer() {
         ))}
         <section>
           <h3>Redes sociais</h3>
-          <div className="socials">
+          <div className="socials flex gap-[8px] mb-[24px]">
             {[108, 109, 110, 111, 112].map((n, i) => (
               <Unavailable
                 key={n}
@@ -477,14 +496,19 @@ function Footer() {
           </small>
         </section>
       </div>
-      <p className="copyright">© 2026 Kurio. Propriedade digital para todos.</p>
+      <p className="copyright text-center p-[12px] text-[12px] max-[701px]:text-[10px]">
+        © 2026 Kurio. Propriedade digital para todos.
+      </p>
     </footer>
   );
 }
 export function Promotions() {
   return (
     <>
-      <section className="promotions" aria-label="Destaques">
+      <section
+        className="promotions grid grid-cols-[1fr_1fr] gap-[28px] my-[96px] mx-[0] max-[701px]:grid-cols-[1fr] max-[701px]:mt-[64px] max-[701px]:mr-[0] max-[701px]:mb-[48px] max-[701px]:ml-[0] max-[701px]:gap-[16px]"
+        aria-label="Destaques"
+      >
         {[
           ["emerald", "Lançamentos gênesis de edição limitada"],
           ["ivory", "Arte digital selecionada à sua mão"],
@@ -512,7 +536,7 @@ export function Promotions() {
           </Link>
         ))}
       </section>
-      <section className="editorial">
+      <section className="editorial text-center mb-[96px] max-[701px]:mb-[48px]">
         <h2>Diário da Cunhagem</h2>
         <p>
           Histórias, guias e análises para colecionadores bem informados e

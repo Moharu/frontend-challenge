@@ -13,10 +13,16 @@ import {
   type UpdateWalletRequest,
   type Wallet,
 } from "@/contracts/wallets";
-import { getIdentity, identityHeaders } from "@/data/session/identity";
-// Private account requests carry the current session token; a 401
-// SESSION_INVALID goes through the usual expiry flow (see identity.ts).
-const headers = () => identityHeaders(getIdentity());
+import {
+  getIdentity,
+  identityHeaders,
+  type Identity,
+} from "@/data/session/identity";
+// Private account requests carry a session token; a 401 SESSION_INVALID goes
+// through the usual expiry flow (see identity.ts). Reads use the current
+// identity; mutations take the identity that started them (`as`), so a
+// queued request is never sent with a session that changed meanwhile.
+const headers = (as: Identity = getIdentity()) => identityHeaders(as);
 function data<T>(value: unknown, valid: (v: unknown) => v is T, what: string) {
   if (!record(value) || !valid(value.data))
     throw new Error(`Invalid ${what} response`);
@@ -29,26 +35,33 @@ export async function getProfile(signal?: AbortSignal): Promise<Profile> {
   });
   return data(value, isProfile, "profile");
 }
-export async function updateProfile(body: UpdateProfileRequest) {
+export async function updateProfile(body: UpdateProfileRequest, as?: Identity) {
   const { data: value } = await http.patch<unknown>("/profile", body, {
-    headers: headers(),
+    headers: headers(as),
   });
   return data(value, isProfile, "profile");
 }
-export async function updateAvatar(body: UpdateAvatarRequest) {
+export async function updateAvatar(body: UpdateAvatarRequest, as?: Identity) {
   const { data: value } = await http.put<unknown>("/profile/avatar", body, {
-    headers: headers(),
+    headers: headers(as),
   });
   return data(value, isProfile, "profile");
 }
-export async function changePassword(body: ChangePasswordRequest) {
-  await http.put("/profile/password", body, { headers: headers() });
+export async function changePassword(
+  body: ChangePasswordRequest,
+  as?: Identity,
+) {
+  await http.put("/profile/password", body, { headers: headers(as) });
 }
-export async function updateWallet(id: string, body: UpdateWalletRequest) {
+export async function updateWallet(
+  id: string,
+  body: UpdateWalletRequest,
+  as?: Identity,
+) {
   const { data: value } = await http.patch<unknown>(
     `/wallets/${encodeURIComponent(id)}`,
     body,
-    { headers: headers() },
+    { headers: headers(as) },
   );
   return data(value, isWallet, "wallet") as Wallet;
 }
@@ -63,11 +76,11 @@ export async function getFavorites(signal?: AbortSignal): Promise<Favorite[]> {
     "favorites",
   );
 }
-export async function addFavorite(nftId: string) {
-  await http.post("/favorites", { nftId }, { headers: headers() });
+export async function addFavorite(nftId: string, as?: Identity) {
+  await http.post("/favorites", { nftId }, { headers: headers(as) });
 }
-export async function removeFavorite(nftId: string) {
+export async function removeFavorite(nftId: string, as?: Identity) {
   await http.delete(`/favorites/${encodeURIComponent(nftId)}`, {
-    headers: headers(),
+    headers: headers(as),
   });
 }

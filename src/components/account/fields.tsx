@@ -106,7 +106,7 @@ export function PasswordField(props: Omit<FieldProps, "type" | "children">) {
   return (
     <div className="checkout-field">
       <Label id={props.id} label={props.label} required={props.required} />
-      <div className="account-password">
+      <div className="account-password relative">
         <input
           id={props.id}
           name={props.id}
@@ -119,7 +119,7 @@ export function PasswordField(props: Omit<FieldProps, "type" | "children">) {
         />
         <button
           type="button"
-          className="account-reveal"
+          className="account-reveal absolute grid place-items-center w-[34px] h-[34px]"
           aria-label={`Mostrar ${props.label.toLowerCase()}`}
           aria-pressed={visible}
           aria-controls={props.id}
@@ -147,7 +147,7 @@ export function EnsField({
   return (
     <div className="checkout-field">
       <Label id={id} label="Nome ENS" />
-      <div className="account-ens">
+      <div className="account-ens flex gap-[10px] min-w-[0]">
         <select aria-label="Domínio ENS" defaultValue=".eth">
           <option value=".eth">.eth</option>
         </select>

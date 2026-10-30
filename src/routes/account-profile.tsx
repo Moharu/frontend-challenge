@@ -16,6 +16,7 @@ import {
 } from "@/data/account/api";
 import {
   cartScope,
+  getIdentity,
   sameScope,
   updateSessionUser,
 } from "@/data/session/identity";
@@ -42,7 +43,10 @@ export function ProfilePage() {
           </button>
         </div>
       ) : !profile.data ? (
-        <p className="checkout-waiting" role="status">
+        <p
+          className="checkout-waiting py-[48px] px-[0] text-[color:var(--muted-foreground)]"
+          role="status"
+        >
           Carregando seu perfil…
         </p>
       ) : (
@@ -152,28 +156,43 @@ function ProfileForm({ profile }: { profile: Profile }) {
     }
     setSaving(true);
     setErrors({});
-    const scope = cartScope();
+    // The identity that pressed "Salvar": every step is sent as it, and the
+    // remaining steps stop once the session changed (logout, expiry, user
+    // switch), so nothing reaches another account.
+    const identity = getIdentity();
+    const scope = cartScope(identity);
+    const stillSame = () => sameScope(scope, cartScope());
     const outcome: { part: Part; ok: boolean; message: string }[] = [];
     const failed: Record<string, string> = {};
+    // Typed data is kept whenever the data step fails, with or without
+    // field errors (a network error or 5xx has none).
+    let dataFailed = false;
     let current = base;
     // 1. Profile data, 2. avatar (with the version returned by step 1),
     // 3. password. Each part stands on its own: what succeeds stays saved.
     if (Object.keys(patch).length) {
       try {
-        current = await updateProfile({ ...patch, version: current.version });
+        current = await updateProfile(
+          { ...patch, version: current.version },
+          identity,
+        );
         outcome.push({ part: "data", ok: true, message: "salvos." });
       } catch (e) {
         const info = apiError(e);
+        dataFailed = true;
         Object.assign(failed, info.fields);
         outcome.push({ part: "data", ok: false, message: info.message });
       }
     }
-    if (avatar) {
+    if (avatar && stillSame()) {
       try {
-        current = await updateAvatar({
-          dataUrl: avatar.kind === "set" ? avatar.dataUrl : null,
-          version: current.version,
-        });
+        current = await updateAvatar(
+          {
+            dataUrl: avatar.kind === "set" ? avatar.dataUrl : null,
+            version: current.version,
+          },
+          identity,
+        );
         outcome.push({
           part: "avatar",
           ok: true,
@@ -185,12 +204,15 @@ function ProfileForm({ profile }: { profile: Profile }) {
         outcome.push({ part: "avatar", ok: false, message: info.message });
       }
     }
-    if (passwordFilled) {
+    if (passwordFilled && stillSame()) {
       try {
-        await changePassword({
-          currentPassword: passwords.currentPassword,
-          newPassword: passwords.newPassword,
-        });
+        await changePassword(
+          {
+            currentPassword: passwords.currentPassword,
+            newPassword: passwords.newPassword,
+          },
+          identity,
+        );
         outcome.push({ part: "password", ok: true, message: "alterada." });
       } catch (e) {
         const info = apiError(e);
@@ -199,7 +221,7 @@ function ProfileForm({ profile }: { profile: Profile }) {
       }
     }
     setSaving(false);
-    if (!sameScope(scope, cartScope())) return;
+    if (!stillSame()) return;
     // What was saved comes from the API; what failed keeps what was typed.
     if (current !== base) {
       setBase(current);
@@ -214,7 +236,8 @@ function ProfileForm({ profile }: { profile: Profile }) {
       setValues((typed) => {
         const next = { ...typed };
         for (const key of Object.keys(typed) as (keyof Values)[])
-          if (!(key in failed)) next[key] = savedValues[key];
+          if (!(key in failed) && !(dataFailed && key in patch))
+            next[key] = savedValues[key];
         return next;
       });
     }
@@ -234,7 +257,7 @@ function ProfileForm({ profile }: { profile: Profile }) {
   const failedParts = results.filter((r) => !r.ok);
   return (
     <form className="account-form" noValidate onSubmit={(e) => void save(e)}>
-      <div className="account-grid">
+      <div className="account-grid grid grid-cols-[repeat(2,minmax(0,1fr))] gap-y-[22px] gap-x-[28px] max-[1001px]:grid-cols-[minmax(0,1fr)]">
         <TextField
           id="profile-displayName"
           label="Nome de exibição"
@@ -276,11 +299,11 @@ function ProfileForm({ profile }: { profile: Profile }) {
           error={errors.walletNickname}
         />
         <div className="checkout-field account-avatar">
-          <span id="profile-avatar-label" className="account-label">
+          <span id="profile-avatar-label" className="account-label text-[15px]">
             Avatar
           </span>
-          <div className="account-avatar-row">
-            <span className="account-avatar-image">
+          <div className="account-avatar-row flex items-center flex-wrap gap-y-[16px] gap-x-[24px]">
+            <span className="account-avatar-image grid place-items-center w-[50px] h-[50px] rounded-[50%] overflow-hidden bg-[color:var(--surface)] text-[color:var(--primary)]">
               {shown ? (
                 <img src={shown.src} alt={shown.alt} width="64" height="64" />
               ) : (
@@ -340,7 +363,7 @@ function ProfileForm({ profile }: { profile: Profile }) {
           <FieldError id="profile-avatar" error={errors.avatar} />
         </div>
       </div>
-      <fieldset className="account-password-group">
+      <fieldset className="account-password-group grid gap-[18px] m-[0] p-[0] border-[0] border-none">
         <legend>Alterar senha</legend>
         <PasswordField
           id="profile-currentPassword"
@@ -369,14 +392,17 @@ function ProfileForm({ profile }: { profile: Profile }) {
       </fieldset>
       <button
         type="submit"
-        className="button button-primary account-save"
+        className="button button-primary account-save min-w-[130px] min-h-[40px] max-[701px]:w-[100%]"
         aria-disabled={saving}
       >
         {saving ? "Salvando…" : "Salvar"}
       </button>
       {/* One summary per save, part by part: never a general success when
           something failed. */}
-      <div className="account-summary" role="status">
+      <div
+        className="account-summary m-[0] text-[color:var(--muted-foreground)] leading-[1.6]"
+        role="status"
+      >
         {results.length > 0 && (
           <>
             <p>

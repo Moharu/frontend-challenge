@@ -25,6 +25,24 @@ export default defineConfig({
       testMatch: "foundation.spec.ts",
       use: { ...devices["Desktop Chrome"] },
     },
+    // Tablet (768 px, the Figma tablet width): every group again, with the
+    // layout above the 700 px breakpoint.
+    ...[
+      "discovery",
+      "cart",
+      "session",
+      "checkout",
+      "orders",
+      "account",
+      "a11y",
+    ].map((group) => ({
+      name: `${group}-tablet`,
+      testMatch: `${group === "a11y" ? "accessibility" : group}.spec.ts`,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 768, height: 1024 },
+      },
+    })),
     {
       name: "discovery-desktop",
       testMatch: "discovery.spec.ts",
@@ -101,6 +119,19 @@ export default defineConfig({
     {
       name: "account-mobile",
       testMatch: "account.spec.ts",
+      use: { ...devices["Pixel 7"], viewport: { width: 390, height: 844 } },
+    },
+    {
+      name: "a11y-desktop",
+      testMatch: "accessibility.spec.ts",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1440, height: 900 },
+      },
+    },
+    {
+      name: "a11y-mobile",
+      testMatch: "accessibility.spec.ts",
       use: { ...devices["Pixel 7"], viewport: { width: 390, height: 844 } },
     },
   ],

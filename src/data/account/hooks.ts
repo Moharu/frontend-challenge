@@ -5,6 +5,7 @@ import { queryClient } from "@/lib/query-client";
 import { apiError } from "@/lib/api-error";
 import {
   cartScope,
+  getIdentity,
   sameScope,
   useIdentity,
   type CartScope,
@@ -62,7 +63,10 @@ function setFavorite(scope: CartScope, nftId: string, on: boolean) {
   });
 }
 export async function toggleFavorite(nftId: string, name: string) {
-  const scope = cartScope();
+  // The identity that clicked: every request of this click is sent as it,
+  // and none is sent once the session changed (logout, expiry, user switch).
+  const identity = getIdentity();
+  const scope = cartScope(identity);
   if (scope?.kind !== "user") return;
   const key = favoritesKey(scope);
   // 1. Pending reads would overwrite the optimistic value.
@@ -88,9 +92,10 @@ export async function toggleFavorite(nftId: string, name: string) {
   // 4. Requests run in order; a superseded intent is skipped.
   track.chain = track.chain.then(async () => {
     if (track.intent !== intent || track.confirmed === intent) return;
+    if (!sameScope(scope, cartScope())) return;
     try {
-      if (intent) await addFavorite(nftId);
-      else await removeFavorite(nftId);
+      if (intent) await addFavorite(nftId, identity);
+      else await removeFavorite(nftId, identity);
       track.confirmed = intent;
     } catch (error) {
       // 5. Roll back (unless a newer click already changed the intent).

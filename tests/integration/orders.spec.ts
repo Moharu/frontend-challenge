@@ -734,6 +734,14 @@ test("18. edição única com pagamento pendente: sem esgotado falso no carrinho
   await expect(page.locator(".cart-pending-order")).toContainText(
     "Há um pedido em andamento para este carrinho.",
   );
+  // The checkout shows the same notice, with the link to the order.
+  await page.goto("/checkout");
+  await ready(page);
+  await expect(
+    page.locator(".checkout-pending-order").getByRole("link", {
+      name: "Acompanhar pedido",
+    }),
+  ).toHaveAttribute("href", "/orders/order-1");
   await expect(page.getByText(/esgotou/)).toHaveCount(0);
   await resolvePayments(page);
   await page.goto("/orders/order-1");
@@ -748,4 +756,157 @@ test("18. edição única com pagamento pendente: sem esgotado falso no carrinho
   await expect(heading(page)).toHaveText(confirmedTitle);
   expect(await cartLines(page)).toEqual([]);
   expect(await publicAvailable()).toBe(0);
+});
+const storedAttempt = (page: Page) =>
+  page.evaluate(() =>
+    sessionStorage.getItem("kurio.checkout.order.v1:user-ada"),
+  );
+test("19. sessão expirada na nova tentativa: a tentativa é preservada e retomada após entrar de novo", async ({
+  page,
+}, testInfo) => {
+  const mobile = isMobile(testInfo.project.name);
+  await login(page);
+  await addLines(page, [emerald]);
+  await holdPayments(page);
+  await toConfirm(page, mobile);
+  // The order is created, but its response is lost.
+  await page.evaluate(() => window.__KURIO_TEST__.loseNextOrderResponse());
+  await confirmButton(page).click();
+  const alert = page.getByRole("alert").filter({
+    hasText: "Não foi possível confirmar o envio do pedido.",
+  });
+  await expect(alert).toBeVisible();
+  const attempt = JSON.parse((await storedAttempt(page))!);
+  expect(await orderCount(page)).toBe(1);
+  // The retry gets a 401: the attempt survives the expiry.
+  await page.evaluate(() => window.__KURIO_TEST__.expireSession());
+  await alert.getByRole("button", { name: "Tentar novamente" }).click();
+  await expect(page).toHaveURL(/\/login\?redirect=%2Fcheckout/);
+  expect(JSON.parse((await storedAttempt(page))!)).toMatchObject({
+    key: attempt.key,
+  });
+  // Signing in again resumes it with the same key: the same order.
+  await fillLogin(page, ada);
+  await expect(page).toHaveURL(/\/orders\/order-1$/);
+  expect(await orderCount(page)).toBe(1);
+});
+test("20. sessionStorage sem gravação: Tentar novamente ainda reenvia a mesma tentativa", async ({
+  page,
+}, testInfo) => {
+  const mobile = isMobile(testInfo.project.name);
+  await login(page);
+  await addLines(page, [emerald]);
+  await holdPayments(page);
+  await toConfirm(page, mobile);
+  // Writing the pending order fails (quota, privacy settings).
+  await page.evaluate(() => {
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key: string, value: string) {
+      if (key.startsWith("kurio.checkout.order.v1:"))
+        throw new DOMException("Quota", "QuotaExceededError");
+      return setItem.call(this, key, value);
+    };
+  });
+  await page.evaluate(() => window.__KURIO_TEST__.loseNextOrderResponse());
+  await confirmButton(page).click();
+  const alert = page.getByRole("alert").filter({
+    hasText: "Não foi possível confirmar o envio do pedido.",
+  });
+  await expect(alert).toBeVisible();
+  expect(await storedAttempt(page)).toBeNull();
+  await alert.getByRole("button", { name: "Tentar novamente" }).click();
+  await expect(page).toHaveURL(/\/orders\/order-1$/);
+  expect(await orderCount(page)).toBe(1);
+});
+test("21. socket: sessões encerradas em outra aba, expiradas ou revogadas pela troca de senha não recebem order.updated", async ({
+  page,
+}, testInfo) => {
+  const mobile = isMobile(testInfo.project.name);
+  await login(page);
+  await addLines(page, [emerald]);
+  await holdPayments(page);
+  await placeOrder(page, mobile);
+  // Four more sessions of Ada, each with its own socket connection.
+  const tokens = await page.evaluate(async (ada) => {
+    const open = async () => {
+      const r = await fetch("/api/session/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(ada),
+      });
+      return ((await r.json()) as { data: { token: string } }).data.token;
+    };
+    return {
+      logout: await open(),
+      expired: await open(),
+      revoked: await open(),
+      kept: await open(),
+    };
+  }, ada);
+  await page.evaluate((tokens) => {
+    const h = window.__KURIO_TEST__;
+    Object.assign(window, {
+      __probes: Object.fromEntries(
+        Object.entries(tokens).map(([name, token]) => [
+          name,
+          h.probeSocket(token),
+        ]),
+      ),
+    });
+  }, tokens);
+  await page.waitForFunction(
+    () => window.__KURIO_TEST__.authenticatedSockets().length >= 5,
+  );
+  // Logout in another tab, expiry, and a password change made from `kept`
+  // (which revokes Ada's other sessions).
+  await page.evaluate(
+    async ({ tokens, ada }) => {
+      const h = window.__KURIO_TEST__;
+      await fetch("/api/session/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${tokens.logout}` },
+      });
+      await h.expireSession(tokens.expired);
+      const r = await fetch("/api/profile/password", {
+        method: "PUT",
+        headers: {
+          "content-type": "application/json",
+          Authorization: `Bearer ${tokens.kept}`,
+        },
+        body: JSON.stringify({
+          currentPassword: ada.password,
+          newPassword: "NovaSenha2026",
+        }),
+      });
+      if (!r.ok) throw new Error(`password change: ${r.status}`);
+    },
+    { tokens, ada },
+  );
+  await resolvePayments(page);
+  type Probe = { received(): string[] };
+  const traffic = () =>
+    page.evaluate(() =>
+      Object.fromEntries(
+        Object.entries(
+          (window as unknown as { __probes: Record<string, Probe> }).__probes,
+        ).map(([name, probe]) => [
+          name,
+          probe.received().filter((e) => e === "order.updated").length,
+        ]),
+      ),
+    );
+  // The session still active receives the confirmation; the others never.
+  await expect.poll(async () => (await traffic()).kept).toBe(1);
+  expect(await traffic()).toEqual({
+    logout: 0,
+    expired: 0,
+    revoked: 0,
+    kept: 1,
+  });
+  await page.evaluate(() =>
+    Object.values(
+      (window as unknown as { __probes: Record<string, { close(): void }> })
+        .__probes,
+    ).forEach((p) => p.close()),
+  );
 });

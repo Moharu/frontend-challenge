@@ -180,6 +180,47 @@ test("preço, disponibilidade, duplicatas e reconexão atualizam a interface", a
     page.getByRole("button", { name: "Comprar NFT", exact: true }),
   ).toBeDisabled();
 });
+// The option's name carries the number of matching NFTs: "Solana (6)".
+const solana = /^Solana \(\d+\)$/;
+test("aplicar filtros a partir da página 2 volta à página 1 (barra lateral e drawer)", async ({
+  page,
+}) => {
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/?page=2");
+    await expect(page.locator(".nft-grid .nft-card").first()).toBeVisible();
+    const drawer = width < 700;
+    if (drawer)
+      await page.getByRole("button", { name: "Abrir filtros" }).click();
+    const form = drawer
+      ? page.getByRole("dialog")
+      : page.locator(".catalog-layout aside");
+    await form.getByRole("radio", { name: solana }).check();
+    // The sidebar applies on choice; the drawer waits for Aplicar.
+    if (drawer)
+      await form.getByRole("button", { name: "Aplicar", exact: true }).click();
+    await expect(page).toHaveURL(/network=solana/);
+    await expect(page).toHaveURL(/page=1(&|$)/);
+    // The single page of results is shown, never an empty catalog.
+    await expect(page.locator(".nft-grid .nft-card").first()).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Página 1", exact: true }),
+    ).toHaveAttribute("aria-current", "page");
+  }
+});
+test("barra lateral: Limpar filtros aplica na hora", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name.includes("mobile"),
+    "sem barra lateral no mobile (o drawer tem teste próprio)",
+  );
+  await page.goto("/?network=solana&category=art");
+  const aside = page.locator(".catalog-layout aside");
+  await aside.getByRole("button", { name: "Limpar filtros" }).click();
+  await expect(page).toHaveURL(/[?&]network=(&|$)/);
+  await expect(page).toHaveURL(/[?&]category=(&|$)/);
+});
 test("drawer mobile aplica, cancela e limpa sem antecipar mudanças na URL", async ({
   page,
 }) => {
@@ -187,11 +228,11 @@ test("drawer mobile aplica, cancela e limpa sem antecipar mudanças na URL", asy
   const before = page.url();
   await page.getByRole("button", { name: "Abrir filtros" }).click();
   const drawer = page.getByRole("dialog");
-  await drawer.getByRole("radio", { name: "Solana", exact: true }).check();
+  await drawer.getByRole("radio", { name: solana }).check();
   await drawer.getByRole("button", { name: "Cancelar" }).click();
   expect(page.url()).toBe(before);
   await page.getByRole("button", { name: "Abrir filtros" }).click();
-  await drawer.getByRole("radio", { name: "Solana", exact: true }).check();
+  await drawer.getByRole("radio", { name: solana }).check();
   await drawer.getByRole("button", { name: "Aplicar", exact: true }).click();
   await expect(page).toHaveURL(/network=solana/);
   await page.getByRole("button", { name: "Abrir filtros" }).click();

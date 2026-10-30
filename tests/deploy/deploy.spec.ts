@@ -216,10 +216,8 @@ test("3 e 4. compra completa: login, carrinho, checkout e recibo pelo socket", a
   const mobile = isMobile(testInfo.project.name);
   await login(page, "/nfts/nft-001");
   await expect(page).toHaveURL(/\/nfts\/nft-001$/);
-  await page.getByRole("button", { name: "Adicionar ao carrinho" }).click();
-  await expect(page.locator("#cart-feedback")).toContainText(
-    "adicionado ao carrinho",
-  );
+  await page.getByRole("button", { name: "Comprar NFT", exact: true }).click();
+  await expect(page).toHaveURL(/\/cart$/);
   await page.goto(`/checkout?step=${mobile ? "revisao" : "dados"}`);
   await expect(page.locator("#connection-status")).toContainText("conectada");
   await expect(page.locator(".checkout-amounts")).not.toHaveAttribute(

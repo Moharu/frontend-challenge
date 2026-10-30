@@ -21,13 +21,8 @@ test("descoberta, detalhe e carrinho carregam sem erros ou ponte de testes no bu
   await expect(
     page.getByRole("button", { name: "Aberta — Esgotada" }),
   ).toBeDisabled();
-  await page
-    .getByRole("button", { name: "Adicionar ao carrinho", exact: true })
-    .click();
-  await expect(page.locator("#cart-feedback")).toContainText(
-    "adicionado ao carrinho",
-  );
-  await page.goto("/cart");
+  await page.getByRole("button", { name: "Comprar NFT", exact: true }).click();
+  await expect(page).toHaveURL(/\/cart$/);
   // Signed out, checkout leads to the login, which returns to the cart.
   await page
     .getByRole("link", { name: "Conectar e finalizar", exact: true })

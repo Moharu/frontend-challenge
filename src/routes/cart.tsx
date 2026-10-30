@@ -81,9 +81,12 @@ export function CartPage() {
           </Link>
         </section>
       ) : (
-        <div className="cart-layout">
+        <div className="cart-layout grid grid-cols-[minmax(0,1fr)_332px] gap-[86px] items-start max-[1101px]:grid-cols-[minmax(0,1fr)] max-[1101px]:gap-[32px] max-[701px]:block">
           {cart.isError && (
-            <p className="cart-refresh-error" role="alert">
+            <p
+              className="cart-refresh-error col-span-full m-[0] text-[#ffb08a]"
+              role="alert"
+            >
               Não foi possível atualizar o carrinho. Os valores exibidos podem
               estar desatualizados.{" "}
               <Button variant="ghost" onClick={() => void cart.refetch()}>
@@ -117,7 +120,10 @@ function CartHeader() {
   const navigate = useNavigate();
   return (
     <>
-      <nav className="breadcrumbs cart-breadcrumbs" aria-label="Trilha">
+      <nav
+        className="breadcrumbs cart-breadcrumbs font-bold max-[701px]:text-[12px] max-[701px]:hidden"
+        aria-label="Trilha"
+      >
         <Link to="/" search={discoverySearch({})}>
           Início
         </Link>{" "}
@@ -127,9 +133,9 @@ function CartHeader() {
         </Link>{" "}
         / <span aria-current="page">Carrinho</span>
       </nav>
-      <div className="cart-mobile-header">
+      <div className="cart-mobile-header min-[701px]:absolute min-[701px]:w-[1px] min-[701px]:h-[1px] min-[701px]:overflow-hidden min-[701px]:whitespace-nowrap max-[701px]:grid max-[701px]:grid-cols-[36px_1fr_36px] max-[701px]:items-center max-[701px]:mb-[20px]">
         <button
-          className="cart-back"
+          className="cart-back max-[701px]:place-items-center max-[701px]:w-[36px] max-[701px]:h-[36px] max-[701px]:rounded-[50%] max-[701px]:bg-[color:var(--raised)]"
           aria-label="Voltar"
           onClick={() =>
             canGoBack
@@ -179,7 +185,7 @@ function CartTable({
   onChanged: (buttonId: string, lineId: string) => void;
 }) {
   return (
-    <table className="cart-table">
+    <table className="cart-table w-[100%]">
       <caption className="sr-only">Itens do carrinho</caption>
       <thead>
         <tr>
@@ -269,7 +275,9 @@ function CartRow({
           >
             {line.name}
           </Link>
-          <p className="cart-token">ID do token: #{line.tokenId}</p>
+          <p className="cart-token max-[701px]:hidden">
+            ID do token: #{line.tokenId}
+          </p>
           <p className="cart-edition">Edição: {line.editionLabel}</p>
           {(line.conflict || line.priceChange) && (
             <div id={noticeId} className="cart-notice">
@@ -317,11 +325,11 @@ function CartRow({
         </div>
       </td>
       <td className="cart-unit">{eth(line.unitPriceEth)}</td>
-      <td className="cart-quantity">
+      <td className="cart-quantity max-[701px]:absolute">
         <div>
           <button
             id={`dec-${line.id}`}
-            className="qty-button"
+            className="qty-button grid place-items-center w-[40px] h-[50px] mt-[-6px] mr-[-10px] mb-[-14px] ml-[-10px] max-[701px]:w-[32px] max-[701px]:h-[32px] max-[701px]:m-[0] max-[701px]:rounded-[50%] max-[701px]:bg-[color:var(--raised)] max-[701px]:text-[color:var(--foreground)]"
             aria-label={`Diminuir quantidade de ${lineName(line)}, atual ${line.quantity}`}
             aria-disabled={!canDecrease || pending}
             aria-describedby={described || undefined}
@@ -332,12 +340,16 @@ function CartRow({
             <img src={asset("cart-Minus.svg")} alt="" />
             <span aria-hidden="true">−</span>
           </button>
-          <span id={`qty-${line.id}`} tabIndex={-1} className="qty-value">
+          <span
+            id={`qty-${line.id}`}
+            tabIndex={-1}
+            className="qty-value min-w-[2.5ch] text-center my-[0] mx-[10px] max-[701px]:my-[0] max-[701px]:mx-[8px] max-[701px]:text-[15px]"
+          >
             {line.quantity}
           </span>
           <button
             id={`inc-${line.id}`}
-            className="qty-button"
+            className="qty-button grid place-items-center w-[40px] h-[50px] mt-[-6px] mr-[-10px] mb-[-14px] ml-[-10px] max-[701px]:w-[32px] max-[701px]:h-[32px] max-[701px]:m-[0] max-[701px]:rounded-[50%] max-[701px]:bg-[color:var(--raised)] max-[701px]:text-[color:var(--foreground)]"
             aria-label={`Aumentar quantidade de ${lineName(line)}, atual ${line.quantity}`}
             aria-disabled={!canIncrease || pending}
             aria-describedby={described || undefined}
@@ -351,8 +363,10 @@ function CartRow({
         </div>
         {pending && <span className="sr-only">Atualizando…</span>}
       </td>
-      <td className="cart-line-total price">{eth(line.lineTotalEth)}</td>
-      <td className="cart-remove">
+      <td className="cart-line-total price max-[701px]:absolute">
+        {eth(line.lineTotalEth)}
+      </td>
+      <td className="cart-remove text-center w-[56px] max-[701px]:absolute max-[701px]:w-[auto]">
         <button
           aria-label={`Remover ${lineName(line)} do carrinho`}
           aria-disabled={pending}
@@ -402,7 +416,7 @@ function CartSummary({ cart }: { cart: Cart }) {
   return (
     <aside
       ref={reserve}
-      className="cart-summary"
+      className="cart-summary max-[1101px]:w-[100%] max-[1101px]:justify-self-end max-[701px]:fixed max-[701px]:z-[30] max-[701px]:max-h-[70svh] max-[701px]:overflow-y-auto max-[701px]:bg-[color:var(--surface)]"
       aria-labelledby="summary-title"
     >
       <h2 id="summary-title">Resumo da carteira</h2>
@@ -448,14 +462,17 @@ function CartSummary({ cart }: { cart: Cart }) {
           </p>
         )}
         {/* An applied coupon that expired: no discount, and the reason. */}
-        <p className="coupon-removed" role="status">
+        <p
+          className="coupon-removed mt-[6px] mr-[0] mb-[0] ml-[0] text-[#f0a08f] text-[14px]"
+          role="status"
+        >
           {cart.couponRemoved?.reason ?? ""}
         </p>
         {/* Removing it clears the stored code and the message. */}
         {cart.couponRemoved && (
           <button
             type="button"
-            className="coupon-clear"
+            className="coupon-clear mt-[4px] text-[color:var(--accent)]"
             aria-disabled={pending}
             aria-label={`Remover cupom ${cart.couponRemoved.code}`}
             onClick={() => void removeApplied()}
@@ -489,7 +506,7 @@ function CartSummary({ cart }: { cart: Cart }) {
         </div>
       </dl>
       {cart.pendingOrderId && (
-        <p className="cart-pending-order">
+        <p className="cart-pending-order mt-[0] mr-[0] mb-[12px] ml-[0] text-[color:var(--muted-foreground)] text-[14px] leading-[1.5]">
           Há um pedido em andamento para este carrinho.{" "}
           <Link to="/orders/$orderId" params={{ orderId: cart.pendingOrderId }}>
             Acompanhar pedido
@@ -528,7 +545,7 @@ function CartSummary({ cart }: { cart: Cart }) {
         </Link>
       )}
       <Link
-        className="continue-link"
+        className="continue-link block text-center text-[color:var(--accent)]"
         to="/"
         search={discoverySearch({})}
         hash="catalogo"
@@ -587,13 +604,17 @@ function describeChanges(before: Cart, after: Cart) {
 }
 function CartSkeleton() {
   return (
-    <div className="cart-layout" role="status" aria-label="Carregando carrinho">
-      <div className="cart-skeleton-lines">
+    <div
+      className="cart-layout grid grid-cols-[minmax(0,1fr)_332px] gap-[86px] items-start max-[1101px]:grid-cols-[minmax(0,1fr)] max-[1101px]:gap-[32px] max-[701px]:block"
+      role="status"
+      aria-label="Carregando carrinho"
+    >
+      <div className="cart-skeleton-lines grid gap-[12px] pt-[52px] max-[701px]:pt-[0]">
         {Array.from({ length: 3 }, (_, i) => (
           <div className="skeleton cart-skeleton-line" key={i} />
         ))}
       </div>
-      <div className="skeleton cart-skeleton-summary" />
+      <div className="skeleton cart-skeleton-summary max-[701px]:hidden" />
     </div>
   );
 }

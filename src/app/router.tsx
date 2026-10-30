@@ -16,7 +16,7 @@ import { SessionCheckError } from "@/components/discovery/session-check";
 const rootRoute = createRootRoute({
   component: PublicLayout,
   notFoundComponent: () => (
-    <main className="p-6">
+    <main id="main" className="p-6">
       <h1 className="text-2xl font-semibold">Página não encontrada</h1>
       <p>Esta rota não existe.</p>
       <Link to="/" search={discoverySearch({})}>

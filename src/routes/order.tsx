@@ -114,8 +114,15 @@ export function OrderPage() {
   }, [status]);
   if (order.isPending)
     return (
-      <main id="main" className="order-page" aria-busy="true">
-        <p className="checkout-waiting" role="status">
+      <main
+        id="main"
+        className="order-page grid place-items-center max-[701px]:block max-[701px]:min-h-[100dvh]"
+        aria-busy="true"
+      >
+        <p
+          className="checkout-waiting py-[48px] px-[0] text-[color:var(--muted-foreground)]"
+          role="status"
+        >
           Carregando o pedido…
         </p>
       </main>
@@ -123,7 +130,10 @@ export function OrderPage() {
   if (order.isError && !order.data) {
     const info = apiError(order.error);
     return (
-      <main id="main" className="order-page">
+      <main
+        id="main"
+        className="order-page grid place-items-center max-[701px]:block max-[701px]:min-h-[100dvh]"
+      >
         <section className="query-error" role="alert">
           <h1>
             {info.status === 403
@@ -156,14 +166,17 @@ export function OrderPage() {
   }
   const data = order.data!;
   return (
-    <main id="main" className="order-page">
+    <main
+      id="main"
+      className="order-page grid place-items-center max-[701px]:block max-[701px]:min-h-[100dvh]"
+    >
       <p ref={live} className="sr-only" role="status" />
       <article
         className={`order-card order-${data.status}`}
         aria-labelledby="order-title"
       >
         <Link
-          className="order-close"
+          className="order-close absolute grid place-items-center w-[36px] h-[36px] rounded-[50%] leading-[1] text-[color:var(--foreground)] min-[701px]:rounded-[0] min-[701px]:text-[color:var(--accent)]"
           to="/"
           search={discoverySearch({})}
           aria-label="Fechar e voltar ao catálogo"
@@ -190,11 +203,14 @@ type Heading = { heading: React.RefObject<HTMLHeadingElement | null> };
 function Pending({ order, heading }: { order: Order } & Heading) {
   return (
     <>
-      <div className="order-progress" aria-hidden="true" />
+      <div
+        className="order-progress h-[4px] mt-[0] mr-[auto] mb-[24px] ml-[auto] max-w-[320px] rounded-[4px] motion-reduce:opacity-[0.6]"
+        aria-hidden="true"
+      />
       <h1 id="order-title" ref={heading} tabIndex={-1}>
         Aguardando confirmação da rede
       </h1>
-      <p className="order-lead">
+      <p className="order-lead max-w-[560px] mt-[0] mr-[auto] mb-[16px] ml-[auto] text-[color:var(--muted-foreground)] leading-[1.6]">
         Seu pagamento foi enviado pela carteira{" "}
         {providerNames[order.wallet.provider]} na rede{" "}
         {networkNames[order.wallet.network]}. Você pode sair desta página e
@@ -212,10 +228,10 @@ function Declined({ order, heading }: { order: Order } & Heading) {
       <h1 id="order-title" ref={heading} tabIndex={-1}>
         Pagamento recusado
       </h1>
-      <p className="order-lead">
+      <p className="order-lead max-w-[560px] mt-[0] mr-[auto] mb-[16px] ml-[auto] text-[color:var(--muted-foreground)] leading-[1.6]">
         Motivo: <strong>{order.declineCode}</strong>
       </p>
-      <p className="order-lead">
+      <p className="order-lead max-w-[560px] mt-[0] mr-[auto] mb-[16px] ml-[auto] text-[color:var(--muted-foreground)] leading-[1.6]">
         Nenhum valor foi cobrado e seu carrinho foi preservado, com os mesmos
         itens. Revise a carteira e tente novamente.
       </p>
@@ -249,14 +265,20 @@ function Confirmed({
           Seus NFTs agora estão na sua carteira
         </h1>
         {receiptError ? (
-          <div className="cart-refresh-error" role="alert">
+          <div
+            className="cart-refresh-error col-span-full m-[0] text-[#ffb08a]"
+            role="alert"
+          >
             <p>Não foi possível carregar o recibo.</p>
             <button className="button button-outline" onClick={retryReceipt}>
               Tentar novamente
             </button>
           </div>
         ) : (
-          <p className="checkout-waiting" role="status">
+          <p
+            className="checkout-waiting py-[48px] px-[0] text-[color:var(--muted-foreground)]"
+            role="status"
+          >
             Carregando o recibo…
           </p>
         )}
@@ -269,7 +291,7 @@ function Confirmed({
       <h1 id="order-title" ref={heading} tabIndex={-1}>
         Seus NFTs agora estão na sua carteira
       </h1>
-      <dl className="order-facts">
+      <dl className="order-facts grid max-[701px]:gap-[12px]">
         <div>
           <dt>ID da transação</dt>
           <dd>
@@ -303,10 +325,12 @@ function Confirmed({
           </dd>
         </div>
       </dl>
-      <h2 className="order-subtitle">Detalhes da transação</h2>
+      <h2 className="order-subtitle mt-[0] mr-[0] mb-[12px] ml-[0] text-[18px] text-left min-[701px]:mb-[6px]">
+        Detalhes da transação
+      </h2>
       <Items items={receipt.items} />
       <Totals amounts={receipt.amounts} />
-      <p className="order-note">
+      <p className="order-note mt-[0] mr-[auto] mb-[24px] ml-[auto] max-w-[600px] text-[color:var(--muted-foreground)] leading-[1.6]">
         Transação confirmada na {network}. A propriedade foi transferida para
         sua carteira conectada e registrada na rede.
       </p>
@@ -325,7 +349,7 @@ function Confirmed({
 function Thanks() {
   return (
     <svg
-      className="order-thanks"
+      className="order-thanks block mt-[0] mr-[auto] mb-[16px] ml-[auto] text-[color:var(--accent)] max-[701px]:w-[64px] max-[701px]:h-[80px]"
       viewBox="0 0 80 100"
       width="80"
       height="100"
@@ -367,7 +391,7 @@ function Thanks() {
 }
 function Items({ items }: { items: ReadonlyArray<PurchasedItem> }) {
   return (
-    <table className="order-items">
+    <table className="order-items w-[100%] text-left">
       <caption className="sr-only">Itens do pedido</caption>
       <thead>
         <tr>
@@ -406,7 +430,7 @@ function Items({ items }: { items: ReadonlyArray<PurchasedItem> }) {
 function Totals({ amounts }: { amounts: Order["amounts"] }) {
   const discounted = compareEth(amounts.discountEth, "0") > 0;
   return (
-    <dl className="order-totals">
+    <dl className="order-totals grid gap-[8px] mt-[16px] mr-[0] mb-[24px] ml-[0] min-[701px]:mt-[8px] min-[701px]:mr-[0] min-[701px]:mb-[24px] min-[701px]:ml-[35%] min-[701px]:pb-[12px] min-[701px]:border-b-[1px] min-[701px]:border-solid min-[701px]:border-b-[color:var(--border)] min-[701px]:text-[17px]">
       <div>
         <dt>Subtotal</dt>
         <dd>{eth(amounts.subtotalEth)}</dd>

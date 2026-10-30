@@ -9,6 +9,7 @@ import type { NftListQuery, Nft } from "@/contracts/nfts";
 import type { DataResponse } from "@/contracts/common";
 import { compareEth } from "@/contracts/eth";
 import { createCatalogRealtime } from "@/realtime/catalog";
+import { getRealtime } from "@/realtime/instance";
 import type { MockControls } from "@/mocks/browser";
 import { cartKey } from "@/data/cart/queries";
 import { cartScope, getIdentity, signOut } from "@/data/session/identity";
@@ -106,6 +107,11 @@ export function installHarness(controls: MockControls, baseURL: string) {
         requests: { ...controls.scenarios.stats },
       };
     },
+    // Counters of the app's own realtime client (the one the layout runs).
+    liveStats: () => {
+      const live = getRealtime();
+      return live ? { ...live.stats } : null;
+    },
     connect: () => realtime.connect(),
     disconnect: () => realtime.disconnect(),
     dispose: () => realtime.dispose(),
@@ -131,6 +137,7 @@ export function installHarness(controls: MockControls, baseURL: string) {
     failNextCheckout: controls.scenarios.failNextCheckout,
     failNextFavorite: controls.scenarios.failNextFavorite,
     favoriteDelay: controls.scenarios.setFavoriteDelay,
+    profileDelay: controls.scenarios.setProfileDelay,
     checkoutDelay: controls.scenarios.setCheckoutDelay,
     disconnectWallets: controls.store.disconnectWallets,
     expireCoupon: controls.store.expireCoupon,
@@ -170,10 +177,11 @@ export function installHarness(controls: MockControls, baseURL: string) {
       return { sessionToken, session, visitorToken, status };
     },
     signOut,
-    expireSession: () =>
-      controls.store.expireSession(getIdentity().sessionToken ?? ""),
-    revokeSession: () =>
-      controls.store.revokeSession(getIdentity().sessionToken ?? ""),
+    // The client's session, or the one of `token`.
+    expireSession: (token?: string) =>
+      controls.store.expireSession(token ?? getIdentity().sessionToken ?? ""),
+    revokeSession: (token?: string) =>
+      controls.store.revokeSession(token ?? getIdentity().sessionToken ?? ""),
     // Cart query diagnostics: each fetched or written cart increments the count.
     cartQuery: () => {
       const state = queryClient.getQueryState(cartKey(cartScope()));

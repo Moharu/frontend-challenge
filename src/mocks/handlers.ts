@@ -365,33 +365,47 @@ export function createHandlers(
       }
       const { response, empty } = await condition(request);
       if (response) return response;
-      let items = empty
-        ? []
-        : store
-            .snapshot()
-            .nfts.filter(
-              (n) =>
-                n.name.toLowerCase().includes(query.search) &&
-                (query.mode !== "new" || n.discovery.isNew) &&
-                (query.mode !== "trending" ||
-                  n.discovery.trendingScore >= 100) &&
-                (!query.category || n.category === query.category) &&
-                (!query.network || n.network === query.network) &&
-                (!query.minPrice ||
-                  compareEth(lowestPrice(n), query.minPrice) >= 0) &&
+      // Each facet counts with every filter except its own, so the other
+      // options of a dimension keep their counts once one is chosen.
+      const all = empty ? [] : store.snapshot().nfts;
+      const matching = (skip?: "category" | "network" | "price") =>
+        all.filter(
+          (n) =>
+            n.name.toLowerCase().includes(query.search) &&
+            (query.mode !== "new" || n.discovery.isNew) &&
+            (query.mode !== "trending" || n.discovery.trendingScore >= 100) &&
+            (skip === "category" ||
+              !query.category ||
+              n.category === query.category) &&
+            (skip === "network" ||
+              !query.network ||
+              n.network === query.network) &&
+            (skip === "price" ||
+              ((!query.minPrice ||
+                compareEth(lowestPrice(n), query.minPrice) >= 0) &&
                 (!query.maxPrice ||
-                  compareEth(lowestPrice(n), query.maxPrice) <= 0),
-            );
+                  compareEth(lowestPrice(n), query.maxPrice) <= 0))),
+        );
+      let items = matching();
+      const byCategory = matching("category");
+      const byNetwork = matching("network");
+      const prices = matching("price").map(lowestPrice).sort(compareEth);
       const facets = {
         categories: Object.fromEntries(
           categories.map((c) => [
             c,
-            items.filter((n) => n.category === c).length,
+            byCategory.filter((n) => n.category === c).length,
           ]),
         ),
         networks: Object.fromEntries(
-          networks.map((c) => [c, items.filter((n) => n.network === c).length]),
+          networks.map((c) => [
+            c,
+            byNetwork.filter((n) => n.network === c).length,
+          ]),
         ),
+        price: prices.length
+          ? { min: prices[0], max: prices[prices.length - 1] }
+          : null,
       };
       const compare = (a: Nft, b: Nft) =>
         query.sort === "price-asc"

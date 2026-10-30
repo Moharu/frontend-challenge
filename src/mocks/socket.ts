@@ -13,13 +13,20 @@ import type { Session } from "@/contracts/session";
 // with its session token right after connecting and on every identity
 // change (the binding does not expose the handshake `auth`, and has no acks).
 // Anonymous connections and other users never receive another user's order.
+// The session is checked again before every private delivery: a connection
+// whose session was revoked (password change, logout in another tab) or
+// expired since it authenticated receives nothing and stops being
+// authenticated until it authenticates again.
 export function createMockSocket(
   url: string,
   verify: (token: string) => Promise<Session | null>,
 ) {
   const link = ws.link(url);
   type Io = ReturnType<typeof toSocketIo>;
-  const connections = new Map<Io, Session | null>();
+  type Audience = { session: Session; token: string };
+  const connections = new Map<Io, Audience | null>();
+  // Private deliveries run one at a time, in emission order.
+  let delivery = Promise.resolve();
   let interrupted = false;
   const handler = link.addEventListener("connection", (connection) => {
     if (interrupted) {
@@ -43,7 +50,7 @@ export function createMockSocket(
       if (!token) return;
       void verify(token).then((session) => {
         if (current === attempt && connections.has(io))
-          connections.set(io, session);
+          connections.set(io, session ? { session, token } : null);
       });
     });
     // The binding supplies the opening handshake but no recurring Engine.IO ping.
@@ -62,28 +69,14 @@ export function createMockSocket(
     // One envelope per owner connection, with that connection's session as
     // the audience; nothing is sent to anyone else.
     emitOrder(order: Order) {
-      for (const [io, session] of connections) {
-        if (!session || session.user.id !== order.userId) continue;
-        const event: OrderUpdated = {
-          type: "order.updated",
-          eventId: `order-${order.id}-${order.version}`,
-          resourceId: order.id,
-          version: order.version,
-          timestamp: order.updatedAt,
-          payload: structuredClone(order),
-          audience: {
-            userId: order.userId,
-            sessionId: session.id,
-            sessionGeneration: session.generation,
-          },
-        };
-        io.client.emit("order.updated", event);
-      }
+      delivery = delivery
+        .then(() => deliverOrder(structuredClone(order)))
+        .catch(() => undefined);
     },
     // Test-only: re-sends an envelope as is, to any connection of its owner.
     emitRaw(event: OrderUpdated) {
-      for (const [io, session] of connections)
-        if (session && session.user.id === event.audience.userId)
+      for (const [io, audience] of connections)
+        if (audience && audience.session.user.id === event.audience.userId)
           io.client.emit("order.updated", structuredClone(event));
     },
     interrupt() {
@@ -97,6 +90,36 @@ export function createMockSocket(
     },
     count: () => connections.size,
     authenticated: () =>
-      [...connections.values()].filter(Boolean).map((s) => s!.user.id),
+      [...connections.values()].filter(Boolean).map((a) => a!.session.user.id),
   };
+  async function deliverOrder(order: Order) {
+    for (const [io, audience] of [...connections]) {
+      if (!audience || audience.session.user.id !== order.userId) continue;
+      const current = await verify(audience.token);
+      // The connection may have closed or re-authenticated meanwhile.
+      if (connections.get(io) !== audience) continue;
+      if (
+        !current ||
+        current.id !== audience.session.id ||
+        current.generation !== audience.session.generation
+      ) {
+        connections.set(io, null);
+        continue;
+      }
+      const event: OrderUpdated = {
+        type: "order.updated",
+        eventId: `order-${order.id}-${order.version}`,
+        resourceId: order.id,
+        version: order.version,
+        timestamp: order.updatedAt,
+        payload: structuredClone(order),
+        audience: {
+          userId: order.userId,
+          sessionId: current.id,
+          sessionGeneration: current.generation,
+        },
+      };
+      io.client.emit("order.updated", event);
+    }
+  }
 }

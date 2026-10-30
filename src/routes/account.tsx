@@ -53,8 +53,9 @@ function MenuIcon({ name }: { name: Icon }) {
   );
 }
 // Desktop: the "Meu perfil" sidebar. Mobile (up to 700px): a disclosure
-// "Meu perfil · <section> ▾" above the content that expands the same list
-// inline and collapses after a choice, returning focus to the button.
+// "Meu perfil · <section> ▾" above the content that opens the same list over
+// the page (it does not push the content down) and closes after a choice,
+// on Escape or on an outside tap, returning focus to the button.
 export function AccountLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const current = sections.find((s) => s.to === pathname);
@@ -80,10 +81,13 @@ export function AccountLayout() {
     return () => document.removeEventListener("pointerdown", outside);
   }, [open]);
   return (
-    <main id="main" className="account-page">
+    <main
+      id="main"
+      className="account-page grid grid-cols-[310px_minmax(0,1fr)] gap-[28px] items-start pt-[32px] pr-[0] pb-[80px] pl-[0] max-[1001px]:grid-cols-[240px_minmax(0,1fr)] max-[701px]:grid-cols-[minmax(0,1fr)] max-[701px]:gap-[20px] max-[701px]:pt-[0]"
+    >
       <nav
         ref={nav}
-        className="account-nav"
+        className="account-nav bg-[color:var(--surface)] max-[701px]:relative max-[701px]:z-[30]"
         aria-label="Meu perfil"
         onKeyDown={(event) => {
           // Escape closes the open list and returns focus to the button.
@@ -96,7 +100,7 @@ export function AccountLayout() {
         <button
           ref={toggle}
           type="button"
-          className="account-disclosure"
+          className="account-disclosure hidden max-[701px]:flex max-[701px]:items-center max-[701px]:gap-[6px] max-[701px]:w-[100%] max-[701px]:min-h-[48px] max-[701px]:py-[0] max-[701px]:px-[16px] max-[701px]:text-[color:var(--foreground)] max-[701px]:text-left"
           aria-expanded={open}
           aria-controls="account-sections"
           onClick={() => setOpen((value) => !value)}
@@ -105,7 +109,10 @@ export function AccountLayout() {
           {current && <span> · {current.label}</span>}
           <span aria-hidden="true">▾</span>
         </button>
-        <p className="account-nav-title" aria-hidden="true">
+        <p
+          className="account-nav-title m-[0] pt-[22px] pr-[10px] pb-[10px] pl-[10px] max-[701px]:hidden"
+          aria-hidden="true"
+        >
           Meu perfil
         </p>
         <ul
@@ -124,7 +131,7 @@ export function AccountLayout() {
               </Link>
             </li>
           ))}
-          <li className="account-signout">
+          <li className="account-signout border-t-[1px] border-solid border-t-[color:var(--border)]">
             <button
               type="button"
               onClick={() => {
@@ -138,7 +145,7 @@ export function AccountLayout() {
           </li>
         </ul>
       </nav>
-      <div className="account-content">
+      <div className="account-content min-w-[0]">
         <Outlet />
       </div>
     </main>
@@ -150,10 +157,13 @@ function NotAvailable({ title }: { title: string }) {
   return (
     <section className="account-section" aria-labelledby="account-title">
       <h1 id="account-title">{title}</h1>
-      <p className="account-unavailable">
+      <p className="account-unavailable mt-[0] mr-[0] mb-[16px] ml-[0] text-[color:var(--muted-foreground)]">
         Esta seção não está disponível nesta versão.
       </p>
-      <Link className="account-link" to="/account/profile">
+      <Link
+        className="account-link text-[color:var(--accent)] font-bold"
+        to="/account/profile"
+      >
         Ir para Dados do perfil
       </Link>
     </section>
@@ -193,7 +203,7 @@ export function FavoritesPage() {
       ) : loading ? (
         <Skeleton />
       ) : ids.length === 0 ? (
-        <div className="account-empty">
+        <div className="account-empty grid justify-items-start gap-[16px] text-[color:var(--muted-foreground)]">
           <p>Você ainda não favoritou nenhum NFT.</p>
           <Link
             className="button button-primary"
@@ -205,7 +215,7 @@ export function FavoritesPage() {
           </Link>
         </div>
       ) : (
-        <div className="nft-grid account-favorites">
+        <div className="nft-grid account-favorites grid gap-[32px] max-[701px]:gap-y-[24px] max-[701px]:gap-x-[16px] max-[701px]:items-start">
           {details.map(
             (d) => d.data && <NftCard key={d.data.data.id} nft={d.data.data} />,
           )}

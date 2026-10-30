@@ -95,13 +95,13 @@ Cupons inválido/expirado não precisam de controle: `KURIO15` é sempre expirad
 
 Contas (`accounts`), sessões (token opaco → usuário, geração, `expiresAt`, `revokedAt`) e o contador `generation` fazem parte do retrato (`schemaVersion` 4); retratos anteriores restauram a seed. Cadastro cria a conta com carrinho próprio e já autentica; login e cadastro consomem o carrinho de visitante indicado em `X-Visitor-Token`. A validade da sessão usa o relógio real (7 dias). Regras em [sessão](session.md).
 
-| Controle da ponte (`window.__KURIO_TEST__`) | Efeito                                                                                       |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `identity()`                                | Retrato da identidade do cliente (tokens, sessão verificada, estado)                         |
-| `signOut()`                                 | Mesmo logout da interface: limpa a identidade local e revoga o token                         |
-| `expireSession()` / `revokeSession()`       | Expira / revoga no servidor simulado a sessão atual; a próxima requisição privada recebe 401 |
-| `cartDelay('read' or 'write', ms)`          | Atraso de resposta do carrinho, usado para respostas tardias da sessão anterior              |
-| `state().transport`                         | Contadores de requisições e de requisições canceladas pelo cliente                           |
+| Controle da ponte (`window.__KURIO_TEST__`)       | Efeito                                                                                                         |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `identity()`                                      | Retrato da identidade do cliente (tokens, sessão verificada, estado)                                           |
+| `signOut()`                                       | Mesmo logout da interface: limpa a identidade local e revoga o token                                           |
+| `expireSession(token?)` / `revokeSession(token?)` | Expira / revoga no servidor simulado a sessão atual (ou a de `token`); a próxima requisição privada recebe 401 |
+| `cartDelay('read' or 'write', ms)`                | Atraso de resposta do carrinho, usado para respostas tardias da sessão anterior                                |
+| `state().transport`                               | Contadores de requisições e de requisições canceladas pelo cliente                                             |
 
 Gravações do retrato podem disparar uma nova leitura do carrinho (adoção do retrato mais recente). Por isso, depois de `expireSession()`, o aviso de expiração pode surgir sem nenhuma ação na interface; os testes aceitam qualquer uma das duas origens da requisição privada.
 
@@ -122,19 +122,19 @@ Mudanças de preço e disponibilidade usam os controles existentes: `update` (pe
 
 ## Extensões da etapa de pedidos
 
-O retrato passa a `schemaVersion` 6: cotações persistidas (`quotes`, as 50 mais recentes, e `quoteSequence`), pedidos (`orders`, com `resolveAt` e resultado simulado), chaves de idempotência (`idempotency`, `userId:chave` → pedido e corpo canônico) e `orderSequence`. Retratos anteriores restauram a seed. O pagamento simulado é aprovado após 1,5s por padrão; a resolução roda ao ler o pedido e a cada 250ms. Regras em [pedidos](orders.md).
+O retrato passa a `schemaVersion` 6: cotações persistidas (`quotes`, as 50 mais recentes, e `quoteSequence`), pedidos (`orders`, com `resolveAt` e resultado simulado), chaves de idempotência (`idempotency`, `userId:chave` → pedido e corpo canônico) e `orderSequence`. Retratos anteriores restauram a seed. O pagamento simulado é aprovado após 1,5s por padrão; a resolução roda ao iniciar, ao ler o pedido e num temporizador armado só enquanto há pedido pendente, para o vencimento mais próximo ([desempenho](performance.md)). Regras em [pedidos](orders.md).
 
-| Controle da ponte (`window.__KURIO_TEST__`)      | Efeito                                                                                                                            |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| `setPayment(outcome, delayMs?)`                  | Resultado (`confirmed` ou `declined`) e atraso dos próximos pagamentos; fica em `sessionStorage` (`kurio.mock.payment`)           |
-| `resolvePayments()`                              | Resolve agora todos os pedidos pendentes, ignorando o atraso                                                                      |
-| `loseNextOrderResponse()`                        | O próximo `POST /orders` cria o pedido, mas a resposta se perde (erro de rede): demonstra o timeout depois da criação             |
-| `changeBeforeNextOrder(nftId, editionId, patch)` | Altera o NFT logo antes do próximo `POST /orders` (cotação muda entre a revisão e o envio → 409 `QUOTE_CHANGED`)                  |
-| `duplicateOrder()` / `staleOrder(patch)`         | Reenvia o último `order.updated` / envia um envelope sintético com versão anterior                                                |
-| `authenticatedSockets()`                         | Conexões de socket associadas a uma sessão                                                                                        |
-| `probeSocket(token)`                             | Abre um segundo cliente `socket.io-client` autenticado com `token` e registra os nomes dos eventos recebidos (teste de vazamento) |
+| Controle da ponte (`window.__KURIO_TEST__`)      | Efeito                                                                                                                                                      |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `setPayment(outcome, delayMs?)`                  | Resultado (`{ status: "confirmed" }` ou `{ status: "declined", reason }`) e atraso dos próximos pagamentos; fica em `sessionStorage` (`kurio.mock.payment`) |
+| `resolvePayments()`                              | Resolve agora todos os pedidos pendentes, ignorando o atraso                                                                                                |
+| `loseNextOrderResponse()`                        | O próximo `POST /orders` cria o pedido, mas a resposta se perde (erro de rede): demonstra o timeout depois da criação                                       |
+| `changeBeforeNextOrder(nftId, editionId, patch)` | Altera o NFT logo antes do próximo `POST /orders` (cotação muda entre a revisão e o envio → 409 `QUOTE_CHANGED`)                                            |
+| `duplicateOrder()` / `staleOrder(patch)`         | Reenvia o último `order.updated` / envia um envelope sintético com versão anterior                                                                          |
+| `authenticatedSockets()`                         | Conexões de socket associadas a uma sessão                                                                                                                  |
+| `probeSocket(token)`                             | Abre um segundo cliente `socket.io-client` autenticado com `token` e registra os nomes dos eventos recebidos (teste de vazamento)                           |
 
-Para reproduzir manualmente uma recusa ou um timeout depois da criação, use a ponte do build de integração (`npm run build:integration` e `npm run preview -- --outDir dist-integration`) e chame `__KURIO_TEST__.setPayment("declined")` ou `__KURIO_TEST__.loseNextOrderResponse()` no console antes de confirmar a compra.
+Para reproduzir manualmente uma recusa ou um timeout depois da criação, use a ponte do build de integração (`npm run build:integration` e `npm run preview -- --outDir dist-integration`) e chame `__KURIO_TEST__.setPayment({ status: "declined", reason: "Saldo insuficiente." })` ou `__KURIO_TEST__.loseNextOrderResponse()` no console antes de confirmar a compra.
 
 ## Extensões da etapa da conta
 
@@ -144,3 +144,12 @@ O retrato passa a `schemaVersion` 7: o perfil fica na conta (`ensName`, `walletN
 | ------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | `failNextFavorite('http' or 'network')`     | Falha de uso único na próxima escrita de favoritos (`POST` ou `DELETE`), para a reversão |
 | `favoriteDelay(ms)`                         | Latência das escritas de favoritos (cliques rápidos e o estado otimista visível)         |
+
+## Extensões da etapa final
+
+| Controle da ponte (`window.__KURIO_TEST__`) | Efeito                                                                                          |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `profileDelay(ms)`                          | Latência das escritas do perfil (dados, avatar, senha), para trocar de usuário durante o Salvar |
+| `liveStats()`                               | Contadores do cliente Socket.IO da própria página (eventos aplicados, ignorados e inválidos)    |
+
+A entrega de `order.updated` confere de novo a sessão de cada conexão antes de enviar: sessões encerradas em outra aba, expiradas ou revogadas pela troca de senha deixam de receber eventos privados ([eventos](contracts/events.md)).

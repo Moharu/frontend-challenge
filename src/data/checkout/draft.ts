@@ -1,3 +1,4 @@
+import { forgetPendingOrders } from "@/data/orders/pending";
 // Checkout draft: what the user typed and the chosen wallet, in sessionStorage
 // keyed by user id. It survives a refresh and a session expiry (the same user
 // signing in again finds it filled in), and is discarded on logout and when
@@ -37,6 +38,7 @@ export function saveDraft(userId: string, draft: CheckoutDraft) {
 // data/orders/pending.ts), or every one but `keepUserId`'s.
 const orderPrefix = "kurio.checkout.order.v1:";
 export function discardDrafts(keepUserId?: string) {
+  forgetPendingOrders(keepUserId);
   try {
     for (let i = sessionStorage.length - 1; i >= 0; i--) {
       const key = sessionStorage.key(i);

@@ -467,7 +467,12 @@ test("depois de recarregar com o diálogo aberto, fechar mantém a página no to
     await expect(dialog(page)).toHaveCount(0);
     // Neither the browser's restoration of the old position nor the hash
     // may scroll the refreshed page once the dialog closes.
-    await page.waitForTimeout(500);
+    await page.evaluate(
+      () =>
+        new Promise((r) =>
+          requestAnimationFrame(() => requestAnimationFrame(r)),
+        ),
+    );
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
   }
 });

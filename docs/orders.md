@@ -4,7 +4,7 @@ Etapa guiada por `docs/handoffs/coding-agent-orders-draft-pt-br.md`. "Confirmar 
 
 ## Envio pelo checkout
 
-- **Chave de idempotência:** `src/data/orders/pending.ts` guarda em `sessionStorage` (`kurio.checkout.order.v1:<userId>`) `{ key, canonical, body, orderId }`. A mesma compra (mesmo corpo canônico) reutiliza a chave; outro corpo gera uma chave nova (UUID). A entrada é descartada quando o pedido chega a um estado terminal, no logout e na troca de usuário (`discardDrafts`).
+- **Chave de idempotência:** `src/data/orders/pending.ts` guarda em `sessionStorage` (`kurio.checkout.order.v1:<userId>`) `{ key, canonical, body, orderId }`. A mesma compra (mesmo corpo canônico) reutiliza a chave; outro corpo gera uma chave nova (UUID). A entrada é descartada quando o pedido chega a um estado terminal, no logout e na troca de usuário (`discardDrafts`). **Expiração:** um 401 na nova tentativa preserva a entrada; depois de entrar de novo com o mesmo usuário, o checkout a retoma com a mesma chave e leva ao pedido. **Sem gravação no `sessionStorage`** (cota, privacidade): a página mantém uma cópia em memória, sempre a mais recente, e "Tentar novamente" reenvia a mesma tentativa; só uma recarga a perderia. Sem tentativa guardada, "Tentar novamente" confirma de novo do início (o servidor ainda recusa um segundo pedido do mesmo carrinho com `ORDER_PENDING`).
 - **Cliques repetidos e duas abas:** o botão fica ocupado durante o envio, e qualquer envio repetido usa a mesma chave; o servidor devolve o mesmo pedido.
 - **Falha sem resposta** (rede ou 5xx): "Não foi possível confirmar o envio do pedido." com "Tentar novamente", que reenvia a mesma chave e o mesmo corpo. Se o pedido já tinha sido criado, a resposta é esse pedido.
 - **Refresh durante o envio:** ao montar, o checkout encontra a entrada sem `orderId` e retoma o envio ("Retomando seu pedido…") com a mesma chave. Uma entrada com `orderId` não é retomada (é uma compra já criada).
@@ -32,6 +32,7 @@ A reserva reduz a disponibilidade pública (e `nft.updated` reflete isso). No ca
 
 - `<p>` dentro do `<dl>` do resumo do checkout: as notas (cupom removido, rede) saíram da lista de definição.
 - Cupom expirado removível no carrinho e no checkout (decisão em [carrinho](cart.md)).
+- Com um pedido pendente para o carrinho, o checkout mostra o mesmo aviso do carrinho ("Há um pedido em andamento para este carrinho.") com o link "Acompanhar pedido".
 
 ## Decisões e desvios do Figma
 

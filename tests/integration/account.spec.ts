@@ -638,7 +638,12 @@ test("9. reversão otimista: falha HTTP e de rede revertem e anunciam; cliques r
   await expect
     .poll(async () => (await api(page, "/favorites")).body.data.length)
     .toBe(1);
-  await page.waitForTimeout(800);
+  // Every request the clicks started has finished.
+  await page.waitForFunction(() => {
+    const { started, completed, cancelled } =
+      window.__KURIO_TEST__.state().requests;
+    return started === completed + cancelled;
+  });
   await expect(on).toHaveAttribute("aria-pressed", "true");
   expect((await api(page, "/favorites")).body.data.length).toBe(1);
 });
@@ -763,4 +768,139 @@ test("13. teclado: menu da conta, mostrar senha e coração", async ({
       name: "Remover Emerald Ape #042 dos favoritos",
     }),
   ).toBeFocused();
+});
+// A separate session of `credentials`, outside the page's identity.
+async function sessionToken(page: Page, credentials: typeof ada) {
+  const { body } = await api(page, "/session/login", {
+    method: "POST",
+    body: credentials,
+    token: null,
+  });
+  return (body.data?.token ?? body.token) as string;
+}
+// In-app user switch (no reload, so queued work keeps running): sign out and
+// sign in as `credentials` through the login dialog.
+async function switchUser(
+  page: Page,
+  mobile: boolean,
+  credentials: typeof ada,
+) {
+  await page.evaluate(() => window.__KURIO_TEST__.signOut());
+  const email = dialog(page).getByRole("textbox", { name: "E-mail" });
+  if (!(await email.isVisible())) {
+    if (mobile)
+      await page.getByRole("link", { name: "Minha conta, entrar" }).click();
+    else await page.getByRole("link", { name: "Entrar" }).click();
+  }
+  await fillLogin(page, credentials);
+  await page.waitForFunction(
+    (email) => window.__KURIO_TEST__.identity().session?.user.email === email,
+    credentials.email,
+  );
+}
+// Two animation frames: work queued behind a response (promise callbacks)
+// has run by then.
+const frames = (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
+  );
+// Private mutations sent by the page, by method and path.
+function recordWrites(page: Page) {
+  const writes: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.startsWith("/api/") && request.method() !== "GET")
+      writes.push(`${request.method()} ${url.pathname}`);
+  });
+  return writes;
+}
+test("14. troca de usuário com favoritos na fila: nada é enviado como o novo usuário", async ({
+  page,
+}, testInfo) => {
+  const mobile = isMobile(testInfo.project.name);
+  await login(page);
+  await page.goto("/");
+  await expect(firstCard(page)).toBeVisible();
+  const writes = recordWrites(page);
+  await page.evaluate(() => window.__KURIO_TEST__.favoriteDelay(1500));
+  // Ada: favorite (in flight), unfavorite, favorite (queued behind it).
+  await page.evaluate(() => {
+    const button = document.querySelector<HTMLButtonElement>(
+      '.nft-card button.favorite[aria-label*="Emerald Ape #042"]',
+    )!;
+    for (let i = 0; i < 3; i++) button.click();
+  });
+  const first = page.waitForResponse(
+    (r) => r.request().method() === "POST" && r.url().endsWith("/favorites"),
+  );
+  // Lin signs in while Ada's first request is still in flight (signing out
+  // revokes Ada's session, so that request is refused).
+  await switchUser(page, mobile, lin);
+  await first;
+  // The queued intent would be sent right after the first response.
+  await frames(page);
+  expect(writes.filter((w) => w.includes("/favorites"))).toEqual([
+    "POST /api/favorites",
+  ]);
+  expect((await api(page, "/favorites")).body.data).toEqual([]);
+});
+test("15. troca de usuário durante o Salvar do perfil: avatar e senha não vão para a outra conta", async ({
+  page,
+}, testInfo) => {
+  const mobile = isMobile(testInfo.project.name);
+  await login(page, ada, "/account/profile");
+  const writes = recordWrites(page);
+  await page.getByLabel("Nome de exibição").fill("Ada Lenta");
+  await page.locator("#profile-avatar").setInputFiles({
+    name: "foto.png",
+    mimeType: "image/png",
+    buffer: await image(page, 300, 300, "image/png"),
+  });
+  await page.getByLabel("Senha atual", { exact: true }).fill(ada.password);
+  await page.getByLabel("Nova senha", { exact: true }).fill("NovaSenha2026");
+  await page
+    .getByLabel("Confirmar nova senha", { exact: true })
+    .fill("NovaSenha2026");
+  await page.evaluate(() => window.__KURIO_TEST__.profileDelay(1500));
+  const data = page.waitForResponse(
+    (r) => r.request().method() === "PATCH" && r.url().endsWith("/profile"),
+  );
+  await page.getByRole("button", { name: "Salvar", exact: true }).click();
+  await switchUser(page, mobile, lin);
+  await data;
+  await page.evaluate(() => window.__KURIO_TEST__.profileDelay(0));
+  await frames(page);
+  // Only the step already in flight was sent; avatar and password stopped.
+  expect(writes.filter((w) => w.includes("/profile"))).toEqual([
+    "PATCH /api/profile",
+  ]);
+  const linProfile = (await api(page, "/profile")).body.data;
+  expect(linProfile.displayName).not.toBe("Ada Lenta");
+  expect(linProfile.avatar).toBeNull();
+  // Lin's password is unchanged.
+  expect(await sessionToken(page, lin)).toBeTruthy();
+});
+test("16. falha de rede nos dados do perfil preserva o que foi digitado", async ({
+  page,
+}) => {
+  await login(page, lin, "/account/profile");
+  await page.getByLabel("Nome de exibição").fill("Lin Rede");
+  await page.locator("#profile-avatar").setInputFiles({
+    name: "foto.png",
+    mimeType: "image/png",
+    buffer: await image(page, 300, 300, "image/png"),
+  });
+  await expect(
+    page.getByRole("img", { name: "Prévia do novo avatar" }),
+  ).toBeVisible();
+  // The next request (the data step) fails without field errors; the avatar
+  // step succeeds after it.
+  await page.evaluate(() => window.__KURIO_TEST__.failNext("network"));
+  await page.getByRole("button", { name: "Salvar", exact: true }).click();
+  await expect(status(page)).toContainText("Avatar: salvo.");
+  await expect(page.getByLabel("Nome de exibição")).toHaveValue("Lin Rede");
+  expect((await api(page, "/profile")).body.data.displayName).not.toBe(
+    "Lin Rede",
+  );
 });

@@ -11,7 +11,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { artImage } from "./assets";
+import { artImage, asset } from "./assets";
 import { FavoriteButton } from "./favorite";
 export function Unavailable({
   children,
@@ -44,8 +44,8 @@ export function Unavailable({
 }
 export function NftCard({ nft }: { nft: Nft }) {
   return (
-    <article className="nft-card">
-      <div className="card-art">
+    <article className="nft-card min-w-[0] text-[14px] wrap-anywhere max-[701px]:text-[13px]">
+      <div className="card-art relative bg-[color:var(--surface)] py-[16px] px-[8px] mb-[12px] max-[701px]:pt-[12px] max-[701px]:pr-[4px] max-[701px]:pb-[20px] max-[701px]:pl-[4px] max-[701px]:rounded-[20px] max-[701px]:mb-[8px]">
         <Link
           to="/nfts/$nftId"
           params={{ nftId: nft.id }}
@@ -59,7 +59,43 @@ export function NftCard({ nft }: { nft: Nft }) {
             loading="lazy"
           />
         </Link>
-        <FavoriteButton nftId={nft.id} name={nft.name} />
+        {/* Desktop: shown on hover or keyboard focus, below the art. Mobile:
+            only the heart, in the corner. The cart icon leads to the detail
+            page, like the art itself, so it is not a second tab stop. */}
+        <div className="card-actions">
+          <Link
+            to="/nfts/$nftId"
+            params={{ nftId: nft.id }}
+            tabIndex={-1}
+            aria-hidden="true"
+            className="card-action card-buy"
+          >
+            <img src={asset("home-CartIcon.svg")} alt="" />
+          </Link>
+          <FavoriteButton
+            nftId={nft.id}
+            name={nft.name}
+            className="favorite card-action"
+          />
+          <Dialog>
+            <DialogTrigger
+              className="card-action card-zoom"
+              aria-label={`Ampliar ${nft.name}`}
+            >
+              <img src={asset("detail-Frame238.svg")} alt="" />
+            </DialogTrigger>
+            <DialogContent className="lightbox">
+              <DialogTitle>{nft.name}</DialogTitle>
+              <DialogDescription>Imagem ampliada do NFT.</DialogDescription>
+              <img
+                {...artImage(nft.artwork, "min(600px, 100vw)")}
+                alt={nft.name}
+                width="600"
+                height="600"
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
         {nft.discovery.rarity && (
           <span className="rarity">{nft.discovery.rarity}</span>
         )}

@@ -14,7 +14,7 @@ import { apiError } from "@/lib/api-error";
 import { createWallet } from "@/data/checkout/api";
 import { updateWallet } from "@/data/account/api";
 import { walletsKey, useWallets } from "@/data/checkout/hooks";
-import { cartScope, sameScope } from "@/data/session/identity";
+import { cartScope, getIdentity, sameScope } from "@/data/session/identity";
 import { EnsField, SelectField, TextField } from "@/components/account/fields";
 import { useFocusFirstError } from "@/lib/account-form";
 export function WalletsPage() {
@@ -38,7 +38,10 @@ export function WalletsPage() {
     return (
       <section className="account-section">
         <h1 className="sr-only">Carteiras</h1>
-        <p className="checkout-waiting" role="status">
+        <p
+          className="checkout-waiting py-[48px] px-[0] text-[color:var(--muted-foreground)]"
+          role="status"
+        >
           Carregando suas carteiras…
         </p>
       </section>
@@ -160,7 +163,8 @@ function WalletSection({
     setErrors({});
     // Cleared first, so the same result is announced again.
     setStatus("");
-    const scope = cartScope();
+    const identity = getIdentity();
+    const scope = cartScope(identity);
     try {
       let saved: Wallet;
       if (wallet) {
@@ -170,7 +174,7 @@ function WalletSection({
           if (values[key].trim() !== before[key])
             (patch as Record<string, unknown>)[key] =
               values[key].trim() || null;
-        saved = await updateWallet(wallet.id, patch);
+        saved = await updateWallet(wallet.id, patch, identity);
       } else {
         const body = Object.fromEntries(
           Object.entries(values).filter(([, v]) => v.trim()),
@@ -198,8 +202,11 @@ function WalletSection({
     setValues((v) => ({ ...v, [key]: value }));
   const headingId = `${prefix}title`;
   return (
-    <section className="wallet-section" aria-labelledby={headingId}>
-      <div className="wallet-section-head">
+    <section
+      className="wallet-section grid gap-[24px]"
+      aria-labelledby={headingId}
+    >
+      <div className="wallet-section-head flex gap-[16px] max-[701px]:flex-col">
         <div>
           <h2 id={headingId}>{title}</h2>
           {role === "primary" ? (
@@ -214,14 +221,17 @@ function WalletSection({
             <p>Você ainda não adicionou uma carteira principal.</p>
           )}
         </div>
-        <div className="wallet-section-actions">
+        <div className="wallet-section-actions flex flex-wrap gap-y-[12px] gap-x-[16px]">
           {role === "secondary" && primary && (
             <button
               type="button"
-              className="wallet-same"
+              className="wallet-same flex items-center gap-[8px] text-[color:var(--foreground)]"
               onClick={fillFromPrimary}
             >
-              <span className="wallet-same-mark" aria-hidden="true" />
+              <span
+                className="wallet-same-mark w-[18px] h-[18px]"
+                aria-hidden="true"
+              />
               Igual à carteira principal
             </button>
           )}
@@ -249,7 +259,7 @@ function WalletSection({
           aria-labelledby={headingId}
           onSubmit={(e) => void save(e)}
         >
-          <div className="account-grid">
+          <div className="account-grid grid grid-cols-[repeat(2,minmax(0,1fr))] gap-y-[22px] gap-x-[28px] max-[1001px]:grid-cols-[minmax(0,1fr)]">
             <TextField
               id={`${prefix}displayName`}
               label="Nome de exibição"
@@ -337,14 +347,17 @@ function WalletSection({
           </div>
           <button
             type="submit"
-            className="button button-primary account-save"
+            className="button button-primary account-save min-w-[130px] min-h-[40px] max-[701px]:w-[100%]"
             aria-disabled={saving}
           >
             {saving ? "Salvando…" : "Salvar carteira"}
           </button>
         </form>
       )}
-      <p className="account-summary" role="status">
+      <p
+        className="account-summary m-[0] text-[color:var(--muted-foreground)] leading-[1.6]"
+        role="status"
+      >
         {status}
       </p>
     </section>

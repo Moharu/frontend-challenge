@@ -122,7 +122,9 @@ export function CheckoutPage() {
   if (!identity.session)
     return (
       <main id="main" className="checkout-page">
-        <p className="checkout-waiting">Entre novamente para continuar.</p>
+        <p className="checkout-waiting py-[48px] px-[0] text-[color:var(--muted-foreground)]">
+          Entre novamente para continuar.
+        </p>
       </main>
     );
   return <Checkout key={identity.session.user.id} session={identity.session} />;
@@ -293,6 +295,11 @@ function Checkout({ session }: { session: Session }) {
         // Timeout or network failure: the order may exist. The retry reuses
         // the same key and gets the order already created, if any.
         setSendError("Não foi possível confirmar o envio do pedido.");
+      } else if (info.status === 401) {
+        // Expired session: the attempt is kept (an earlier try may have
+        // created the order) and resumes with the same key once the same
+        // user signs in again; logout and a user switch discard it.
+        setSendError(info.message);
       } else {
         discardPendingOrder(userId);
         setSendError(info.message);
@@ -304,9 +311,12 @@ function Checkout({ session }: { session: Session }) {
   }
   // Retrying an unresolved send resends the stored body (same key): a new
   // revalidation would issue a new quote id, hence another body and key.
+  // Without one (nothing to resend), it confirms again from the start; the
+  // server still refuses a second order for the same cart (ORDER_PENDING).
   const retrySend = () => {
     const stored = unresolved();
     if (stored) void sendOrder(stored.body);
+    else void confirm();
   };
   // A send whose answer was never seen (refresh during the request, lost
   // response) resumes with the same key and leads to the order page. Once
@@ -356,7 +366,10 @@ function Checkout({ session }: { session: Session }) {
   if (cart.isPending || wallets.isPending || blocked)
     return (
       <main id="main" className="checkout-page" aria-busy="true">
-        <p className="checkout-waiting" role="status">
+        <p
+          className="checkout-waiting py-[48px] px-[0] text-[color:var(--muted-foreground)]"
+          role="status"
+        >
           Carregando o pagamento…
         </p>
       </main>
@@ -405,8 +418,23 @@ function Checkout({ session }: { session: Session }) {
   return (
     <main id="main" className="checkout-page">
       {resuming && sendingOrder && (
-        <p className="checkout-resuming" role="status">
+        <p
+          className="checkout-resuming py-[12px] px-[16px] text-[color:var(--muted-foreground)]"
+          role="status"
+        >
           Retomando seu pedido…
+        </p>
+      )}
+      {/* The same notice as the cart: confirming would lead to this order. */}
+      {cart.data?.pendingOrderId && !resuming && (
+        <p className="cart-pending-order checkout-pending-order mt-[0] mr-[0] mb-[12px] ml-[0] text-[color:var(--muted-foreground)] text-[14px] leading-[1.5]">
+          Há um pedido em andamento para este carrinho.{" "}
+          <Link
+            to="/orders/$orderId"
+            params={{ orderId: cart.data.pendingOrderId }}
+          >
+            Acompanhar pedido
+          </Link>
         </p>
       )}
       {mobile ? (
@@ -427,7 +455,7 @@ function Checkout({ session }: { session: Session }) {
         >
           {effectiveStep === "dados" && (
             <form
-              className="checkout-form"
+              className="checkout-form max-[701px]:grid max-[701px]:gap-[20px]"
               aria-label="Dados do colecionador"
               noValidate
               onSubmit={(e: FormEvent) => {
@@ -439,7 +467,7 @@ function Checkout({ session }: { session: Session }) {
               }}
             >
               {collector()}
-              <div className="checkout-fixed">
+              <div className="checkout-fixed max-[701px]:sticky max-[701px]:bottom-[0] max-[701px]:z-[20] max-[701px]:my-[0] max-[701px]:mx-[-16px]">
                 <button type="submit" className="button button-primary">
                   Continuar
                 </button>
@@ -451,13 +479,13 @@ function Checkout({ session }: { session: Session }) {
               <WalletCards {...shared} />
               <ProviderGroup {...shared} mobile />
               <ConnectionStatus connection={connection} wallet={wallet} />
-              <p className="checkout-mobile-total">
+              <p className="checkout-mobile-total max-[701px]:m-[0] max-[701px]:text-right">
                 Total:{" "}
                 <strong>
                   {quote.quote ? eth(quote.quote.amounts.totalEth) : "—"}
                 </strong>
               </p>
-              <div className="checkout-fixed">
+              <div className="checkout-fixed max-[701px]:sticky max-[701px]:bottom-[0] max-[701px]:z-[20] max-[701px]:my-[0] max-[701px]:mx-[-16px]">
                 <button
                   className="button button-primary"
                   aria-disabled={!connected}
@@ -483,7 +511,7 @@ function Checkout({ session }: { session: Session }) {
               )}
               <ConnectionStatus connection={connection} wallet={wallet} />
               <QuoteNotices {...shared} />
-              <div className="checkout-fixed">
+              <div className="checkout-fixed max-[701px]:sticky max-[701px]:bottom-[0] max-[701px]:z-[20] max-[701px]:my-[0] max-[701px]:mx-[-16px]">
                 <ConfirmButton {...shared} />
               </div>
             </>
@@ -491,7 +519,10 @@ function Checkout({ session }: { session: Session }) {
         </MobileCheckout>
       ) : (
         <>
-          <nav className="breadcrumbs" aria-label="Trilha">
+          <nav
+            className="breadcrumbs font-bold max-[701px]:text-[12px]"
+            aria-label="Trilha"
+          >
             <Link to="/" search={discoverySearch({})}>
               Início
             </Link>{" "}
@@ -502,7 +533,7 @@ function Checkout({ session }: { session: Session }) {
             / <span aria-current="page">Pagamento</span>
           </nav>
           <h1 className="sr-only">Pagamento</h1>
-          <div className="checkout-layout">
+          <div className="checkout-layout grid grid-cols-[minmax(0,1fr)_minmax(0,490px)] gap-[38px] items-start min-[701px]:max-[1001px]:grid-cols-[minmax(0,1fr)]">
             <section
               className="checkout-collector"
               aria-labelledby="collector-title"
@@ -510,7 +541,10 @@ function Checkout({ session }: { session: Session }) {
               <h2 id="collector-title">Perfil do colecionador</h2>
               {collector(<OtherWallets {...shared} />)}
             </section>
-            <aside className="checkout-summary" aria-labelledby="items-title">
+            <aside
+              className="checkout-summary grid gap-[12px] min-w-[0]"
+              aria-labelledby="items-title"
+            >
               <h2 id="items-title">Seus NFTs</h2>
               <OrderItems cart={cart.data} quote={quote.quote} />
               <CouponField cart={cart.data} />
@@ -548,16 +582,23 @@ function MobileCheckout({
     heading.current?.focus();
   }, [step]);
   return (
-    <div className="checkout-mobile">
-      <header className="checkout-mobile-header">
-        <button className="cart-back" aria-label="Voltar" onClick={onBack}>
+    <div className="checkout-mobile max-[701px]:gap-[20px]">
+      <header className="checkout-mobile-header max-[701px]:grid-cols-[36px_1fr_36px] max-[701px]:items-center">
+        <button
+          className="cart-back max-[701px]:place-items-center max-[701px]:w-[36px] max-[701px]:h-[36px] max-[701px]:rounded-[50%] max-[701px]:bg-[color:var(--raised)]"
+          aria-label="Voltar"
+          onClick={onBack}
+        >
           <img src={asset("mobile-detail-ArrowLeft2.svg")} alt="" />
         </button>
         <h1 ref={heading} tabIndex={-1}>
           {title}
         </h1>
       </header>
-      <p className="checkout-step" aria-live="off">
+      <p
+        className="checkout-step max-[701px]:mt-[-12px] max-[701px]:mr-[0] max-[701px]:mb-[0] max-[701px]:ml-[0] max-[701px]:text-[color:var(--muted-foreground)] max-[701px]:text-[13px] max-[701px]:text-center"
+        aria-live="off"
+      >
         Passo {checkoutSteps.indexOf(step) + 1} de 3
       </p>
       {children}
@@ -655,7 +696,12 @@ function ReadOnly({
           *
         </span>
       </label>
-      <input id={id} value={value} readOnly className="checkout-readonly" />
+      <input
+        id={id}
+        value={value}
+        readOnly
+        className="checkout-readonly text-ellipsis"
+      />
     </div>
   );
 }
@@ -681,7 +727,7 @@ function CollectorFields({
     ...new Set(wallets.flatMap((w) => (w.ensName ? [w.ensName] : []))),
   ];
   return (
-    <div className="checkout-fields">
+    <div className="checkout-fields grid grid-cols-[repeat(2,minmax(0,1fr))] gap-y-[16px] gap-x-[30px] max-[701px]:grid-cols-[minmax(0,1fr)]">
       <Field
         name="displayName"
         label="Nome de exibição"
@@ -817,10 +863,13 @@ function WalletRadios({
   legend,
 }: Pick<Shared, "wallets" | "wallet" | "selectWallet"> & { legend: string }) {
   return (
-    <fieldset className="wallet-cards">
+    <fieldset className="wallet-cards grid gap-[16px] m-[0] p-[0] border-[0] border-none min-w-[0]">
       <legend className="sr-only">{legend}</legend>
       {wallets.map((w) => (
-        <div className="wallet-card" key={w.id}>
+        <div
+          className="wallet-card grid grid-cols-[24px_minmax(0,1fr)_32px] items-center gap-[14px] pt-[18px] pr-[16px] pb-[18px] pl-[20px] rounded-[16px] bg-[color:var(--surface)]"
+          key={w.id}
+        >
           <input
             type="radio"
             id={`wallet-${w.id}`}
@@ -849,7 +898,7 @@ function WalletMenu({ name }: { name: string }) {
   const id = useId();
   return (
     <div
-      className="wallet-menu-wrap"
+      className="wallet-menu-wrap relative"
       onKeyDown={(e) => {
         if (e.key === "Escape" && open) {
           setOpen(false);
@@ -860,7 +909,7 @@ function WalletMenu({ name }: { name: string }) {
       <button
         ref={toggle}
         type="button"
-        className="wallet-menu"
+        className="wallet-menu grid place-items-center h-[32px] text-[22px] text-[color:var(--accent)]"
         aria-label={`Opções da carteira ${name}`}
         aria-expanded={open}
         aria-controls={id}
@@ -869,7 +918,10 @@ function WalletMenu({ name }: { name: string }) {
         <span aria-hidden="true">⋮</span>
       </button>
       {open && (
-        <ul id={id} className="wallet-menu-list">
+        <ul
+          id={id}
+          className="wallet-menu-list absolute z-[5] m-[0] py-[6px] px-[0] list-none border-[1px] border-solid border-[color:var(--border)] bg-[color:var(--surface)] whitespace-nowrap"
+        >
           <li>
             <Link to="/account/wallets">Editar carteira</Link>
           </li>
@@ -884,11 +936,11 @@ function WalletCards(props: Shared) {
   const [userOpened, setUserOpened] = useState(false);
   return (
     <section className="checkout-wallets" aria-labelledby="wallets-title">
-      <div className="checkout-wallets-head">
+      <div className="checkout-wallets-head flex gap-[12px]">
         <h2 id="wallets-title">Carteira conectada</h2>
         {props.wallets.length > 0 && (
           <button
-            className="text-button"
+            className="text-button text-[color:var(--accent)] font-bold text-left"
             aria-expanded={adding}
             aria-controls="wallet-form"
             onClick={() => {
@@ -912,7 +964,7 @@ function WalletCards(props: Shared) {
         />
       )}
       {!adding && props.wallets.length > 0 && (
-        <p className="checkout-hint">
+        <p className="checkout-hint mt-[8px] mr-[0] mb-[0] ml-[0] text-[color:var(--muted-foreground)] text-[13px]">
           Escolha outra carteira acima ou use “Trocar carteira” para cadastrar
           uma nova.
         </p>
@@ -926,14 +978,18 @@ function OtherWallets(props: Shared) {
   const [open, setOpen] = useState(props.wallets.length === 0);
   const [adding, setAdding] = useState(props.wallets.length === 0);
   return (
-    <div className="checkout-other">
+    <div className="checkout-other col-span-full mt-[8px]">
       <button
-        className="other-toggle"
+        className="other-toggle inline-flex items-center gap-[10px]"
         aria-expanded={open}
         aria-controls="other-wallets"
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="other-radio" aria-hidden="true" data-on={open} />
+        <span
+          className="other-radio w-[16px] h-[16px]"
+          aria-hidden="true"
+          data-on={open}
+        />
         Usar outra carteira?
       </button>
       {open && (
@@ -988,10 +1044,13 @@ function ProviderGroup(props: Shared & { mobile?: boolean }) {
     } else setMissing(provider);
   }
   return (
-    <fieldset className="provider-group">
+    <fieldset className="provider-group grid gap-[16px] mt-[8px] mr-[0] mb-[0] ml-[0] p-[0] border-[0] border-none min-w-[0]">
       <legend>Carteira e rede</legend>
       {order.map((provider) => (
-        <div className="provider-option" key={provider}>
+        <div
+          className="provider-option flex items-center gap-[14px] min-h-[54px] py-[0] px-[14px] max-[701px]:min-h-[82px] max-[701px]:bg-[color:var(--surface)]"
+          key={provider}
+        >
           <input
             type="radio"
             id={`provider-${provider}`}
@@ -1007,7 +1066,10 @@ function ProviderGroup(props: Shared & { mobile?: boolean }) {
             {props.mobile && (
               // No wallet icons were exported from the Figma file: every
               // provider uses the frame's letter badge (W, M, C).
-              <span className="provider-icon" aria-hidden="true">
+              <span
+                className="provider-icon grid place-items-center w-[52px] h-[52px] bg-[color:var(--raised)] text-[color:var(--accent)] font-bold"
+                aria-hidden="true"
+              >
                 {providerNames[provider][0]}
               </span>
             )}
@@ -1027,7 +1089,7 @@ function ProviderGroup(props: Shared & { mobile?: boolean }) {
         </div>
       ))}
       {missing && (
-        <div className="provider-missing">
+        <div className="provider-missing grid gap-[12px]">
           <p role="status">
             Você não tem uma carteira {providerNames[missing]} cadastrada.
           </p>
@@ -1117,7 +1179,11 @@ function WalletForm({
   // available here; the user edits one of them instead.
   if (registered >= maxWallets)
     return (
-      <div id="wallet-form" className="wallet-form wallet-limit" role="status">
+      <div
+        id="wallet-form"
+        className="wallet-form wallet-limit justify-items-start text-[color:var(--muted-foreground)]"
+        role="status"
+      >
         <p>
           Você já tem uma carteira principal e uma secundária. Para usar outra
           carteira, edite uma delas.
@@ -1214,7 +1280,7 @@ function WalletForm({
         />
         {error("address")}
       </div>
-      <div className="wallet-form-actions">
+      <div className="wallet-form-actions flex flex-wrap gap-[12px]">
         <button
           type="submit"
           className="button button-primary"
@@ -1284,11 +1350,17 @@ function OrderItems({ cart, quote }: { cart: Cart; quote: Quote | null }) {
   const items = quote?.items ?? cart.items;
   return (
     <>
-      <div className="checkout-items-head" aria-hidden="true">
+      <div
+        className="checkout-items-head flex justify-between pb-[10px] border-b-[1px] border-solid border-b-[color:var(--border)] font-bold"
+        aria-hidden="true"
+      >
         <span>NFTs</span>
         <span>Subtotal</span>
       </div>
-      <ul className="checkout-items" aria-label="Itens do pedido">
+      <ul
+        className="checkout-items grid gap-[14px] m-[0] p-[0] list-none"
+        aria-label="Itens do pedido"
+      >
         {items.map((line) => (
           <li key={line.id}>
             <img
@@ -1303,8 +1375,10 @@ function OrderItems({ cart, quote }: { cart: Cart; quote: Quote | null }) {
                 {line.editionLabel} · ID do token: {line.tokenId}
               </span>
             </div>
-            <span className="checkout-qty">(x {line.quantity})</span>
-            <span className="checkout-line-total">
+            <span className="checkout-qty text-[color:var(--muted-foreground)] max-[701px]:hidden">
+              (x {line.quantity})
+            </span>
+            <span className="checkout-line-total text-[color:var(--accent)]">
               {eth(line.lineTotalEth)}
             </span>
           </li>
@@ -1342,7 +1416,7 @@ function CouponField({ cart }: { cart: Cart }) {
         <p>
           Cupom {cart.coupon.code}: {cart.coupon.description}.{" "}
           <button
-            className="text-button"
+            className="text-button text-[color:var(--accent)] font-bold text-left"
             aria-disabled={pending}
             onClick={() =>
               void clear
@@ -1360,7 +1434,7 @@ function CouponField({ cart }: { cart: Cart }) {
               which clears the stored code and the message. */}
           {cart.couponRemoved && (
             <button
-              className="text-button"
+              className="text-button text-[color:var(--accent)] font-bold text-left"
               aria-disabled={pending}
               aria-label={`Remover cupom ${cart.couponRemoved.code}`}
               onClick={() =>
@@ -1374,7 +1448,7 @@ function CouponField({ cart }: { cart: Cart }) {
             </button>
           )}
           <button
-            className="text-button"
+            className="text-button text-[color:var(--accent)] font-bold text-left"
             aria-expanded={open}
             aria-controls="checkout-coupon-form"
             onClick={() => setOpen((v) => !v)}
@@ -1451,13 +1525,16 @@ function Amounts({ quote }: { quote: Quote | null }) {
         </div>
       </dl>
       {!quote && (
-        <p className="checkout-hint">
+        <p className="checkout-hint mt-[8px] mr-[0] mb-[0] ml-[0] text-[color:var(--muted-foreground)] text-[13px]">
           Os valores são calculados pela API depois que a carteira conecta.
         </p>
       )}
       {/* Shown for any displayed quote, the first one included, without
           depending on a comparison between quotes. */}
-      <p className="coupon-removed quote-coupon-removed" role="status">
+      <p
+        className="coupon-removed quote-coupon-removed mt-[6px] mr-[0] mb-[0] ml-[0] text-[#f0a08f] text-[14px]"
+        role="status"
+      >
         {quote?.couponRemoved?.reason ?? ""}
       </p>
     </>
@@ -1469,7 +1546,10 @@ function QuoteNotices({ quote, onConfirmNew }: Shared) {
   const { pending, error } = quote;
   if (pending)
     return (
-      <section className="quote-changes" aria-labelledby="quote-changes-title">
+      <section
+        className="quote-changes p-[16px] bg-[color:var(--raised)]"
+        aria-labelledby="quote-changes-title"
+      >
         <h3 id="quote-changes-title">Os valores do pedido mudaram</h3>
         <ul>
           {pending.changes.map((change) => (
@@ -1486,7 +1566,10 @@ function QuoteNotices({ quote, onConfirmNew }: Shared) {
     );
   if (error?.code === "UNAVAILABLE_ITEMS")
     return (
-      <section className="quote-changes" role="alert">
+      <section
+        className="quote-changes p-[16px] bg-[color:var(--raised)]"
+        role="alert"
+      >
         <h3>Alguns itens não estão mais disponíveis</h3>
         <ul>
           {Object.values(error.fields).map((message) => (
@@ -1504,7 +1587,10 @@ function QuoteNotices({ quote, onConfirmNew }: Shared) {
     error.code !== "CART_CHANGED"
   )
     return (
-      <div className="cart-refresh-error" role="alert">
+      <div
+        className="cart-refresh-error col-span-full m-[0] text-[#ffb08a]"
+        role="alert"
+      >
         <p>Não foi possível calcular os valores do pedido. {error.message}</p>
         <button
           className="button button-outline"
@@ -1529,7 +1615,10 @@ function ConfirmButton({
   return (
     <>
       {sendError && (
-        <div className="cart-refresh-error" role="alert">
+        <div
+          className="cart-refresh-error col-span-full m-[0] text-[#ffb08a]"
+          role="alert"
+        >
           <p>{sendError}</p>
           {sendError === "Não foi possível confirmar o envio do pedido." && (
             <button
@@ -1543,7 +1632,7 @@ function ConfirmButton({
         </div>
       )}
       <button
-        className="button button-primary checkout-confirm"
+        className="button button-primary checkout-confirm w-[100%] min-h-[54px] mt-[8px]"
         aria-disabled={!ready || confirming}
         aria-describedby={ready ? undefined : "connection-status"}
         onClick={() => ready && !confirming && onConfirm()}

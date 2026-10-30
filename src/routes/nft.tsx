@@ -53,6 +53,13 @@ function NftDetails({ nft }: { nft: Nft }) {
   const [acknowledged, setAcknowledged] = useState(nft.version);
   const [shareStatus, setShareStatus] = useState("");
   const related = useQuery(relatedOptions(nft.id));
+  const rating = nft.reviews.length
+    ? nft.reviews.reduce((sum, r) => sum + r.rating, 0) / nft.reviews.length
+    : 0;
+  const reviewCount = `${nft.reviews.length} ${
+    nft.reviews.length === 1 ? "avaliação" : "avaliações"
+  } de colecionadores`;
+  const pageUrl = encodeURIComponent(window.location.href);
   const edition = nft.editions.find((e) => e.id === selected);
   const limit = edition
     ? Math.min(edition.available, edition.purchaseLimit)
@@ -67,29 +74,21 @@ function NftDetails({ nft }: { nft: Nft }) {
     edition && !conflict ? multiplyEth(edition.priceEth, quantity) : "0";
   const add = useCartMutation(addCartItem);
   const navigate = useNavigate();
-  const [cartFeedback, setCartFeedback] = useState<{
-    ok: boolean;
-    text: string;
-  } | null>(null);
-  async function addToCart(buy: boolean) {
+  const [cartError, setCartError] = useState("");
+  // Buying adds the selection to the cart and opens it; a refusal (limit,
+  // stock) is explained here and nothing changes.
+  async function buy() {
     if (!edition || conflict) return;
-    setCartFeedback(null);
+    setCartError("");
     try {
       await add.mutateAsync({
         nftId: nft.id,
         editionId: edition.id,
         quantity,
       });
-      if (buy) {
-        await navigate({ to: "/cart" });
-        return;
-      }
-      setCartFeedback({
-        ok: true,
-        text: `${quantity} × ${nft.name} (${edition.label}) adicionado ao carrinho.`,
-      });
+      await navigate({ to: "/cart" });
     } catch (error) {
-      setCartFeedback({ ok: false, text: apiError(error).message });
+      setCartError(apiError(error).message);
     }
   }
   useEffect(() => {
@@ -124,7 +123,7 @@ function NftDetails({ nft }: { nft: Nft }) {
 
   return (
     <main id="main">
-      <div className="breadcrumbs">
+      <div className="breadcrumbs font-bold max-[701px]:text-[12px]">
         <Link to="/" search={discoverySearch({})}>
           Início
         </Link>{" "}
@@ -133,9 +132,12 @@ function NftDetails({ nft }: { nft: Nft }) {
           Mercado
         </Link>
       </div>
-      <section className="product">
+      <section className="product grid grid-cols-[1fr_1fr] gap-[32px] max-[701px]:flex max-[701px]:flex-col max-[701px]:gap-[16px] min-[701px]:max-[901px]:grid-cols-[1fr]">
         <div className="gallery">
-          <div className="thumbnails" aria-label="Galeria do NFT">
+          <div
+            className="thumbnails flex gap-[16px] w-[100px] max-[1101px]:w-[60px] max-[701px]:w-[100%]"
+            aria-label="Galeria do NFT"
+          >
             {nft.gallery.map((art, i) => (
               <button
                 key={i}
@@ -182,19 +184,25 @@ function NftDetails({ nft }: { nft: Nft }) {
             </DialogContent>
           </Dialog>
         </div>
-        <div className="product-info">
+        <div className="product-info max-[701px]:bg-[color:var(--surface)] max-[701px]:rounded-[32px] max-[701px]:p-[24px] max-[701px]:my-[0] max-[701px]:mx-[-24px]">
           <h1>{nft.name}</h1>
-          <div className="price-reviews">
+          <div className="price-reviews flex gap-[12px] flex-wrap max-[701px]:my-[12px] max-[701px]:mx-[0]">
             <p className="price">{edition?.priceEth ?? "—"} ETH</p>
-            <a href="#avaliacoes">
-              <img src={asset("detail-Star.svg")} alt="" />{" "}
-              {nft.reviews.length
-                ? (
-                    nft.reviews.reduce((sum, r) => sum + r.rating, 0) /
-                    nft.reviews.length
-                  ).toFixed(1)
-                : "—"}{" "}
-              ({nft.reviews.length} avaliações)
+            <a
+              href="#avaliacoes"
+              aria-label={`Nota ${rating.toFixed(1)} de 5, ${reviewCount}`}
+            >
+              <span className="stars" aria-hidden="true">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <img
+                    key={n}
+                    src={asset("detail-Star.svg")}
+                    alt=""
+                    className={n <= Math.round(rating) ? "" : "opacity-30"}
+                  />
+                ))}
+              </span>
+              <span aria-hidden="true">{reviewCount}</span>
             </a>
           </div>
           <h2>Sobre este NFT:</h2>
@@ -218,13 +226,19 @@ function NftDetails({ nft }: { nft: Nft }) {
             ))}
           </fieldset>
           {nft.version !== acknowledged && (
-            <p role="status" className="change-notice">
+            <p
+              role="status"
+              className="change-notice p-[12px] border-[1px] border-solid border-[color:var(--primary)] my-[12px] mx-[0] wrap-anywhere"
+            >
               Preço ou disponibilidade deste NFT foi atualizado. Confira a
               edição e a quantidade antes de continuar.
             </p>
           )}
           {conflict && (
-            <div role="alert" className="change-notice">
+            <div
+              role="alert"
+              className="change-notice p-[12px] border-[1px] border-solid border-[color:var(--primary)] my-[12px] mx-[0] wrap-anywhere"
+            >
               {!edition || edition.available === 0
                 ? "A edição selecionada está indisponível. Escolha outra edição."
                 : `Quantidade inválida. O limite atual é ${limit}.`}{" "}
@@ -240,9 +254,11 @@ function NftDetails({ nft }: { nft: Nft }) {
               )}
             </div>
           )}
-          <div className="purchase-bar">
+          <div className="purchase-bar flex gap-[12px] flex-wrap items-center max-[701px]:z-[20] max-[701px]:bg-[color:var(--surface)] max-[701px]:grid max-[701px]:grid-cols-[1fr_1fr] max-[701px]:fixed">
             <div className="quantity">
-              <label htmlFor="quantity">Qtd.</label>
+              <label htmlFor="quantity" className="sr-only">
+                Qtd.
+              </label>
               <Button
                 aria-label="Diminuir quantidade"
                 disabled={quantity <= 1}
@@ -267,50 +283,17 @@ function NftDetails({ nft }: { nft: Nft }) {
                 +
               </Button>
             </div>
-            <p className="price mobile-price">{edition?.priceEth ?? "—"} ETH</p>
+            <p className="price mobile-price hidden max-[701px]:block max-[701px]:text-right">
+              {edition?.priceEth ?? "—"} ETH
+            </p>
             <Button
-              disabled={conflict || add.isPending}
-              onClick={() => void addToCart(true)}
-            >
-              Comprar NFT
-            </Button>
-            <Button
-              variant="outline"
+              className="buy-now"
+              aria-label="Comprar NFT"
               disabled={conflict || add.isPending}
               aria-describedby="cart-feedback"
-              onClick={() => void addToCart(false)}
+              onClick={() => void buy()}
             >
-              {add.isPending ? "Adicionando…" : "Adicionar ao carrinho"}
-            </Button>
-            <p
-              id="cart-feedback"
-              role="status"
-              className={`cart-feedback${cartFeedback?.ok === false ? " is-error" : ""}`}
-            >
-              {cartFeedback?.text}{" "}
-              {cartFeedback?.ok && <Link to="/cart">Ver carrinho</Link>}
-            </p>
-          </div>
-          {quantity > 1 && !conflict && (
-            <p>
-              Total da seleção: <span className="price">{totalText} ETH</span>
-            </p>
-          )}
-          <p className="selection-limit">
-            Disponíveis: {edition?.available ?? 0} • Limite por compra:{" "}
-            {edition?.purchaseLimit ?? 0}
-          </p>
-          <dl className="nft-facts">
-            <dt>ID do token:</dt>
-            <dd>#{nft.tokenId}</dd>
-            <dt>Coleção:</dt>
-            <dd>{nft.collection.name}</dd>
-            <dt>Atributos:</dt>
-            <dd>{nft.attributes.map((a) => a.value).join(", ")}</dd>
-          </dl>
-          <div className="share">
-            <Button variant="ghost" onClick={() => void share()}>
-              Compartilhar este NFT ↗
+              Comprar
             </Button>
             <FavoriteButton
               nftId={nft.id}
@@ -324,6 +307,69 @@ function NftDetails({ nft }: { nft: Nft }) {
                 </>
               )}
             </FavoriteButton>
+          </div>
+          <p
+            id="cart-feedback"
+            role="status"
+            className="cart-feedback is-error"
+          >
+            {cartError}
+          </p>
+          {quantity > 1 && !conflict && (
+            <p>
+              Total da seleção: <span className="price">{totalText} ETH</span>
+            </p>
+          )}
+          <p className="selection-limit max-[701px]:text-[12px]">
+            Disponíveis: {edition?.available ?? 0} • Limite por compra:{" "}
+            {edition?.purchaseLimit ?? 0}
+          </p>
+          <dl className="nft-facts text-[color:var(--muted-foreground)] text-[14px] max-[701px]:text-[12px]">
+            <div>
+              <dt>ID do token:</dt> <dd>#{nft.tokenId}</dd>
+            </div>
+            <div>
+              <dt>Coleção:</dt> <dd>{nft.collection.name}</dd>
+            </div>
+            <div>
+              <dt>Atributos:</dt>{" "}
+              <dd>{nft.attributes.map((a) => a.value).join(", ")}</dd>
+            </div>
+          </dl>
+          <div className="share">
+            <span>Compartilhar este NFT:</span>
+            <a
+              href={`https://www.linkedin.com/sharing/share-offsite/?url=${pageUrl}`}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Compartilhar no LinkedIn"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM3 9.5h4V21H3V9.5Zm6.5 0h3.8v1.6h.06c.53-1 1.83-2.06 3.77-2.06 4.03 0 4.77 2.65 4.77 6.1V21h-4v-5.1c0-1.22-.02-2.78-1.7-2.78-1.7 0-1.96 1.33-1.96 2.7V21h-4V9.5Z" />
+              </svg>
+            </a>
+            <a
+              href={`mailto:?subject=${encodeURIComponent(nft.name)}&body=${pageUrl}`}
+              aria-label="Compartilhar por e-mail"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" className="outline">
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <path d="m3 7 9 6 9-6" />
+              </svg>
+            </a>
+            <a
+              href={`https://twitter.com/intent/tweet?url=${pageUrl}&text=${encodeURIComponent(nft.name)}`}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Compartilhar no Twitter"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M23 5.1a8.6 8.6 0 0 1-2.5.7 4.4 4.4 0 0 0 1.9-2.4 8.8 8.8 0 0 1-2.8 1.1 4.4 4.4 0 0 0-7.5 4A12.4 12.4 0 0 1 3 4a4.4 4.4 0 0 0 1.4 5.9 4.3 4.3 0 0 1-2-.6v.1a4.4 4.4 0 0 0 3.5 4.3 4.4 4.4 0 0 1-2 .1 4.4 4.4 0 0 0 4.1 3A8.8 8.8 0 0 1 1 18.6 12.4 12.4 0 0 0 7.8 20.6c8 0 12.4-6.7 12.4-12.4v-.6A8.8 8.8 0 0 0 23 5.1Z" />
+              </svg>
+            </a>
+            <button type="button" onClick={() => void share()}>
+              Copiar link
+            </button>
           </div>
           <p role="status">{shareStatus}</p>
         </div>
@@ -339,7 +385,7 @@ function NftDetails({ nft }: { nft: Nft }) {
           <p>{nft.fullDescription}</p>
           <dl>
             <dt>Rede:</dt>
-            <dd>{nft.network}</dd>
+            <dd>{nft.network[0].toUpperCase() + nft.network.slice(1)}</dd>
             <dt>Contrato:</dt>
             <dd>{nft.metadata.contract}</dd>
             <dt>Padrão do token:</dt>

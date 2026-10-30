@@ -42,7 +42,9 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.waitForFunction(() => !!window.__KURIO_TEST__);
 });
-test("detalhe adiciona ao carrinho, atualiza o badge e Comprar leva ao carrinho", async ({
+const buy = (page: Page) =>
+  page.getByRole("button", { name: "Comprar NFT", exact: true }).click();
+test("Comprar no detalhe adiciona ao carrinho, atualiza o badge e leva ao carrinho", async ({
   page,
 }) => {
   await expect(
@@ -51,13 +53,13 @@ test("detalhe adiciona ao carrinho, atualiza o badge e Comprar leva ao carrinho"
   await expect(page.locator(".cart-badge:visible")).toHaveCount(0);
   await page.goto("/nfts/nft-001");
   await page.getByRole("button", { name: "Aumentar quantidade" }).click();
-  await page.getByRole("button", { name: "Adicionar ao carrinho" }).click();
-  await expect(page.locator("#cart-feedback")).toContainText(
-    "2 × Emerald Ape #042 (1/20) adicionado ao carrinho.",
-  );
-  await page.goto("/");
-  await page.getByRole("link", { name: "Carrinho, 2 itens" }).click();
+  await buy(page);
   await expect(page).toHaveURL(/\/cart$/);
+  await page.goto("/");
+  await expect(
+    page.getByRole("link", { name: "Carrinho, 2 itens" }).first(),
+  ).toBeAttached();
+  await openCart(page);
   await expect(row(page, "Emerald Ape #042")).toContainText("2.38 ETH");
   await expect(row(page, "Emerald Ape #042").locator(".qty-value")).toHaveText(
     "2",
@@ -87,16 +89,19 @@ test("mesma edição soma à linha e exceder o limite não altera o carrinho", a
 }) => {
   await page.goto("/nfts/nft-001");
   await page.getByRole("spinbutton", { name: "Qtd." }).fill("3");
-  await page.getByRole("button", { name: "Adicionar ao carrinho" }).click();
-  await expect(page.locator("#cart-feedback")).toContainText("3 ×");
+  await buy(page);
+  await expect(page).toHaveURL(/\/cart$/);
+  await page.goto("/nfts/nft-001");
   await page.getByRole("spinbutton", { name: "Qtd." }).fill("3");
-  await page.getByRole("button", { name: "Adicionar ao carrinho" }).click();
+  await buy(page);
+  // Refused: the explanation stays on the detail page.
   await expect(page.locator("#cart-feedback")).toContainText(
     "Você já tem 3 no carrinho e o limite atual é 5. É possível adicionar no máximo 2.",
   );
+  await expect(page).toHaveURL(/\/nfts\/nft-001$/);
   await page.getByRole("spinbutton", { name: "Qtd." }).fill("2");
-  await page.getByRole("button", { name: "Adicionar ao carrinho" }).click();
-  await expect(page.locator("#cart-feedback")).toContainText("2 ×");
+  await buy(page);
+  await expect(page).toHaveURL(/\/cart$/);
   await openCart(page);
   await expect(page.locator(".cart-table tbody tr")).toHaveCount(1);
   await expect(row(page, "Emerald Ape #042").locator(".qty-value")).toHaveText(
@@ -257,11 +262,18 @@ test("nft.updated altera preço e disponibilidade; conflito bloqueia; eventos an
     "Esta edição esgotou.",
   );
   await expect(checkout).toBeDisabled();
+  const ignored = await page.evaluate(
+    () => window.__KURIO_TEST__.liveStats()!.ignored,
+  );
   await page.evaluate(() => {
     window.__KURIO_TEST__.duplicate();
     window.__KURIO_TEST__.older();
   });
-  await page.waitForTimeout(300);
+  // Both reached the page's Socket.IO client and were ignored.
+  await page.waitForFunction(
+    (ignored) => window.__KURIO_TEST__.liveStats()!.ignored >= ignored + 2,
+    ignored,
+  );
   await expect(emerald.locator(".cart-notice")).toContainText(
     "Esta edição esgotou.",
   );
@@ -278,7 +290,8 @@ test("reconexão reconcilia o carrinho por REST", async ({ page }) => {
       priceEth: "7",
     }),
   );
-  await page.waitForTimeout(300);
+  // The update is persisted and its event emitted to no connection: nothing
+  // can reach the page until it reconnects.
   await expect(emerald.locator(".cart-line-total")).toHaveText("2.38 ETH");
   await page.evaluate(() => window.__KURIO_TEST__.restore());
   await expect(emerald.locator(".cart-line-total")).toHaveText("14.00 ETH");

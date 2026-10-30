@@ -50,6 +50,8 @@ export function createScenarios() {
   // for the optimistic update and its rollback.
   let favoriteFailure: Failure | null = null;
   let favoriteDelay = 0;
+  // Latency of profile writes (data, avatar, password).
+  let profileDelay = 0;
   // Timeout after creation: the next order is created but its response lost.
   let loseOrderResponse = false;
   let beforeOrder: (() => Promise<unknown>) | null = null;
@@ -94,6 +96,7 @@ export function createScenarios() {
       rejectConnection = false;
       favoriteFailure = null;
       favoriteDelay = 0;
+      profileDelay = 0;
       loseOrderResponse = false;
       beforeOrder = null;
       stats.started = 0;
@@ -155,6 +158,11 @@ export function createScenarios() {
       if (!Number.isSafeInteger(ms) || ms < 0 || ms > 10000)
         throw new Error("Delay must be 0..10000 ms");
       favoriteDelay = ms;
+    },
+    setProfileDelay(ms: number) {
+      if (!Number.isSafeInteger(ms) || ms < 0 || ms > 10000)
+        throw new Error("Delay must be 0..10000 ms");
+      profileDelay = ms;
     },
     rejectNextConnection() {
       rejectConnection = true;
@@ -229,18 +237,21 @@ export function createScenarios() {
       // Cart reads model response latency: the state is read first and the
       // response is delayed afterwards, so a slow read can carry older state.
       const cartRead = cart && !mutation;
+      const profileWrite = /\/profile(\/|$)/.test(url.pathname) && mutation;
       const ms = favoriteWrite
         ? favoriteDelay
-        : checkout
-          ? checkoutDelays[checkout]
-          : cart
-            ? mutation
-              ? cartDelays.write
-              : 0
-            : (delays[key] ??
-              (activeScenario === "out-of-order" && key === "emerald"
-                ? 300
-                : 0));
+        : profileWrite
+          ? profileDelay
+          : checkout
+            ? checkoutDelays[checkout]
+            : cart
+              ? mutation
+                ? cartDelays.write
+                : 0
+              : (delays[key] ??
+                (activeScenario === "out-of-order" && key === "emerald"
+                  ? 300
+                  : 0));
       try {
         await pause(ms, request);
         stats.completed++;

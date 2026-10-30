@@ -240,5 +240,8 @@ export interface NftListResponse {
   facets: {
     categories: Record<Category, number>;
     networks: Record<Network, number>;
+    // Lowest and highest edition price among the matches, ignoring the
+    // price filter; null when nothing matches.
+    price: { min: Eth; max: Eth } | null;
   };
 }

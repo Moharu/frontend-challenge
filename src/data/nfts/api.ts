@@ -8,6 +8,7 @@ import {
   type NftListResponse,
 } from "@/contracts/nfts";
 import { record, integer, type DataResponse } from "@/contracts/common";
+import { isEth } from "@/contracts/eth";
 export async function listNfts(
   query: NftListQuery,
   signal?: AbortSignal,
@@ -34,6 +35,12 @@ export async function listNfts(
         record(value.facets) &&
         record(value.facets.networks) &&
         integer(value.facets.networks[k]),
+    ) ||
+    !(
+      value.facets.price === null ||
+      (record(value.facets.price) &&
+        isEth(value.facets.price.min) &&
+        isEth(value.facets.price.max))
     ) ||
     !record(value.pagination) ||
     !integer(value.pagination.page, 1) ||

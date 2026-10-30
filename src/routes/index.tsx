@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { useSearch, useNavigate } from "@tanstack/react-router";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { categories, networks, type NftListQuery } from "@/contracts/nfts";
+import {
+  categories,
+  networks,
+  type NftListQuery,
+  type NftListResponse,
+} from "@/contracts/nfts";
+import type { Eth } from "@/contracts/common";
+import { ethUnits, formatEth, fromEthUnits, isEth } from "@/contracts/eth";
 import { nftListOptions } from "@/data/nfts/queries";
 import { discoverySearch } from "@/lib/discovery-search";
 import { Button } from "@/components/ui/button";
@@ -37,16 +44,18 @@ export function IndexPage() {
     ...nftListOptions(query),
     placeholderData: keepPreviousData,
   });
-  function change(patch: Partial<NftListQuery>) {
-    void navigate({
-      to: "/",
-      search: discoverySearch({ ...query, ...patch, page: patch.page ?? 1 }),
-      hash: "catalogo",
-    });
+  function show(next: NftListQuery) {
+    void navigate({ to: "/", search: discoverySearch(next), hash: "catalogo" });
   }
+  // Search, filters, mode and sort restart the pagination, even when the
+  // patch carries a page (the filter form sends its whole draft).
+  function change(patch: Partial<NftListQuery>) {
+    show({ ...query, ...patch, page: 1 });
+  }
+  const goToPage = (page: number) => show({ ...query, page });
   return (
     <main id="main">
-      <div className="search-bar">
+      <div className="search-bar hidden gap-[12px] items-center max-[701px]:gap-[8px] max-[701px]:flex max-[701px]:sticky max-[701px]:top-[0] max-[701px]:z-[35] max-[701px]:bg-[color:var(--background)]">
         <form
           role="search"
           onSubmit={(e) => {
@@ -78,6 +87,7 @@ export function IndexPage() {
             <Filters
               key={JSON.stringify(query)}
               value={query}
+              facets={result.data?.facets}
               onApply={(next) => {
                 change(next);
                 setDrawer(false);
@@ -89,22 +99,22 @@ export function IndexPage() {
           </DialogContent>
         </Dialog>
       </div>
-      <section className="hero">
+      <section className="hero flex min-h-[450px] pt-[0] pr-[0] pb-[0] pl-[40px] gap-[48px] mb-[96px] max-[1101px]:gap-[24px] max-[1101px]:pl-[16px] max-[701px]:min-h-[190px] max-[701px]:p-[16px] max-[701px]:gap-[0] max-[701px]:rounded-[28px] max-[701px]:mb-[16px]">
         <div>
           <p>Bem-vindo à Kurio</p>
           <h1>
-            <span className="desktop-copy">
+            <span className="desktop-copy max-[701px]:hidden">
               SEJA DONO DO FUTURO
               <br />
               DA ARTE DIGITAL
             </span>
-            <span className="mobile-copy">
+            <span className="mobile-copy hidden max-[701px]:inline">
               SEJA DONO DA
               <br />
               CULTURA DIGITAL
             </span>
           </h1>
-          <p className="hero-description">
+          <p className="hero-description text-[color:var(--muted-foreground)] max-[701px]:text-[color:var(--foreground)] max-w-[557px] max-[701px]:text-[12px] max-[701px]:leading-[18px] max-[701px]:max-h-[54px] max-[701px]:overflow-hidden">
             Descubra NFTs selecionados de criadores emergentes e consagrados.
             Colecione arte digital rara, apoie artistas e tenha uma parte da
             cultura da internet.
@@ -124,13 +134,19 @@ export function IndexPage() {
         </picture>
       </section>
       <section
-        className="catalog-layout"
+        className="catalog-layout grid grid-cols-[310px_minmax(0,1fr)] gap-[48px] max-[1101px]:grid-cols-[240px_minmax(0,1fr)] max-[1101px]:gap-[24px] max-[701px]:block"
         id="catalogo"
         aria-label="Catálogo de NFTs"
       >
         <aside>
-          <Filters key={JSON.stringify(query)} value={query} onApply={change} />
-          <div className="spotlight">
+          <Filters
+            key={JSON.stringify(query)}
+            value={query}
+            facets={result.data?.facets}
+            onApply={change}
+            instant
+          />
+          <div className="spotlight mt-[24px] bg-[color:var(--surface)] text-center pt-[20px] text-[color:var(--accent)]">
             <h2>NFT EM DESTAQUE</h2>
             <p>OFERTA LIMITADA</p>
             <img
@@ -142,8 +158,11 @@ export function IndexPage() {
           </div>
         </aside>
         <div className="catalog-content">
-          <div className="catalog-toolbar">
-            <div className="modes" aria-label="Modo da listagem">
+          <div className="catalog-toolbar flex gap-[20px] flex-wrap text-[12px] max-[701px]:gap-[12px]">
+            <div
+              className="modes flex gap-[16px] flex-wrap max-[701px]:gap-[8px] max-[701px]:flex-nowrap max-[701px]:w-[100%]"
+              aria-label="Modo da listagem"
+            >
               {(
                 [
                   ["all", "Todos os NFTs"],
@@ -194,12 +213,15 @@ export function IndexPage() {
                   </Button>
                 </p>
               )}
-              <p className="results-count" role="status">
+              <p
+                className="results-count text-[color:var(--muted-foreground)] text-[11px] my-[12px] mx-[0] max-[701px]:text-[10px]"
+                role="status"
+              >
                 {result.data.pagination.total} NFTs encontrados{" "}
                 {result.isFetching ? "• Atualizando…" : ""}
               </p>
               {result.data.data.length ? (
-                <div className="nft-grid">
+                <div className="nft-grid grid gap-[32px] max-[701px]:gap-y-[24px] max-[701px]:gap-x-[16px] max-[701px]:items-start">
                   {result.data.data.map((nft) => (
                     <NftCard nft={nft} key={nft.id} />
                   ))}
@@ -217,7 +239,7 @@ export function IndexPage() {
                 <Button
                   variant="outline"
                   disabled={query.page === 1 || result.isPlaceholderData}
-                  onClick={() => change({ page: query.page - 1 })}
+                  onClick={() => goToPage(query.page - 1)}
                 >
                   Anterior
                 </Button>
@@ -228,7 +250,7 @@ export function IndexPage() {
                       key={i}
                       aria-label={`Página ${i + 1}`}
                       aria-current={query.page === i + 1 ? "page" : undefined}
-                      onClick={() => change({ page: i + 1 })}
+                      onClick={() => goToPage(i + 1)}
                     >
                       {i + 1}
                     </button>
@@ -240,7 +262,7 @@ export function IndexPage() {
                     query.page >= result.data.pagination.pages ||
                     result.isPlaceholderData
                   }
-                  onClick={() => change({ page: query.page + 1 })}
+                  onClick={() => goToPage(query.page + 1)}
                 >
                   Próxima
                 </Button>
@@ -255,13 +277,23 @@ export function IndexPage() {
 }
 function Filters({
   value,
+  facets,
   onApply,
+  instant,
 }: {
   value: NftListQuery;
+  facets?: NftListResponse["facets"];
   onApply: (next: Partial<NftListQuery>) => void;
+  // Sidebar: collection and network apply on choice; Aplicar is only for the
+  // price. The mobile drawer keeps everything as a draft until Aplicar.
+  instant?: boolean;
 }) {
   const [draft, setDraft] = useState(value);
   const [error, setError] = useState("");
+  function pick(patch: Partial<NftListQuery>) {
+    setDraft({ ...draft, ...patch });
+    if (instant) onApply(patch);
+  }
   return (
     <form
       className="filters"
@@ -282,7 +314,7 @@ function Filters({
         }
       }}
     >
-      <fieldset>
+      <fieldset className="filter-options">
         <legend>Coleções</legend>
         {categories.map((c) => (
           <label key={c}>
@@ -291,9 +323,10 @@ function Filters({
               name="category"
               value={c}
               checked={draft.category === c}
-              onChange={() => setDraft({ ...draft, category: c })}
+              onChange={() => pick({ category: c })}
             />
-            {categoryNames[c]}
+            <span>{categoryNames[c]}</span>
+            {facets && <span>({facets.categories[c]})</span>}
           </label>
         ))}
         <label>
@@ -301,31 +334,25 @@ function Filters({
             type="radio"
             name="category"
             checked={!draft.category}
-            onChange={() => setDraft({ ...draft, category: "" })}
+            onChange={() => pick({ category: "" })}
           />
-          Todas
+          <span>Todas</span>
         </label>
       </fieldset>
       <fieldset>
         <legend>Faixa de preço</legend>
-        <label>
-          Mínimo (ETH)
-          <input
-            inputMode="decimal"
-            value={draft.minPrice}
-            onChange={(e) => setDraft({ ...draft, minPrice: e.target.value })}
-          />
-        </label>
-        <label>
-          Máximo (ETH)
-          <input
-            inputMode="decimal"
-            value={draft.maxPrice}
-            onChange={(e) => setDraft({ ...draft, maxPrice: e.target.value })}
-          />
-        </label>
+        <PriceRange
+          bounds={facets?.price ?? null}
+          min={draft.minPrice}
+          max={draft.maxPrice}
+          onChange={(minPrice, maxPrice) =>
+            setDraft({ ...draft, minPrice, maxPrice })
+          }
+        />
+        {error && <p role="alert">{error}</p>}
+        <Button type="submit">Aplicar</Button>
       </fieldset>
-      <fieldset>
+      <fieldset className="filter-options">
         <legend>Rede</legend>
         {networks.map((n) => (
           <label key={n}>
@@ -333,9 +360,10 @@ function Filters({
               type="radio"
               name="network"
               checked={draft.network === n}
-              onChange={() => setDraft({ ...draft, network: n })}
+              onChange={() => pick({ network: n })}
             />
-            {n[0].toUpperCase() + n.slice(1)}
+            <span>{n[0].toUpperCase() + n.slice(1)}</span>
+            {facets && <span>({facets.networks[n]})</span>}
           </label>
         ))}
         <label>
@@ -343,23 +371,97 @@ function Filters({
             type="radio"
             name="network"
             checked={!draft.network}
-            onChange={() => setDraft({ ...draft, network: "" })}
+            onChange={() => pick({ network: "" })}
           />
-          Todas as redes
+          <span>Todas as redes</span>
         </label>
       </fieldset>
-      {error && <p role="alert">{error}</p>}
-      <Button type="submit">Aplicar</Button>
       <Button
         type="button"
         variant="ghost"
         onClick={() => {
           const next = discoverySearch({});
           setDraft(next);
+          if (instant)
+            onApply({
+              category: "",
+              network: "",
+              minPrice: "",
+              maxPrice: "",
+            });
         }}
       >
         Limpar filtros
       </Button>
     </form>
+  );
+}
+// Two thumbs over one track, in steps of 0.01 ETH between the lowest and
+// highest price of the current results. A thumb at its end means "no limit",
+// so the ends never cut off a price by rounding.
+const cent = 10n ** 16n;
+const cents = (value: Eth, up = false) => {
+  const units = ethUnits(value);
+  return Number(units / cent + (up && units % cent ? 1n : 0n));
+};
+function PriceRange({
+  bounds,
+  min,
+  max,
+  onChange,
+}: {
+  bounds: { min: Eth; max: Eth } | null;
+  min: string;
+  max: string;
+  onChange: (min: string, max: string) => void;
+}) {
+  const low = bounds ? cents(bounds.min) : 0;
+  const high = bounds ? Math.max(cents(bounds.max, true), low + 1) : 1;
+  const clamp = (v: number) => Math.min(high, Math.max(low, v));
+  const at = (value: string, fallback: number, up?: boolean) =>
+    isEth(value) ? clamp(cents(value, up)) : fallback;
+  const from = at(min, low);
+  const to = Math.max(from, at(max, high, true));
+  const eth = (v: number) => fromEthUnits(BigInt(v) * cent);
+  const set = (a: number, b: number) =>
+    onChange(a <= low ? "" : eth(a), b >= high ? "" : eth(b));
+  const label = (v: number) => formatEth(eth(v));
+  const percent = (v: number) => ((v - low) / (high - low)) * 100;
+  return (
+    <div className="price-range">
+      <div
+        className="price-track"
+        style={{
+          ["--from" as string]: `${percent(from)}%`,
+          ["--to" as string]: `${percent(to)}%`,
+        }}
+      >
+        <input
+          type="range"
+          aria-label="Preço mínimo (ETH)"
+          aria-valuetext={`${label(from)} ETH`}
+          min={low}
+          max={high}
+          value={from}
+          disabled={!bounds}
+          onChange={(e) => set(Math.min(Number(e.target.value), to), to)}
+        />
+        <input
+          type="range"
+          aria-label="Preço máximo (ETH)"
+          aria-valuetext={`${label(to)} ETH`}
+          min={low}
+          max={high}
+          value={to}
+          disabled={!bounds}
+          onChange={(e) => set(from, Math.max(Number(e.target.value), from))}
+        />
+      </div>
+      <p aria-live="polite">
+        {bounds
+          ? `Preço: ${label(from)} – ${label(to)} ETH`
+          : "Sem preços para os filtros atuais"}
+      </p>
+    </div>
   );
 }

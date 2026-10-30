@@ -8,7 +8,7 @@ O carrinho pertence ao servidor simulado. O cliente guarda somente um **token op
 
 - `POST /visitor-sessions` emite o token. O cliente só o cria na primeira mutation (uma única requisição compartilhada em voo); visitantes que nunca adicionam itens não criam carrinho no servidor. Sem token, a leitura resolve para "sem carrinho" sem requisição.
 - Token desconhecido (por exemplo, após `reset()` dos mocks) responde 401 `SESSION_INVALID`. A leitura descarta o token e mostra carrinho vazio; a mutation descarta o token, emite outro e repete uma única vez.
-- **Mesclagem futura:** o servidor mapeia token → carrinho. No login, a próxima etapa deve enviar o token junto da sessão para que o servidor mescle as linhas no carrinho do usuário (somando quantidades da mesma edição até o limite efetivo, sem reduzir silenciosamente) e invalide o token. Nada disso foi implementado.
+- **Mesclagem no login:** o servidor mapeia token → carrinho. No login e no cadastro, o token de visitante segue junto e o servidor mescla as linhas no carrinho do usuário (somando quantidades da mesma edição até o limite efetivo, sem reduzir silenciosamente) e invalida o token. Regras em [sessão](session.md).
 - Um novo contexto do navegador não tem token e começa com carrinho vazio.
 
 ## Regras do carrinho
@@ -52,7 +52,7 @@ O carrinho pertence ao servidor simulado. O cliente guarda somente um **token op
 ## Rotas e interface
 
 - `/cart` é rota lazy do TanStack Router; acesso direto e refresh funcionam no build otimizado.
-- **Detalhe:** "Adicionar ao carrinho" envia edição e quantidade e anuncia o resultado numa região `status` com link "Ver carrinho", sem diálogo. "Comprar NFT" adiciona e navega para `/cart`. Seleções em conflito continuam desabilitadas; 409 mostra a explicação da API.
+- **Detalhe:** como no Figma, só "Comprar" (nome acessível "Comprar NFT") e "Favoritar". Comprar envia edição e quantidade e abre `/cart`. Seleções em conflito ficam desabilitadas, e uma recusa (409, limite) mostra a explicação da API numa região `status` sem sair da página.
 - **Badge:** soma das quantidades; oculto quando vazio; `99+` acima de 99. O nome acessível do link informa a quantidade exata ("Carrinho, 120 itens" / "Carrinho, vazio"). Aparece no cabeçalho desktop e na navegação mobile.
 - **Tela:** uma única `<table>` semântica (cabeçalhos NFTs, Preço, Edições, Total) que vira cards no mobile por CSS, sem duplicar controles. Controles de quantidade e remoção têm nomes com NFT, edição e quantidade atual. Durante a mutation, os botões da linha usam `aria-disabled` (o foco permanece) e envios concorrentes da mesma linha são ignorados.
 - **Foco:** após alterar quantidade, o foco permanece no botão, inclusive quando ele atinge o limite (indisponibilidade por `aria-disabled`, sem perder o foco); após remover, vai para o nome da próxima linha (ou anterior) e, sem itens, para o título do estado vazio.
@@ -84,11 +84,11 @@ Frames consultados por capturas e exportações fornecidas pelo usuário (sem ac
 - Navegação inferior oculta no carrinho mobile, como no frame.
 - Campo de cupom mobile: texto digitado em 16px (evita zoom automático do iOS ao focar) e placeholder em 12px, para o texto "Digite o código promocional..." caber inteiro em 390px.
 - **768px:** usa a tabela desktop com o resumo abaixo, alinhado à direita (até 480px). Uma coluna lateral de 332px deixaria a tabela estreita demais para preço, quantidade e total legíveis.
-- Detalhe: uma linha reservada abaixo dos botões recebe o feedback de "Adicionar ao carrinho", evitando deslocamento de layout quando a mensagem aparece.
+- Detalhe: uma linha abaixo dos botões recebe a explicação de uma compra recusada.
 
-## Ações ainda indisponíveis
+## Ações indisponíveis
 
-"Conectar e finalizar" abre o diálogo de indisponibilidade dizendo que o checkout ainda não está disponível e que o carrinho continua salvo. Favoritar, Entrar, conta, navegação editorial, newsletter, redes sociais e o ícone central mobile continuam com o adaptador `Unavailable`. Carrinho e "Comprar NFT" deixaram de usar o adaptador. Não há pedido, cotação, login ou carteira fictícios.
+"Conectar e finalizar" leva ao checkout (ou ao login, sem sessão); favoritar, entrar e a conta funcionam. Continuam com o adaptador `Unavailable`, fora do escopo do desafio: navegação editorial, newsletter, redes sociais e o ícone central mobile. Não há pedido, cotação, login ou carteira fictícios.
 
 ## Reprodução
 
