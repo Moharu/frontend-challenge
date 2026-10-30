@@ -19,6 +19,7 @@ import {
 import { queryClient } from "@/lib/query-client";
 import { readEnv } from "@/lib/env";
 import type { CatalogRealtime } from "@/realtime/catalog";
+import { setRealtime } from "@/realtime/instance";
 import { Unavailable } from "./shared";
 import { AccountArea, MobileAccount, ExpiryRedirect, Notices } from "./account";
 import { subscribeIdentity, getIdentity } from "@/data/session/identity";
@@ -230,10 +231,14 @@ export function PublicLayout() {
     // expiry, user switch) releases them and events of other generations are
     // ignored. No private event is emitted yet.
     const follow = () => {
-      const session = getIdentity().session;
+      const { session, sessionToken } = getIdentity();
       live?.setIdentity(
-        session
-          ? { userId: session.user.id, generation: session.generation }
+        session && sessionToken
+          ? {
+              userId: session.user.id,
+              generation: session.generation,
+              token: sessionToken,
+            }
           : null,
       );
     };
@@ -242,12 +247,14 @@ export function PublicLayout() {
     void import("@/realtime/catalog").then(({ createCatalogRealtime }) => {
       if (disposed) return;
       live = createCatalogRealtime(queryClient, readEnv().apiBaseURL);
+      setRealtime(live);
       follow();
       live.connect();
     });
     return () => {
       disposed = true;
       unsubscribe();
+      setRealtime(null);
       live?.dispose();
     };
   }, []);

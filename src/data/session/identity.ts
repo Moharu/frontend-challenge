@@ -97,7 +97,13 @@ export function identityHeaders(identity: Identity): Record<string, string> {
 // requests are cancelled and their cache entries removed. Late responses land
 // on removed keys of an older scope and are discarded.
 // Every private query key is `[resource, scope, ...]`.
-const privateResources = new Set(["cart", "wallets", "quote"]);
+const privateResources = new Set([
+  "cart",
+  "wallets",
+  "quote",
+  "order",
+  "receipt",
+]);
 const privateQuery = (key: readonly unknown[]) =>
   privateResources.has(key[0] as string);
 async function clearPrivate() {

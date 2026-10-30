@@ -2,10 +2,10 @@
 
 Os tipos de transporte ficam em `src/contracts/events.ts`, independentes de Socket.IO, MSW, Query e React. `EventEnvelope` contém `type`, `eventId`, `resourceId`, `version` positiva e monotonicamente crescente por recurso, data/hora ISO e `payload` tipado com o recurso completo.
 
-| Evento          | Estado                                       | Conteúdo / destinatários                                                                                                                      |
-| --------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `nft.updated`   | Implementado e testado no protocolo          | `Nft` completo; resourceId/version/timestamp devem corresponder a ID/version/updatedAt do payload; catálogo público                           |
-| `order.updated` | Somente contrato / não emitido nem consumido | `Order` completo, incluindo snapshots imutáveis collector/wallet/collectorNote, mais destinatários `{ userId, sessionId, sessionGeneration }` |
+| Evento          | Estado                              | Conteúdo / destinatários                                                                                                                      |
+| --------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `nft.updated`   | Implementado e testado no protocolo | `Nft` completo; resourceId/version/timestamp devem corresponder a ID/version/updatedAt do payload; catálogo público                           |
+| `order.updated` | Implementado (privado, por sessão)  | `Order` completo, incluindo snapshots imutáveis collector/wallet/collectorNote, mais destinatários `{ userId, sessionId, sessionGeneration }` |
 
 `createCatalogRealtime(queryClient, baseURL)` cria um cliente Socket.IO desconectado. Chame `connect()` explicitamente, `disconnect()` para pausar mantendo os listeners e `dispose()` para remover os listeners próprios e desconectar definitivamente. Nenhuma importação de módulo ou renderização da tela provisória inicia a conexão. Cada instância possui um gerenciador separado. Chame `dispose()` antes de substituí-la.
 
@@ -21,11 +21,17 @@ O endpoint do socket é a base de API configurada mais `/socket.io/` (padrão `/
 
 Os testes de integração cobrem entrega de atualizações, quadros duplicados/antigos, fechamento forçado do transporte, reconexão automática com reconciliação REST ativa e limpeza em ciclos de vida repetidos em um build otimizado com mocks. Não estabelecem paridade completa com o Socket.IO. Polling/atualização de transporte, anexos binários, confirmações de recebimento, namespaces personalizados, salas, transmissão entre servidores, autorização de sockets em produção e recuperação de estado de conexão do Socket.IO não são suportados/verificados. A reconciliação usa REST em vez de reproduzir eventos perdidos. A entrega entre abas não está implementada.
 
-As extensões privadas devem verificar identidade e geração do usuário/sessão antes de aplicar eventos e remover listeners em mudanças de sessão. `order.updated` deve impor as regras de estado terminal e versão. São restrições de contrato para trabalho futuro; não existe agora tratamento fictício de sessão no catálogo público.
+## Autenticação do socket e entrega privada
+
+A integração 0.2.0 só decodifica pacotes EVENT: não expõe o `auth` da negociação nem confirmações. Por isso a autenticação é um evento de texto: ao conectar (e a cada troca de identidade) o cliente emite `session.authenticate` com `{ token }` (`null` ao sair). O mock verifica o token como o REST e associa a conexão à sessão (ou a nenhuma); vale a tentativa mais recente. Uma conexão sem sessão válida continua recebendo `nft.updated`, mas nenhum evento privado.
+
+`order.updated` é emitido em cada transição de pedido (criação `pending`, `confirmed`, `declined`), **um envelope por conexão do dono**, com `eventId` `order-<id>-<version>` e destinatários iguais à sessão daquela conexão. Conexões de outros usuários e sem sessão não recebem nada (verificado com um segundo cliente `socket.io-client` real). Em defesa em profundidade, o cliente ignora envelopes cujo destinatário não é a identidade atual, e a página do pedido nunca aceita versão menor nem sai de um estado terminal. A reconexão reconcilia o pedido por REST (consultas `["order"]`), sem depender de eventos perdidos.
+
+Numa integração real, a autenticação iria na negociação (`auth` do Socket.IO, ou cookie `HttpOnly`) e o servidor usaria salas por usuário.
 
 Referências: [código-fonte/documentação da integração](https://github.com/mswjs/socket.io-binding), [opções do cliente Socket.IO](https://socket.io/docs/v4/client-options/), [cancelamento no TanStack](https://tanstack.com/query/latest/docs/framework/react/guides/query-cancellation).
 
-O contrato `order.updated` herda os campos complementados de `Order`: dados do colecionador, endereço/rede/provedor resolvidos da carteira e observação opcional normalizada como null. O futuro emissor deve preservar esses snapshots da criação nas mudanças de estado, sem recalculá-los a partir do perfil/carteira atual. O recibo contém os mesmos dados. A complementação usa somente o inventário fornecido pelo usuário e não implementa emissor, consumidor, validador ou fluxo privado de pedidos. Consulte a propriedade dos campos e a regra de idempotência em [contratos REST](rest.md).
+O contrato `order.updated` herda os campos complementados de `Order`: dados do colecionador, endereço/rede/provedor resolvidos da carteira e observação opcional normalizada como null. O emissor preserva esses snapshots da criação nas mudanças de estado, sem recalculá-los a partir do perfil/carteira atual. O recibo contém os mesmos dados. Consulte a propriedade dos campos e a regra de idempotência em [contratos REST](rest.md).
 
 ## Consumidor nas rotas públicas
 

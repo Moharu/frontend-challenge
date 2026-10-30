@@ -118,4 +118,20 @@ O retrato passa a `schemaVersion` 5: carteiras (seed de `ada_example` com "Princ
 | `quoteTtl(ms)`                                                   | Validade das próximas cotações (padrão 2 minutos); fica em `sessionStorage` para sobreviver às recargas do teste |
 | `expireCoupon(code)`                                             | Expira o cupom; a próxima cotação o remove com o motivo                                                          |
 
-Mudanças de preço e disponibilidade usam os controles existentes: `update` (persiste e emite `nft.updated`) e `persistUpdate` (persiste sem evento, para testar a revalidação ao confirmar).
+Mudanças de preço e disponibilidade usam os controles existentes: `update` (persiste e emite `nft.updated`; aceita também `name`) e `persistUpdate` (persiste sem evento, para testar a revalidação ao confirmar).
+
+## Extensões da etapa de pedidos
+
+O retrato passa a `schemaVersion` 6: cotações persistidas (`quotes`, as 50 mais recentes, e `quoteSequence`), pedidos (`orders`, com `resolveAt` e resultado simulado), chaves de idempotência (`idempotency`, `userId:chave` → pedido e corpo canônico) e `orderSequence`. Retratos anteriores restauram a seed. O pagamento simulado é aprovado após 1,5s por padrão; a resolução roda ao ler o pedido e a cada 250ms. Regras em [pedidos](orders.md).
+
+| Controle da ponte (`window.__KURIO_TEST__`)      | Efeito                                                                                                                            |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `setPayment(outcome, delayMs?)`                  | Resultado (`confirmed` ou `declined`) e atraso dos próximos pagamentos; fica em `sessionStorage` (`kurio.mock.payment`)           |
+| `resolvePayments()`                              | Resolve agora todos os pedidos pendentes, ignorando o atraso                                                                      |
+| `loseNextOrderResponse()`                        | O próximo `POST /orders` cria o pedido, mas a resposta se perde (erro de rede): demonstra o timeout depois da criação             |
+| `changeBeforeNextOrder(nftId, editionId, patch)` | Altera o NFT logo antes do próximo `POST /orders` (cotação muda entre a revisão e o envio → 409 `QUOTE_CHANGED`)                  |
+| `duplicateOrder()` / `staleOrder(patch)`         | Reenvia o último `order.updated` / envia um envelope sintético com versão anterior                                                |
+| `authenticatedSockets()`                         | Conexões de socket associadas a uma sessão                                                                                        |
+| `probeSocket(token)`                             | Abre um segundo cliente `socket.io-client` autenticado com `token` e registra os nomes dos eventos recebidos (teste de vazamento) |
+
+Para reproduzir manualmente uma recusa ou um timeout depois da criação, use a ponte do build de integração (`npm run build:integration` e `npm run preview -- --outDir dist-integration`) e chame `__KURIO_TEST__.setPayment("declined")` ou `__KURIO_TEST__.loseNextOrderResponse()` no console antes de confirmar a compra.

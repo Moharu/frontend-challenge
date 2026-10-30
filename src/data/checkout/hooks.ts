@@ -161,6 +161,10 @@ export function quoteChanges(shown: Quote, next: Quote): string[] {
   amount("Total", shown.amounts.totalEth, next.amounts.totalEth);
   return changes;
 }
+// Result of a revalidation: on "ok", the quote that was just validated (the
+// one an order must reference).
+export type QuoteCheck =
+  { status: "ok"; quote: Quote } | { status: "changed" | "failed" };
 export interface PendingQuote {
   quote: Quote;
   changes: string[];
@@ -197,10 +201,8 @@ export function useCheckoutQuote({
       ? `${cart.id}:${cart.version}:${walletId}`
       : null;
   const fetchQuote = useCallback(
-    async (
-      mode: "accept" | "compare",
-    ): Promise<"ok" | "changed" | "failed"> => {
-      if (!cart || !walletId || !connected) return "failed";
+    async (mode: "accept" | "compare"): Promise<QuoteCheck> => {
+      if (!cart || !walletId || !connected) return { status: "failed" };
       request.current?.abort();
       const controller = new AbortController();
       request.current = controller;
@@ -209,7 +211,7 @@ export function useCheckoutQuote({
           { cartId: cart.id, cartVersion: cart.version, walletId },
           controller.signal,
         );
-        if (controller.signal.aborted) return "failed";
+        if (controller.signal.aborted) return { status: "failed" };
         setError(null);
         const current = shownRef.current;
         if (mode === "accept") shownRef.current = next;
@@ -217,19 +219,20 @@ export function useCheckoutQuote({
           mode === "compare" && current ? quoteChanges(current, next) : [];
         if (changes.length) {
           setPending({ quote: next, changes });
-          return "changed";
+          return { status: "changed" };
         }
+        shownRef.current = next;
         setShown(next);
         setPending(null);
-        return "ok";
+        return { status: "ok", quote: next };
       } catch (e) {
-        if (controller.signal.aborted) return "failed";
+        if (controller.signal.aborted) return { status: "failed" };
         const info = apiError(e);
         if (info.code === "WALLET_DISCONNECTED") onDisconnected();
         else if (info.code === "CART_CHANGED")
           void queryClient.invalidateQueries({ queryKey: ["cart"] });
         setError(info);
-        return "failed";
+        return { status: "failed" };
       } finally {
         if (request.current === controller) request.current = null;
       }
@@ -262,6 +265,18 @@ export function useCheckoutQuote({
     return () => window.clearTimeout(id);
   }, [shown, key, fetchQuote]);
   useEffect(() => () => request.current?.abort(), []);
+  // A quote handed over by the server (409 QUOTE_CHANGED on order
+  // creation): compared with the displayed one, like any other refresh.
+  const offer = useCallback((next: Quote) => {
+    const shownNow = shownRef.current;
+    const changes = shownNow ? quoteChanges(shownNow, next) : [];
+    if (changes.length) setPending({ quote: next, changes });
+    else {
+      shownRef.current = next;
+      setShown(next);
+    }
+    return changes.length > 0;
+  }, []);
   const acceptPending = useCallback(() => {
     setPending((current) => {
       if (current) setShown(current.quote);
@@ -282,6 +297,7 @@ export function useCheckoutQuote({
     pending: key ? pending : null,
     error: key ? error : null,
     revalidate: () => fetchQuote("compare"),
+    offer,
     acceptPending,
   };
 }

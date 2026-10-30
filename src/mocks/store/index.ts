@@ -32,29 +32,37 @@ import {
 } from "./accounts";
 import {
   connectWallet,
-  createQuote,
+  issueQuote,
   createWallet,
   defaultQuoteTtlMs,
   disconnectAll,
   getConnection,
   listWallets,
-  type WalletsState,
 } from "./wallets";
+import {
+  createOrder,
+  getOrder,
+  getReceipt,
+  resolveDue,
+  type OrdersState,
+  QuoteChangedError,
+  type PaymentOutcome,
+} from "./orders";
 // Who a cart request belongs to: an authenticated session wins over a visitor.
 export interface CartIdentity {
   session: string | null;
   visitor: string | null;
 }
 export const storageKey = "kurio.mock.catalog.v1";
-export interface Snapshot extends WalletsState {
-  schemaVersion: 5;
+export interface Snapshot extends OrdersState {
+  schemaVersion: 6;
   seedVersion: 2;
   tick: number;
   nfts: Nft[];
 }
 function fresh(): Snapshot {
   const state: Snapshot = {
-    schemaVersion: 5,
+    schemaVersion: 6,
     seedVersion: 2,
     tick: 0,
     nfts: seedNfts(),
@@ -68,6 +76,11 @@ function fresh(): Snapshot {
     ),
     connections: {},
     expiredCoupons: [],
+    quotes: {},
+    quoteSequence: 0,
+    orders: {},
+    idempotency: {},
+    orderSequence: 0,
   };
   for (const user of fixtureUsers)
     seedAccount(state, {
@@ -101,7 +114,7 @@ function validCart(value: unknown): value is StoredCart {
 function valid(value: unknown): value is Snapshot {
   if (
     !record(value) ||
-    value.schemaVersion !== 5 ||
+    value.schemaVersion !== 6 ||
     value.seedVersion !== 2 ||
     !integer(value.tick) ||
     value.tick > 1000000 ||
@@ -113,7 +126,12 @@ function valid(value: unknown): value is Snapshot {
     !record(value.wallets) ||
     !Object.values(value.wallets).every(isWallet) ||
     !record(value.connections) ||
-    !Array.isArray(value.expiredCoupons)
+    !Array.isArray(value.expiredCoupons) ||
+    !record(value.quotes) ||
+    !integer(value.quoteSequence) ||
+    !record(value.orders) ||
+    !record(value.idempotency) ||
+    !integer(value.orderSequence)
   )
     return false;
   const nfts = value.nfts;
@@ -140,13 +158,37 @@ function valid(value: unknown): value is Snapshot {
     )
   );
 }
+// The simulated payment resolves after a short delay (real clock).
+export const defaultPaymentDelayMs = 1500;
+function nftEvent(state: Snapshot, id: string): NftUpdated {
+  const nft = state.nfts.find((n) => n.id === id)!;
+  return {
+    type: "nft.updated",
+    eventId: `catalog-${id}-${nft.version}`,
+    resourceId: id,
+    version: nft.version,
+    timestamp: nft.updatedAt,
+    payload: structuredClone(nft),
+  };
+}
 export function createStore(storage: Storage) {
   let state: Snapshot;
   let queue = Promise.resolve();
-  // Quotes are not persisted: they are recomputed on every request. The
-  // test-only TTL override lives in sessionStorage so it survives the page
-  // loads of a test, like the session-check failures.
+  // Test-only overrides (quote TTL and the simulated payment) live in
+  // sessionStorage so they survive the page loads of a test, like the
+  // session-check failures.
   const ttlKey = "kurio.mock.quote-ttl";
+  const paymentKey = "kurio.mock.payment";
+  const payment = (): { outcome: PaymentOutcome; delayMs: number } => {
+    try {
+      const value = JSON.parse(sessionStorage.getItem(paymentKey) ?? "null");
+      if (record(value) && record(value.outcome) && integer(value.delayMs))
+        return value as { outcome: PaymentOutcome; delayMs: number };
+    } catch {
+      // Default below.
+    }
+    return { outcome: { status: "confirmed" }, delayMs: defaultPaymentDelayMs };
+  };
   const quoteTtl = () => {
     try {
       const value = Number(sessionStorage.getItem(ttlKey));
@@ -155,7 +197,6 @@ export function createStore(storage: Storage) {
       return defaultQuoteTtlMs;
     }
   };
-  let quoteSequence = 0;
   function persist(next: Snapshot) {
     storage.setItem(storageKey, JSON.stringify(next));
     state = next;
@@ -225,6 +266,7 @@ export function createStore(storage: Storage) {
       transaction(() => {
         try {
           sessionStorage.removeItem(ttlKey);
+          sessionStorage.removeItem(paymentKey);
         } catch {
           // Nothing stored.
         }
@@ -269,17 +311,87 @@ export function createStore(storage: Storage) {
       write((draft) => connectWallet(draft, token, body)),
     connection: (token: string | null, id: string) =>
       transaction(() => getConnection(state, token, id)),
+    // Quotes are persisted (version rule and order comparison).
     quote: (identity: CartIdentity, body: unknown) =>
-      transaction(() =>
-        createQuote(
-          state,
+      write((draft) =>
+        issueQuote(
+          draft,
           identity.session,
-          cartFor(state, { session: identity.session, visitor: null }),
+          cartFor(draft, { session: identity.session, visitor: null }),
           body,
           quoteTtl(),
-          ++quoteSequence,
         ),
       ),
+    // Idempotent order creation. A changed quote is saved before the 409 is
+    // returned, so the client can confirm the fresh one.
+    createOrder: (token: string | null, key: string | null, body: unknown) =>
+      transaction(() => {
+        const next = structuredClone(state);
+        const { outcome, delayMs } = payment();
+        try {
+          const result = createOrder(next, token, key, body, {
+            now: Date.now(),
+            delayMs,
+            outcome,
+            quoteTtlMs: quoteTtl(),
+          });
+          if (result.created) {
+            next.tick++;
+            persist(next);
+          }
+          return {
+            ...result,
+            events: result.nftIds.map((id) => nftEvent(next, id)),
+          };
+        } catch (error) {
+          if (error instanceof QuoteChangedError) {
+            next.tick++;
+            persist(next);
+          }
+          throw error;
+        }
+      }),
+    order: (token: string | null, id: string) =>
+      transaction(() => getOrder(state, token, id)),
+    receipt: (token: string | null, id: string) =>
+      transaction(() => getReceipt(state, token, id)),
+    // Resolves overdue payments (on start, on every order access and on the
+    // page timer). Returns what changed, for the socket events.
+    resolveDue: (force = false) =>
+      transaction(() => {
+        const now = Date.now();
+        const pending = Object.values(state.orders).some(
+          (o) => o.status === "pending" && (force || o.resolveAt <= now),
+        );
+        if (!pending) return { orders: [], events: [] as NftUpdated[] };
+        const next = structuredClone(state);
+        if (force)
+          for (const o of Object.values(next.orders))
+            if (o.status === "pending") o.resolveAt = now;
+        const result = resolveDue(next, now);
+        next.tick++;
+        persist(next);
+        return {
+          orders: result.orders,
+          events: result.nftIds.map((id) => nftEvent(next, id)),
+        };
+      }),
+    // Simulated payment of the next orders: outcome and resolution delay.
+    setPayment: (
+      outcome: PaymentOutcome,
+      delayMs: number = defaultPaymentDelayMs,
+    ) => {
+      if (!Number.isSafeInteger(delayMs) || delayMs < 0 || delayMs > 3600000)
+        throw new Error("Payment delay must be 0..3600000 ms");
+      try {
+        sessionStorage.setItem(
+          paymentKey,
+          JSON.stringify({ outcome, delayMs }),
+        );
+      } catch {
+        // Storage unavailable: the default payment applies.
+      }
+    },
     // Test-only scenario controls (no public endpoint).
     disconnectWallets: () => write((draft) => disconnectAll(draft)),
     expireCoupon: (code: string) =>
@@ -303,7 +415,7 @@ export function createStore(storage: Storage) {
     update: (
       id: string,
       editionId: string,
-      patch: { priceEth?: string; available?: number },
+      patch: { priceEth?: string; available?: number; name?: string },
     ) =>
       transaction((): NftUpdated => {
         const next = structuredClone(state);
@@ -312,25 +424,20 @@ export function createStore(storage: Storage) {
         if (!nft || !edition) throw new Error("Unknown NFT or edition");
         if (
           Object.keys(patch).some(
-            (key) => key !== "priceEth" && key !== "available",
+            (key) =>
+              key !== "priceEth" && key !== "available" && key !== "name",
           )
         )
           throw new Error("Unknown update field");
         if ("priceEth" in patch) edition.priceEth = patch.priceEth!;
         if ("available" in patch) edition.available = patch.available!;
+        if ("name" in patch) nft.name = patch.name!;
         next.tick++;
         nft.version++;
         nft.updatedAt = logicalTime(next.tick);
         if (!isNft(nft)) throw new Error("Invalid NFT update");
         persist(next);
-        return {
-          type: "nft.updated",
-          eventId: `catalog-${next.tick}`,
-          resourceId: id,
-          version: nft.version,
-          timestamp: nft.updatedAt,
-          payload: structuredClone(nft),
-        };
+        return nftEvent(next, id);
       }),
   };
 }

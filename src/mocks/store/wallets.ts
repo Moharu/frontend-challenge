@@ -1,6 +1,7 @@
 import type { Network } from "@/contracts/common";
 import { addEth, subtractEth } from "@/contracts/eth";
 import type { Quote } from "@/contracts/quotes";
+import { canonicalJson } from "@/contracts/orders";
 import {
   validateWallet,
   type Wallet,
@@ -13,9 +14,18 @@ import { networkFees } from "./seed";
 export interface StoredConnection extends WalletConnection {
   userId: string;
 }
+export interface StoredQuote {
+  quote: Quote;
+  userId: string;
+  sequence: number;
+}
 export interface WalletsState extends AccountsState {
   wallets: Record<string, Wallet>;
   connections: Record<string, StoredConnection>;
+  // Issued quotes (the latest 50) and the issuance counter: ids stay unique
+  // across reloads.
+  quotes: Record<string, StoredQuote>;
+  quoteSequence: number;
 }
 // Quotes are short-lived: 2 minutes by the real clock. A scenario control
 // shortens it to exercise the automatic renewal.
@@ -86,7 +96,11 @@ export function createWallet(
   return wallet;
 }
 // 404 for an unknown wallet, 403 for another user's wallet.
-function ownWallet(state: WalletsState, userId: string, walletId: unknown) {
+export function ownWallet(
+  state: WalletsState,
+  userId: string,
+  walletId: unknown,
+) {
   const wallet =
     typeof walletId === "string" ? state.wallets[walletId] : undefined;
   if (!wallet) throw new ApiError(404, "NOT_FOUND", "Carteira não encontrada.");
@@ -151,17 +165,75 @@ export function getConnection(
 export function disconnectAll(state: WalletsState) {
   for (const c of Object.values(state.connections)) c.status = "disconnected";
 }
-// Server-side quote: checks ownership, the active wallet connection, the cart
-// version and current availability (never reducing quantities) and adds the
-// fee of the wallet's network. Coupon validity and the discount come from
-// viewCart (`couponStatus`), the same rule the cart shows.
-export function createQuote(
+// Values compared between quotes (the version rule and order creation):
+// lines (edition, quantity, prices), coupon, network and amounts.
+export function quoteValues(quote: Quote) {
+  return canonicalJson({
+    items: quote.items.map((i) => ({
+      nftId: i.nftId,
+      editionId: i.editionId,
+      quantity: i.quantity,
+      unitPriceEth: i.unitPriceEth,
+      lineTotalEth: i.lineTotalEth,
+    })),
+    coupon: quote.coupon?.code ?? null,
+    network: quote.network,
+    amounts: quote.amounts,
+  });
+}
+// Issues and persists a quote. Every issuance gets a new id; the version
+// follows the series (same user, cart and wallet) and increases only when
+// the values differ from the series' previous quote.
+export function issueQuote(
   state: WalletsState,
   token: string | null,
   cart: StoredCart,
   body: unknown,
   ttlMs: number,
-  sequence: number,
+): Quote {
+  const userId = userOf(state, token);
+  const fresh = computeQuote(state, token, cart, body);
+  const previous = Object.values(state.quotes)
+    .filter(
+      (q) =>
+        q.userId === userId &&
+        q.quote.cartId === fresh.cartId &&
+        q.quote.walletId === fresh.walletId,
+    )
+    .sort((a, b) => b.sequence - a.sequence)[0];
+  state.quoteSequence++;
+  const quote: Quote = {
+    ...fresh,
+    id: `quote-${state.quoteSequence}`,
+    version: !previous
+      ? 1
+      : quoteValues(previous.quote) === quoteValues(fresh)
+        ? previous.quote.version
+        : previous.quote.version + 1,
+    expiresAt: new Date(Date.now() + ttlMs).toISOString(),
+  };
+  state.quotes[quote.id] = {
+    quote,
+    userId,
+    sequence: state.quoteSequence,
+  };
+  // Only the latest quotes are kept; older ones can no longer be ordered.
+  const all = Object.values(state.quotes).sort(
+    (a, b) => b.sequence - a.sequence,
+  );
+  for (const stale of all.slice(50)) delete state.quotes[stale.quote.id];
+  return quote;
+}
+// The current quote for a cart and wallet, without persisting it: checks
+// ownership, the active wallet connection, the cart version and current
+// availability (never reducing quantities) and adds the fee of the wallet's
+// network. Coupon validity and the discount come from viewCart
+// (`couponStatus`), the same rule the cart shows.
+export function computeQuote(
+  state: WalletsState,
+  token: string | null,
+  cart: StoredCart,
+  body: unknown,
 ): Quote {
   const userId = userOf(state, token);
   const input = (body ?? {}) as Record<string, unknown>;
@@ -213,13 +285,13 @@ export function createQuote(
   const removed = current.couponRemoved;
   const fee = networkFees[wallet.network];
   return {
-    id: `quote-${sequence}`,
+    id: "",
     version: 1,
     cartId: cart.id,
     cartVersion: cart.version,
     walletId: wallet.id,
     network: wallet.network,
-    expiresAt: new Date(Date.now() + ttlMs).toISOString(),
+    expiresAt: new Date().toISOString(),
     items: current.items,
     coupon: current.coupon,
     couponRemoved: removed,
@@ -229,7 +301,5 @@ export function createQuote(
       networkFeeEth: fee,
       totalEth: addEth(subtractEth(subtotal, discount), fee),
     },
-    requiresConfirmation:
-      removed !== null || current.items.some((i) => i.priceChange !== null),
   };
 }

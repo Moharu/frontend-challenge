@@ -46,6 +46,9 @@ export function createScenarios() {
   };
   let checkoutDelays = { ...defaultCheckoutDelays };
   let rejectConnection = false;
+  // Timeout after creation: the next order is created but its response lost.
+  let loseOrderResponse = false;
+  let beforeOrder: (() => Promise<unknown>) | null = null;
   let generation = new AbortController();
   const stats = { started: 0, completed: 0, cancelled: 0 };
   // Abortable wait shared by request delays and cart response latency; aborts
@@ -85,6 +88,8 @@ export function createScenarios() {
       checkoutFailures = { quote: null, connection: null };
       checkoutDelays = { ...defaultCheckoutDelays };
       rejectConnection = false;
+      loseOrderResponse = false;
+      beforeOrder = null;
       stats.started = 0;
       stats.completed = 0;
       stats.cancelled = 0;
@@ -137,6 +142,24 @@ export function createScenarios() {
     },
     rejectNextConnection() {
       rejectConnection = true;
+    },
+    loseNextOrderResponse() {
+      loseOrderResponse = true;
+    },
+    // Runs once right before the next order is processed (a catalog change
+    // between the user's review and the server receiving the order).
+    beforeNextOrder(work: () => Promise<unknown>) {
+      beforeOrder = work;
+    },
+    async runBeforeOrder() {
+      const work = beforeOrder;
+      beforeOrder = null;
+      if (work) await work();
+    },
+    takeLostOrderResponse() {
+      const value = loseOrderResponse;
+      loseOrderResponse = false;
+      return value;
     },
     // Consumed by the connection handler after the request is accepted.
     takeConnectionRejection() {

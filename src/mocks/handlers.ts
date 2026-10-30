@@ -12,6 +12,9 @@ import type { ErrorResponse } from "@/contracts/common";
 import { visitorHeader } from "@/contracts/cart";
 import { sessionHeader } from "@/contracts/session";
 import { ApiError } from "./store/cart";
+import { QuoteChangedError } from "./store/orders";
+import type { NftUpdated } from "@/contracts/events";
+import { idempotencyHeader, type Order } from "@/contracts/orders";
 import type { CartIdentity, MockStore } from "./store";
 import type { ScenarioControls } from "./scenarios";
 function error(
@@ -19,16 +22,26 @@ function error(
   code: ErrorResponse["error"]["code"],
   message: string,
   fields?: Record<string, string>,
+  quote?: unknown,
 ) {
   return HttpResponse.json<ErrorResponse>(
-    { error: { code, message, fields, retryable: code === "TRANSIENT" } },
+    {
+      error: { code, message, fields, retryable: code === "TRANSIENT", quote },
+    },
     { status },
   );
+}
+// Events produced by REST mutations (stock reservation and release, order
+// transitions), delivered by the mock socket.
+export interface HandlerEvents {
+  nfts(events: NftUpdated[]): void;
+  orders(orders: Order[]): void;
 }
 export function createHandlers(
   base: string,
   store: MockStore,
   scenarios: ScenarioControls,
+  events: HandlerEvents,
 ) {
   async function condition(request: Request) {
     try {
@@ -72,7 +85,13 @@ export function createHandlers(
           : HttpResponse.json({ data }, { status });
       } catch (e) {
         if (e instanceof ApiError)
-          return error(e.status, e.code, e.message, e.fields);
+          return error(
+            e.status,
+            e.code,
+            e.message,
+            e.fields,
+            e instanceof QuoteChangedError ? e.quote : undefined,
+          );
         throw e;
       }
     }
@@ -89,6 +108,17 @@ export function createHandlers(
       return result;
     };
   }
+  // Resolves overdue payments and announces the transitions.
+  async function resolve() {
+    const result = await store.resolveDue();
+    events.nfts(result.events);
+    events.orders(result.orders);
+  }
+  // The order id is the path segment `fromEnd` positions before the end.
+  const orderId = (request: Request, fromEnd: number) => {
+    const parts = new URL(request.url).pathname.split("/");
+    return decodeURIComponent(parts[parts.length - fromEnd]);
+  };
   async function body(request: Request): Promise<unknown> {
     try {
       return await request.json();
@@ -170,6 +200,54 @@ export function createHandlers(
           decodeURIComponent(new URL(request.url).pathname.split("/").pop()!),
         ),
       ),
+    ),
+    // Orders: idempotent creation (Idempotency-Key), reading and receipt.
+    // Overdue payments are resolved on every access.
+    http.post(`${base}/orders`, async ({ request }) => {
+      const { response, responseDelay } = await condition(request);
+      if (response) return response;
+      const identity = identityOf(request);
+      await scenarios.runBeforeOrder();
+      try {
+        const result = await store.createOrder(
+          identity.session,
+          request.headers.get(idempotencyHeader),
+          await body(request),
+        );
+        events.nfts(result.events);
+        // Scenario "timeout after creation": the order exists, but the
+        // response is lost on the way back.
+        if (scenarios.takeLostOrderResponse()) return HttpResponse.error();
+        if (responseDelay) await scenarios.pause(responseDelay, request);
+        return HttpResponse.json(
+          { data: result.order },
+          { status: result.created ? 201 : 200 },
+        );
+      } catch (e) {
+        if (e instanceof ApiError)
+          return error(
+            e.status,
+            e.code,
+            e.message,
+            e.fields,
+            e instanceof QuoteChangedError ? e.quote : undefined,
+          );
+        return HttpResponse.error();
+      }
+    }),
+    http.get(
+      `${base}/orders/:id/receipt`,
+      apiRoute(async (identity, request) => {
+        await resolve();
+        return store.receipt(identity.session, orderId(request, 2));
+      }),
+    ),
+    http.get(
+      `${base}/orders/:id`,
+      apiRoute(async (identity, request) => {
+        await resolve();
+        return store.order(identity.session, orderId(request, 1));
+      }),
     ),
     http.post(
       `${base}/quotes`,

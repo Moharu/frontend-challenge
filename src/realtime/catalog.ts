@@ -2,7 +2,7 @@ import { io } from "socket.io-client";
 import type { QueryClient } from "@tanstack/react-query";
 import { record, type DataResponse } from "@/contracts/common";
 import type { Nft } from "@/contracts/nfts";
-import { isNftUpdated } from "@/contracts/events";
+import { authenticateEvent, isNftUpdated } from "@/contracts/events";
 import { nftKeys } from "@/data/nfts/queries";
 import type { Cart } from "@/contracts/cart";
 import { apiURL } from "@/lib/urls";
@@ -53,8 +53,15 @@ export function createCatalogRealtime(
           queryKey: ["nfts", "related"],
           refetchType: "active",
         });
+        // Private data the socket may have missed while disconnected
+        // (cart, the order being followed) is reconciled by REST; lost events
+        // are never relied on.
         await queryClient.invalidateQueries({
           queryKey: ["cart"],
+          refetchType: "active",
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["order"],
           refetchType: "active",
         });
         stats.reconciliations++;
@@ -116,14 +123,23 @@ export function createCatalogRealtime(
         stats.lastError = String(e);
       });
   }
+  // The connection authenticates as the current session (token) right after
+  // connecting and on every identity change, so the server sends private
+  // events only to their owner. Logout sends a null token.
+  type Audience = { userId: string; generation: number; token: string };
+  let identity: Audience | null = null;
+  const authenticate = () => {
+    if (socket.connected)
+      socket.emit(authenticateEvent, { token: identity?.token ?? null });
+  };
+  socket.on("connect", authenticate);
   socket.on("connect", reconcile);
   socket.on("nft.updated", event);
   // Private events share this connection. Their listeners belong to one
   // identity: changing it (login, logout, expiry, user switch) releases them,
   // and an envelope addressed to another user or session generation is
-  // ignored. No private event is emitted in this stage.
-  type Audience = { userId: string; generation: number };
-  let identity: Audience | null = null;
+  // ignored (defense in depth: the server already sends them only to the
+  // owner).
   const privateListeners = new Map<string, (value: unknown) => void>();
   function releasePrivate() {
     privateListeners.forEach((listener, name) => socket.off(name, listener));
@@ -136,6 +152,7 @@ export function createCatalogRealtime(
       if (JSON.stringify(next) === JSON.stringify(identity)) return;
       releasePrivate();
       identity = next;
+      authenticate();
     },
     onPrivate(name: string, handler: (value: unknown) => void) {
       if (!identity) throw new Error("Private listener without a session");
@@ -172,6 +189,7 @@ export function createCatalogRealtime(
     dispose() {
       disposed = true;
       socket.off("connect", reconcile);
+      socket.off("connect", authenticate);
       socket.off("nft.updated", event);
       releasePrivate();
       socket.disconnect();

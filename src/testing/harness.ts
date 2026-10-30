@@ -12,6 +12,9 @@ import { createCatalogRealtime } from "@/realtime/catalog";
 import type { MockControls } from "@/mocks/browser";
 import { cartKey } from "@/data/cart/queries";
 import { cartScope, getIdentity, signOut } from "@/data/session/identity";
+import { io } from "socket.io-client";
+import { apiURL } from "@/lib/urls";
+import { authenticateEvent } from "@/contracts/events";
 
 export function installHarness(controls: MockControls, baseURL: string) {
   let realtime = createCatalogRealtime(queryClient, baseURL);
@@ -130,6 +133,33 @@ export function installHarness(controls: MockControls, baseURL: string) {
     disconnectWallets: controls.store.disconnectWallets,
     expireCoupon: controls.store.expireCoupon,
     quoteTtl: controls.store.setQuoteTtl,
+    // Orders: simulated payment, lost response, order events.
+    setPayment: controls.setPayment,
+    resolvePayments: controls.resolvePayments,
+    loseNextOrderResponse: controls.loseNextOrderResponse,
+    changeBeforeNextOrder: controls.changeBeforeNextOrder,
+    duplicateOrder: controls.duplicateOrder,
+    staleOrder: controls.staleOrder,
+    authenticatedSockets: controls.authenticatedSockets,
+    // A separate socket connection authenticated with `token` (or anonymous),
+    // recording the name of every event it receives: the socket traffic
+    // another user (or a visitor) would see.
+    probeSocket(token: string | null) {
+      const url = new URL(apiURL(baseURL));
+      const probe = io(url.origin, {
+        path: `${url.pathname.replace(/\/$/, "")}/socket.io/`,
+        transports: ["websocket"],
+        forceNew: true,
+      });
+      const received: string[] = [];
+      probe.onAny((name: string) => received.push(name));
+      probe.on("connect", () => probe.emit(authenticateEvent, { token }));
+      return {
+        received: () => [...received],
+        connected: () => probe.connected,
+        close: () => probe.disconnect(),
+      };
+    },
     // Drops the cached cart so the next observer starts from a pending query.
     forgetCart: () => queryClient.removeQueries({ queryKey: ["cart"] }),
     // Session controls act on the client's current session token.

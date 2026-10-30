@@ -35,10 +35,13 @@ export interface Quote {
   // The cart's coupon left out of this quote, with the reason.
   couponRemoved: CouponRemoval | null;
   amounts: Amounts;
-  // True when the user must confirm values different from what they saw in
-  // the cart (a price changed since it was acknowledged, or the coupon left).
-  requiresConfirmation: boolean;
 }
+// Version rule: every issuance gets a new id. Within a series (same cart and
+// wallet) the version starts at 1 and increases only when the values differ
+// from the previous quote of the series (items, prices, quantities, coupon,
+// fee or total); a re-issue with the same values keeps the version.
+// `requiresConfirmation` was removed: the client compares the quote it
+// displayed, and the server compares the referenced quote on order creation.
 export function isQuote(value: unknown): value is Quote {
   if (!record(value) || !record(value.amounts)) return false;
   const a = value.amounts;
@@ -60,7 +63,6 @@ export function isQuote(value: unknown): value is Quote {
     isEth(a.subtotalEth) &&
     isEth(a.discountEth) &&
     isEth(a.networkFeeEth) &&
-    isEth(a.totalEth) &&
-    typeof value.requiresConfirmation === "boolean"
+    isEth(a.totalEth)
   );
 }

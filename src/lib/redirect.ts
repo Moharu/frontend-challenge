@@ -6,6 +6,7 @@ const knownRoutes = [
   /^\/$/,
   /^\/cart$/,
   /^\/checkout$/,
+  /^\/orders\/[A-Za-z0-9-]+$/,
   /^\/nfts\/[^/]+$/,
   // Integration-only protected route (see app/router.tsx).
   ...(import.meta.env.VITE_ENABLE_TEST_HARNESS === "true"

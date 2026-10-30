@@ -26,6 +26,9 @@ export type ErrorCode =
   | "UNAVAILABLE_ITEMS"
   | "WALLET_DISCONNECTED"
   | "CONNECTION_REJECTED"
+  // The quote referenced by an order is no longer valid; the error body
+  // carries the fresh quote in `error.quote`.
+  | "QUOTE_CHANGED"
   | "TRANSIENT"
   | "NOT_IMPLEMENTED";
 export interface ErrorResponse {
@@ -34,6 +37,8 @@ export interface ErrorResponse {
     message: string;
     fields?: Record<string, string>;
     retryable: boolean;
+    // Only with QUOTE_CHANGED: the server's current quote.
+    quote?: unknown;
   };
 }
 export interface PageResponse<T> {

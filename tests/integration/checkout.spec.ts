@@ -222,7 +222,7 @@ test("4. validação por campo; ENS e indicação são opcionais", async ({
   await field("ENS ou carteira secundária").fill("reserva.eth");
   await submit.click();
   if (mobile) await expect(page).toHaveURL(/step=carteira/);
-  else await expect(dialog(page)).toContainText("Revisão concluída");
+  else await expect(page).toHaveURL(/\/orders\/order-1$/);
 });
 test("5. usuário sem carteiras cadastra uma no checkout; vira principal e fica selecionada; a API recusa endereço inválido e duplicado", async ({
   page,
@@ -364,17 +364,24 @@ test("7. a taxa segue a rede da carteira e os valores vêm da API", async ({
   await expect(amounts).toContainText("0.002 ETH");
   await expect(total(page)).toHaveText("2.382 ETH");
 });
-test("8. revalidação: preço, esgotamento, cupom expirado e cotação expirada exigem nova confirmação; sem mudanças, aviso dos pedidos", async ({
+test("8. revalidação: preço, esgotamento e cupom expirado exigem nova confirmação; sem mudanças, o pedido é criado", async ({
   page,
 }, testInfo) => {
   const mobile = isMobile(testInfo.project.name);
   await login(page);
   await addLines(page, [emerald], "KURIO10");
+  // Payments wait, so the cart is not reduced during the test.
+  await page.evaluate(() =>
+    window.__KURIO_TEST__.setPayment({ status: "confirmed" }, 3600000),
+  );
   await toReview(page, mobile);
-  // No change: the honest unavailability dialog, no order.
-  await confirmButton(page).click();
-  await expect(dialog(page)).toContainText("Nenhum pedido foi criado");
-  await page.keyboard.press("Escape");
+  const orders = () =>
+    page.evaluate(
+      () => Object.keys(window.__KURIO_TEST__.snapshot().orders).length,
+    );
+  const reviewed = page.getByRole("button", {
+    name: "Revisei, confirmar com os novos valores",
+  });
   // Price changed silently on the server (no event): caught on confirm.
   await page.evaluate(() =>
     window.__KURIO_TEST__.persistUpdate("nft-001", "edition-1-limited", {
@@ -384,41 +391,41 @@ test("8. revalidação: preço, esgotamento, cupom expirado e cotação expirada
   await confirmButton(page).click();
   const changes = page.locator(".quote-changes");
   await expect(changes).toContainText("preço de 1.19 ETH para 1.50 ETH");
-  await expect(dialog(page)).toHaveCount(0);
   await expect(confirmButton(page)).toHaveAttribute("aria-disabled", "true");
-  await page
-    .getByRole("button", { name: "Revisei, confirmar com os novos valores" })
-    .click();
-  await expect(dialog(page)).toContainText("Revisão concluída");
-  await page.keyboard.press("Escape");
-  // Coupon expired after it was applied.
+  expect(await orders()).toBe(0);
+  // The coupon expires before the user confirms the new price: the final
+  // check finds another change and asks again.
   await page.evaluate(() => window.__KURIO_TEST__.expireCoupon("KURIO10"));
-  await confirmButton(page).click();
+  await reviewed.click();
   await expect(changes).toContainText("O cupom KURIO10 expirou");
-  await page
-    .getByRole("button", { name: "Revisei, confirmar com os novos valores" })
-    .click();
-  await expect(dialog(page)).toContainText("Revisão concluída");
-  await page.keyboard.press("Escape");
-  await expect(dialog(page)).toHaveCount(0);
-  // No discount line for the coupon, and its removal reason in the summary.
-  await expect(page.locator(".checkout-amounts dt")).not.toContainText([
-    "KURIO10",
-  ]);
-  await expect(page.locator(".checkout-amounts .coupon-removed")).toHaveText(
-    "O cupom KURIO10 expirou e foi removido.",
-  );
-  // Sold out: the quote refuses with the affected item.
+  expect(await orders()).toBe(0);
+  // Sold out before the next confirmation: the quote refuses with the item.
   await page.evaluate(() =>
     window.__KURIO_TEST__.persistUpdate("nft-001", "edition-1-limited", {
       available: 1,
     }),
   );
-  await confirmButton(page).click();
+  await reviewed.click();
   await expect(
     page.getByRole("alert").filter({ hasText: "não estão mais disponíveis" }),
   ).toContainText("disponível no máximo 1");
-  await expect(dialog(page)).toHaveCount(0);
+  expect(await orders()).toBe(0);
+  // No discount line for the coupon, and its removal reason in the summary.
+  await expect(page.locator(".checkout-amounts dt")).not.toContainText([
+    "KURIO10",
+  ]);
+  await expect(page.locator(".quote-coupon-removed")).toHaveText(
+    "O cupom KURIO10 expirou e foi removido.",
+  );
+  // Available again, no changes: the order is created.
+  await page.evaluate(() =>
+    window.__KURIO_TEST__.persistUpdate("nft-001", "edition-1-limited", {
+      available: 10,
+    }),
+  );
+  await confirmButton(page).click();
+  await expect(page).toHaveURL(/\/orders\/order-1$/);
+  expect(await orders()).toBe(1);
 });
 test("8c. cupom expirado antes de abrir: carrinho e primeira cotação mostram o motivo, sem desconto e com valores coerentes", async ({
   page,
@@ -439,7 +446,7 @@ test("8c. cupom expirado antes de abrir: carrinho e primeira cotação mostram o
   const cartTotal = await summary.locator(".amount-total dd").innerText();
   // Checkout: the first quote already shows the reason (no comparison).
   await toReview(page, mobile);
-  await expect(page.locator(".checkout-amounts .coupon-removed")).toHaveText(
+  await expect(page.locator(".quote-coupon-removed")).toHaveText(
     "O cupom KURIO10 expirou e foi removido.",
   );
   await expect(page.locator(".quote-changes")).toHaveCount(0);
@@ -486,11 +493,17 @@ test("9. nft.updated durante o checkout gera aviso e nova cotação", async ({
   await expect(notices(page)).not.toContainText("1.25");
   // The values about to be confirmed were not swapped in silence.
   await expect(total(page)).toHaveText("2.396 ETH");
+  // Confirming the new values places the order with them.
+  await page.evaluate(() =>
+    window.__KURIO_TEST__.setPayment({ status: "confirmed" }, 3600000),
+  );
   await page
     .getByRole("button", { name: "Revisei, confirmar com os novos valores" })
     .click();
-  await page.keyboard.press("Escape");
-  await expect(total(page)).toHaveText("2.516 ETH");
+  await expect(page).toHaveURL(/\/orders\/order-1$/);
+  await expect(page.locator(".order-totals .amount-total dd")).toHaveText(
+    "2.516 ETH",
+  );
 });
 test("10. mobile: passos na URL com voltar, avançar e refresh; não avança com passo inválido", async ({
   page,

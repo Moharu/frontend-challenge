@@ -33,12 +33,15 @@ export function saveDraft(userId: string, draft: CheckoutDraft) {
     // Storage unavailable: the draft lives only in memory for this page.
   }
 }
-// Removes every user's draft, or every draft but `keepUserId`'s.
+// Removes every user's draft and pending order key (see
+// data/orders/pending.ts), or every one but `keepUserId`'s.
+const orderPrefix = "kurio.checkout.order.v1:";
 export function discardDrafts(keepUserId?: string) {
   try {
     for (let i = sessionStorage.length - 1; i >= 0; i--) {
       const key = sessionStorage.key(i);
-      if (key?.startsWith(prefix) && key !== keyFor(keepUserId ?? ""))
+      const owned = [prefix, orderPrefix].find((p) => key?.startsWith(p));
+      if (key && owned && key !== `${owned}${keepUserId ?? ""}`)
         sessionStorage.removeItem(key);
     }
   } catch {

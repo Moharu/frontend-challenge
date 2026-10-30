@@ -54,6 +54,15 @@ const checkoutRoute = createRoute({
     "CheckoutPage",
   ),
 });
+// The order page (pending, confirmed with the receipt, or declined): a real
+// route, so it survives refresh and a new login.
+const orderRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/orders/$orderId",
+  beforeLoad: requireSession,
+  errorComponent: SessionCheckError,
+  component: lazyRouteComponent(() => import("@/routes/order"), "OrderPage"),
+});
 // Login and signup have real URLs; the target travels in a validated param.
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -94,6 +103,7 @@ export const router = createRouter({
     detailRoute,
     cartRoute,
     checkoutRoute,
+    orderRoute,
     loginRoute,
     signupRoute,
     ...testRoutes,

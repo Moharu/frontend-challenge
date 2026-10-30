@@ -64,6 +64,19 @@ async function addLines(page: Page, lines: Line[]) {
     }
   }, lines);
 }
+// Radix routes Escape to the top layer only after that layer's effects ran;
+// focus inside the notice marks that point.
+const noticeReady = (page: Page) =>
+  expect
+    .poll(() =>
+      page.evaluate(() => {
+        const dialogs = document.querySelectorAll("[role=dialog]");
+        return Boolean(
+          dialogs[dialogs.length - 1]?.contains(document.activeElement),
+        );
+      }),
+    )
+    .toBe(true);
 const cartRows = (page: Page) => page.locator(".cart-table tbody tr");
 const isMobile = (name: string) => name.includes("mobile");
 // Ada's fixture profile has a display name, which the header shows.
@@ -708,6 +721,7 @@ test("teclado e foco no login; ações sociais e recuperação informam indispon
   await expect(page.getByRole("dialog").last()).toContainText(
     "recuperação de senha ainda não está disponível",
   );
+  await noticeReady(page);
   await page.keyboard.press("Escape");
   await expect(forgot).toBeFocused();
   const google = dialog(page)
@@ -717,6 +731,7 @@ test("teclado e foco no login; ações sociais e recuperação informam indispon
   await expect(page.getByRole("dialog").last()).toContainText(
     "login social ainda não está disponível",
   );
+  await noticeReady(page);
   await page.keyboard.press("Escape");
   await expect(google).toBeFocused();
   if (mobile) {

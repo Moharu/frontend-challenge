@@ -287,3 +287,13 @@ Mantenha este diário de alto nível nos próximos trabalhos do projeto com assi
 **Resolução:** regra única de validade do cupom no servidor simulado, com `couponRemoved` no carrinho e motivo exibido no carrinho e na primeira cotação; duplicidade de carteira sinalizada explicitamente (status 409/400 não depende mais do texto); BOM removido de seis arquivos e verificação `check:bom` no lint; Playwright limitado a 2 workers por padrão, com sobrescrita documentada.
 
 **Verificação:** 122 testes de integração e 10 E2E aprovados com 2 workers, sem erros de infraestrutura e sem processos órfãos. Detalhes em `docs/checkout-verification.md`. Nenhum commit ou push.
+
+**Autorização de commit:** o usuário autorizou commit e push (83f4a2b).
+
+## 2026-10-30 — Pedidos, pagamento simulado e recibo (docs/handoffs/coding-agent-orders-draft-pt-br.md)
+
+**Orientação do usuário:** executar o handoff de pedidos até o recibo, sem Lighthouse e sem commit/push; registrar erros de infraestrutura.
+
+**Resolução:** cotações persistidas e versionadas com comparação no servidor (409 \QUOTE_CHANGED\ com a cotação nova); \POST /orders\ idempotente por usuário e corpo canônico, colecionador validado no servidor, snapshots imutáveis e reserva de estoque; resolução persistida \pending → confirmed | declined\, aplicada uma vez, com redução exata do carrinho e liberação do estoque na recusa; \order.updated\ privado por conexão autenticada (evento \session.authenticate\, porque a integração MSW não expõe o \uth\ da negociação); página \/orders/\ com pendente, confirmado (recibo) e recusado; chave em \sessionStorage\ com retomada após refresh e nova tentativa após falha sem resposta; \<p>\ fora do \<dl>\ e cupom expirado removível. A página substitui o modal do Figma (decisões em \docs/orders.md\).
+
+**Verificação:** 152 testes de integração (15 casos de pedidos × 2, repetidos 3 vezes) e 12 E2E (com as referências do recibo) aprovados com 2 workers; varredura de larguras sem overflow; nenhum erro de infraestrutura. Uma falha repetida de teste de sessão sob carga foi investigada (Escape antes de o Radix registrar o aviso aninhado) e corrigida no teste. Detalhes em \docs/orders-verification.md\. Nenhum commit ou push.

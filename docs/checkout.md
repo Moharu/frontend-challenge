@@ -1,6 +1,6 @@
 # Checkout até a revisão validada
 
-Etapa guiada por `docs/handoffs/coding-agent-checkout-draft-pt-br.md`. Implementa a página de pagamento protegida, dados do colecionador, carteiras cadastradas com conexão simulada, cadastro de carteira no checkout, cotação pela API com revalidação e preservação do rascunho. **Não cria pedidos:** "Confirmar compra" faz a revalidação final e, sem mudanças, mostra que a criação de pedidos chega na próxima etapa.
+Etapa guiada por `docs/handoffs/coding-agent-checkout-draft-pt-br.md`. Implementa a página de pagamento protegida, dados do colecionador, carteiras cadastradas com conexão simulada, cadastro de carteira no checkout, cotação pela API com revalidação e preservação do rascunho. Desde a etapa de pedidos, "Confirmar compra" cria o pedido (ver [pedidos](orders.md)); o diálogo "Revisão concluída" foi removido.
 
 ## Rota, proteção e pré-condições
 
@@ -51,7 +51,7 @@ A desconexão (controle de cenário) é detectada pela API: `GET /wallet-connect
 
 ## Cotação e revalidação
 
-`POST /quotes` recebe `{ cartId, cartVersion, walletId }`; a rede vem da carteira no servidor. O servidor confere sessão, titularidade do carrinho e da carteira (403), conexão ativa (409 `WALLET_DISCONNECTED`), versão do carrinho (409 `CART_CHANGED`), disponibilidade atual (409 `UNAVAILABLE_ITEMS`, com uma mensagem por linha afetada em `fields`, sem reduzir quantidades) e **revalida o cupom, inclusive a expiração**: cupom expirado sai da cotação com `couponRemoved` e o motivo. A taxa é a da rede da carteira (`src/contracts/eth.ts`). A cotação retorna `id`, `version`, `expiresAt` (**2 minutos pelo relógio real**), itens, cupom, valores e `requiresConfirmation`.
+`POST /quotes` recebe `{ cartId, cartVersion, walletId }`; a rede vem da carteira no servidor. O servidor confere sessão, titularidade do carrinho e da carteira (403), conexão ativa (409 `WALLET_DISCONNECTED`), versão do carrinho (409 `CART_CHANGED`), disponibilidade atual (409 `UNAVAILABLE_ITEMS`, com uma mensagem por linha afetada em `fields`, sem reduzir quantidades) e **revalida o cupom, inclusive a expiração**: cupom expirado sai da cotação com `couponRemoved` e o motivo. A taxa é a da rede da carteira (`src/contracts/eth.ts`). A cotação retorna `id`, `version`, `expiresAt` (**2 minutos pelo relógio real**), itens, cupom e valores (`requiresConfirmation` foi removido: a comparação definitiva é a do servidor ao criar o pedido, com 409 `QUOTE_CHANGED`).
 
 Regra de nova confirmação (`useCheckoutQuote`):
 
@@ -59,7 +59,7 @@ Regra de nova confirmação (`useCheckoutQuote`):
 - Atualizações que o usuário não causou — `nft.updated` de um item (que busca o carrinho de novo), a renovação automática da cotação expirada e a revalidação de "Confirmar compra" — são comparadas com a cotação exibida. Se preço, quantidade, cupom, taxa ou total mudaram, **nada prossegue**: um aviso lista o que mudou (valor anterior e atual, cupom removido) e exige "Revisei, confirmar com os novos valores". Os valores exibidos não são trocados em silêncio.
 - Itens indisponíveis mostram as linhas afetadas e levam ao carrinho para ajuste.
 - Um cupom expirado aparece com o motivo no resumo sempre que a cotação exibida tem `couponRemoved`, inclusive a primeira (região de status, sem depender de comparação). Carrinho e cotação usam a mesma regra de validade (`couponStatus`, ver `docs/cart.md`), então os valores coincidem.
-- Sem mudanças e com conexão ativa, "Confirmar compra" abre o diálogo "Revisão concluída", informando que nenhum pedido foi criado e que carrinho e rascunho continuam salvos.
+- Sem mudanças e com conexão ativa, "Confirmar compra" envia `POST /orders` e leva à página do pedido. Se o servidor responder `QUOTE_CHANGED`, a cotação nova entra na mesma comparação (aviso e "Revisei…"); com valores idênticos, o envio é refeito uma vez com a nova versão.
 
 ## Decisões e desvios do Figma
 
@@ -80,4 +80,4 @@ Regra de nova confirmação (`useCheckoutQuote`):
 
 ## Indisponibilidades que permanecem
 
-Criação de pedido (diálogo "Revisão concluída"), edição de carteira e menu "⋮", página de carteiras, perfil, favoritos e login social.
+Edição de carteira e menu "⋮", página de carteiras, perfil, favoritos e login social.

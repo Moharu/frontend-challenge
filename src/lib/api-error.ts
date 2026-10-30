@@ -6,6 +6,8 @@ export interface ApiErrorInfo {
   code?: string;
   message: string;
   fields: Record<string, string>;
+  // QUOTE_CHANGED: the server's current quote (validated by the caller).
+  quote?: unknown;
 }
 // Client-side failure whose message is meant for the user as-is.
 export class UserFacingError extends Error {}
@@ -26,6 +28,7 @@ export function apiError(error: unknown): ApiErrorInfo {
       fields: record(envelope?.fields)
         ? (envelope.fields as Record<string, string>)
         : {},
+      quote: envelope?.quote,
     };
   }
   return {

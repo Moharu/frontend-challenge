@@ -451,6 +451,18 @@ function CartSummary({ cart }: { cart: Cart }) {
         <p className="coupon-removed" role="status">
           {cart.couponRemoved?.reason ?? ""}
         </p>
+        {/* Removing it clears the stored code and the message. */}
+        {cart.couponRemoved && (
+          <button
+            type="button"
+            className="coupon-clear"
+            aria-disabled={pending}
+            aria-label={`Remover cupom ${cart.couponRemoved.code}`}
+            onClick={() => void removeApplied()}
+          >
+            Remover cupom
+          </button>
+        )}
         <p className="sr-only" role="status">
           {couponStatus}
         </p>

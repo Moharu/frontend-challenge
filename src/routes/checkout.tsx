@@ -24,6 +24,15 @@ import {
 import { applyCoupon, removeCoupon } from "@/data/cart/api";
 import { useCart, useCartMutation } from "@/data/cart/hooks";
 import { loadDraft, saveDraft } from "@/data/checkout/draft";
+import { createOrder } from "@/data/orders/api";
+import {
+  discardPendingOrder,
+  loadPendingOrder,
+  markPendingOrderCreated,
+  pendingOrderFor,
+} from "@/data/orders/pending";
+import type { CreateOrderBody } from "@/contracts/orders";
+import { isQuote } from "@/contracts/quotes";
 import {
   useCheckoutQuote,
   useCreateWallet,
@@ -36,12 +45,6 @@ import { apiError } from "@/lib/api-error";
 import { discoverySearch } from "@/lib/discovery-search";
 import { checkoutSteps, type CheckoutStep } from "@/lib/checkout-search";
 import type { Session } from "@/contracts/session";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Unavailable } from "@/components/discovery/shared";
 import { artImage, asset } from "@/components/discovery/assets";
 const eth = (value: string) => `${formatEth(value)} ETH`;
@@ -208,7 +211,104 @@ function Checkout({ session }: { session: Session }) {
     if (name) document.getElementById(`checkout-${name}`)?.focus();
   };
   const [confirming, setConfirming] = useState(false);
-  const [unavailableOpen, setUnavailableOpen] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sendingOrder, setSendingOrder] = useState(false);
+  const sending = useRef(false);
+  // The order body: the quote just validated, the wallet and the collector
+  // data (optional fields omitted when empty).
+  const orderBody = (validated: Quote): CreateOrderBody => {
+    const optional = (v: string) => (v.trim() ? v.trim() : undefined);
+    return {
+      quoteId: validated.id,
+      quoteVersion: validated.version,
+      walletId: validated.walletId,
+      collector: {
+        displayName: values.displayName.trim(),
+        username: values.username.trim(),
+        email: values.email.trim(),
+        profileName: values.profileName.trim(),
+        referralCode: optional(values.referralCode),
+        ensName: optional(values.ensName),
+        secondaryAddressOrEns: optional(values.secondaryAddressOrEns),
+      },
+      collectorNote: optional(values.note),
+    };
+  };
+  // Sends the order with the idempotency key for this body: the stored one on
+  // a retry (refresh, timeout), a new one when the body changed. The button
+  // is disabled while sending, but idempotency is the actual guarantee.
+  async function sendOrder(body: CreateOrderBody, retried = false) {
+    if (sending.current) return;
+    sending.current = true;
+    setSendingOrder(true);
+    setSendError(null);
+    const pending = pendingOrderFor(userId, body);
+    try {
+      const order = await createOrder(pending.key, body);
+      markPendingOrderCreated(userId, order.id);
+      // Replace: going back must not send the purchase again.
+      await navigate({
+        to: "/orders/$orderId",
+        params: { orderId: order.id },
+        replace: true,
+      });
+    } catch (e) {
+      const info = apiError(e);
+      if (info.code === "QUOTE_CHANGED") {
+        // A new confirmation sends a different body, with a new key.
+        discardPendingOrder(userId);
+        const fresh = isQuote(info.quote) ? info.quote : null;
+        if (fresh && quote.offer(fresh))
+          notify("Os valores do pedido mudaram. Revise antes de confirmar.");
+        else if (fresh && !retried) {
+          // Same values (only the quote's validity changed): nothing new to
+          // confirm, so it is sent once more with the fresh quote.
+          sending.current = false;
+          await sendOrder(orderBody(fresh), true);
+          return;
+        } else setSendError(info.message);
+      } else if (info.status === 400 && Object.keys(info.fields).length) {
+        discardPendingOrder(userId);
+        setErrors(info.fields);
+        if (mobile) goStep("dados");
+        requestAnimationFrame(() => focusFirstError(info.fields));
+      } else if (info.status === 409 && info.code === "CONFLICT") {
+        // Same key with another body: never expected in the normal flow.
+        discardPendingOrder(userId);
+        setSendError(
+          "Não foi possível enviar o pedido com estes dados. Revise e confirme novamente.",
+        );
+      } else if (info.status === 0 || info.status >= 500) {
+        // Timeout or network failure: the order may exist. The retry reuses
+        // the same key and gets the order already created, if any.
+        setSendError("Não foi possível confirmar o envio do pedido.");
+      } else {
+        discardPendingOrder(userId);
+        setSendError(info.message);
+      }
+    } finally {
+      sending.current = false;
+      setSendingOrder(false);
+    }
+  }
+  // Retrying an unresolved send resends the stored body (same key): a new
+  // revalidation would issue a new quote id, hence another body and key.
+  const retrySend = () => {
+    const stored = unresolved();
+    if (stored) void sendOrder(stored.body);
+  };
+  // A send whose answer was never seen (refresh during the request, lost
+  // response) resumes with the same key and leads to the order page. Once
+  // the order id is known, the key is kept only until a terminal state is
+  // seen, and a new purchase gets its own key.
+  const unresolved = () => {
+    const stored = loadPendingOrder(userId);
+    return stored && !stored.orderId ? stored : null;
+  };
+  const [resuming] = useState(unresolved);
+  useEffect(() => {
+    if (resuming) void sendOrder(resuming.body);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   async function confirm() {
     if (confirming || !quote.quote || !connected) return;
     const found = validate();
@@ -218,21 +318,26 @@ function Checkout({ session }: { session: Session }) {
       requestAnimationFrame(() => focusFirstError(found));
       return;
     }
+    // A send still unresolved (timeout) is retried as is, never re-quoted.
+    const stored = unresolved();
+    if (stored) {
+      await sendOrder(stored.body);
+      return;
+    }
     setConfirming(true);
     try {
       // A disconnection shows (and is announced) in the connection status.
       if (!(await connection.check())) return;
       const result = await quote.revalidate();
-      if (result === "changed")
+      if (result.status === "changed")
         notify("Os valores do pedido mudaram. Revise antes de confirmar.");
-      if (result === "ok") setUnavailableOpen(true);
+      if (result.status === "ok") await sendOrder(orderBody(result.quote));
     } finally {
       setConfirming(false);
     }
   }
   async function confirmNewValues() {
     quote.acceptPending();
-    setUnavailableOpen(false);
     // The accepted values are confirmed through the same final check.
     await new Promise((resolve) => requestAnimationFrame(resolve));
     await confirm();
@@ -270,7 +375,9 @@ function Checkout({ session }: { session: Session }) {
     wallets: list,
     connection,
     selectWallet,
-    confirming,
+    confirming: confirming || sendingOrder,
+    sendError,
+    onRetrySend: retrySend,
     onConfirm: () => void confirm(),
     onConfirmNew: () => void confirmNewValues(),
   };
@@ -286,6 +393,11 @@ function Checkout({ session }: { session: Session }) {
   );
   return (
     <main id="main" className="checkout-page">
+      {resuming && sendingOrder && (
+        <p className="checkout-resuming" role="status">
+          Retomando seu pedido…
+        </p>
+      )}
       {mobile ? (
         <MobileCheckout
           step={effectiveStep}
@@ -400,16 +512,6 @@ function Checkout({ session }: { session: Session }) {
           </div>
         </>
       )}
-      <Dialog open={unavailableOpen} onOpenChange={setUnavailableOpen}>
-        <DialogContent>
-          <DialogTitle>Revisão concluída</DialogTitle>
-          <DialogDescription>
-            Os valores e a carteira foram confirmados, mas a criação de pedidos
-            ainda não está disponível nesta versão. Nenhum pedido foi criado.
-            Seu carrinho e os dados do pagamento continuam salvos.
-          </DialogDescription>
-        </DialogContent>
-      </Dialog>
     </main>
   );
 }
@@ -685,6 +787,8 @@ type Shared = {
   connection: ReturnType<typeof useWalletConnection>;
   selectWallet: (id: string) => void;
   confirming: boolean;
+  sendError: string | null;
+  onRetrySend: () => void;
   onConfirm: () => void;
   onConfirmNew: () => void;
 };
@@ -1185,14 +1289,33 @@ function CouponField({ cart }: { cart: Cart }) {
           </button>
         </p>
       ) : (
-        <button
-          className="text-button"
-          aria-expanded={open}
-          aria-controls="checkout-coupon-form"
-          onClick={() => setOpen((v) => !v)}
-        >
-          Tem um código promocional? Aplique aqui
-        </button>
+        <>
+          {/* An expired coupon (reason shown in the summary) can be removed,
+              which clears the stored code and the message. */}
+          {cart.couponRemoved && (
+            <button
+              className="text-button"
+              aria-disabled={pending}
+              aria-label={`Remover cupom ${cart.couponRemoved.code}`}
+              onClick={() =>
+                void clear
+                  .mutateAsync(undefined)
+                  .then(() => notify("Cupom removido."))
+                  .catch((e: unknown) => setError(apiError(e).message))
+              }
+            >
+              Remover cupom expirado
+            </button>
+          )}
+          <button
+            className="text-button"
+            aria-expanded={open}
+            aria-controls="checkout-coupon-form"
+            onClick={() => setOpen((v) => !v)}
+          >
+            Tem um código promocional? Aplique aqui
+          </button>
+        </>
       )}
       {open && !cart.coupon && (
         <form
@@ -1231,33 +1354,36 @@ function Amounts({ quote }: { quote: Quote | null }) {
   const a = quote?.amounts;
   const dash = "—";
   const discounted = a && compareEth(a.discountEth, "0") > 0;
+  // Only name/value groups inside the <dl>; notes live after it.
   return (
-    <dl className="amounts checkout-amounts" aria-busy={!quote}>
-      <div>
-        <dt>Subtotal</dt>
-        <dd>{a ? eth(a.subtotalEth) : dash}</dd>
-      </div>
-      <div>
-        <dt>
-          {quote?.coupon ? `Desconto (${quote.coupon.code})` : "Desconto"}
-        </dt>
-        <dd>
-          {a ? (discounted ? `(-) ${eth(a.discountEth)}` : eth("0")) : dash}
-        </dd>
-      </div>
-      <div>
-        {/* With a wallet chosen the fee is that of its network, not estimated. */}
-        <dt>
-          {quote
-            ? `Taxa de rede (${networkNames[quote.network]})`
-            : "Taxa de rede"}
-        </dt>
-        <dd>{a ? eth(a.networkFeeEth) : dash}</dd>
-      </div>
-      <div className="amount-total">
-        <dt>Total</dt>
-        <dd>{a ? eth(a.totalEth) : dash}</dd>
-      </div>
+    <>
+      <dl className="amounts checkout-amounts" aria-busy={!quote}>
+        <div>
+          <dt>Subtotal</dt>
+          <dd>{a ? eth(a.subtotalEth) : dash}</dd>
+        </div>
+        <div>
+          <dt>
+            {quote?.coupon ? `Desconto (${quote.coupon.code})` : "Desconto"}
+          </dt>
+          <dd>
+            {a ? (discounted ? `(-) ${eth(a.discountEth)}` : eth("0")) : dash}
+          </dd>
+        </div>
+        <div>
+          {/* With a wallet chosen the fee is that of its network, not estimated. */}
+          <dt>
+            {quote
+              ? `Taxa de rede (${networkNames[quote.network]})`
+              : "Taxa de rede"}
+          </dt>
+          <dd>{a ? eth(a.networkFeeEth) : dash}</dd>
+        </div>
+        <div className="amount-total">
+          <dt>Total</dt>
+          <dd>{a ? eth(a.totalEth) : dash}</dd>
+        </div>
+      </dl>
       {!quote && (
         <p className="checkout-hint">
           Os valores são calculados pela API depois que a carteira conecta.
@@ -1265,10 +1391,10 @@ function Amounts({ quote }: { quote: Quote | null }) {
       )}
       {/* Shown for any displayed quote, the first one included, without
           depending on a comparison between quotes. */}
-      <p className="coupon-removed" role="status">
+      <p className="coupon-removed quote-coupon-removed" role="status">
         {quote?.couponRemoved?.reason ?? ""}
       </p>
-    </dl>
+    </>
   );
 }
 // Revalidation outcomes: changed values (never applied in silence), items no
@@ -1324,17 +1450,40 @@ function QuoteNotices({ quote, onConfirmNew }: Shared) {
     );
   return null;
 }
-function ConfirmButton({ quote, connection, confirming, onConfirm }: Shared) {
+function ConfirmButton({
+  quote,
+  connection,
+  confirming,
+  sendError,
+  onRetrySend,
+  onConfirm,
+}: Shared) {
   const ready =
     !!quote.quote && connection.status === "active" && !quote.pending;
   return (
-    <button
-      className="button button-primary checkout-confirm"
-      aria-disabled={!ready || confirming}
-      aria-describedby={ready ? undefined : "connection-status"}
-      onClick={() => ready && onConfirm()}
-    >
-      {confirming ? "Revalidando…" : "Confirmar compra"}
-    </button>
+    <>
+      {sendError && (
+        <div className="cart-refresh-error" role="alert">
+          <p>{sendError}</p>
+          {sendError === "Não foi possível confirmar o envio do pedido." && (
+            <button
+              className="button button-outline"
+              aria-disabled={confirming}
+              onClick={() => !confirming && onRetrySend()}
+            >
+              Tentar novamente
+            </button>
+          )}
+        </div>
+      )}
+      <button
+        className="button button-primary checkout-confirm"
+        aria-disabled={!ready || confirming}
+        aria-describedby={ready ? undefined : "connection-status"}
+        onClick={() => ready && !confirming && onConfirm()}
+      >
+        {confirming ? "Enviando…" : "Confirmar compra"}
+      </button>
+    </>
   );
 }
