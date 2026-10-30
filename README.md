@@ -67,7 +67,9 @@ Toda a documentação é mantida em pt-BR.
 
 ## Implantação
 
-A demonstração é publicada na Vercel a partir deste repositório (branch `main`); cada push em `main` gera uma nova implantação de produção e cada push em outra branch, uma prévia. URL e commit verificado em [verificação da implantação](docs/deploy-verification.md).
+**Demonstração publicada:** https://jungle-gaming-challenge-joao.vercel.app (commit verificado `c757b34`).
+
+A demonstração é publicada na Vercel a partir deste repositório (branch `main`); cada push em `main` gera uma nova implantação de produção e cada push em outra branch, uma prévia. Resultados em [verificação da implantação](docs/deploy-verification.md).
 
 Configuração do projeto, suficiente para reproduzi-lo em outra conta (importar o repositório na Vercel; tudo vem do `vercel.json` e do `package.json`):
 

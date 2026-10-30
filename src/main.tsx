@@ -19,6 +19,18 @@ async function start() {
       throw new ServiceWorkerUnavailable();
     const { startMocks } = await import("@/mocks/browser");
     const controls = await startMocks(env.apiBaseURL);
+    // On a first visit the worker may report ready a moment before it
+    // controls the page; requests sent in that gap would go to the network
+    // (404 on the published site). Wait for control, briefly.
+    if (!navigator.serviceWorker.controller)
+      await new Promise<void>((resolve) => {
+        navigator.serviceWorker.addEventListener(
+          "controllerchange",
+          () => resolve(),
+          { once: true },
+        );
+        setTimeout(resolve, 3000);
+      });
     if (import.meta.env.VITE_ENABLE_TEST_HARNESS === "true") {
       const { installHarness } = await import("@/testing/harness");
       installHarness(controls, env.apiBaseURL);

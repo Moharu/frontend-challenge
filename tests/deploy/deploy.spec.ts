@@ -25,7 +25,9 @@ const test = base.extend<{ guard: void }>({
       page.on("response", (response) => {
         const path = new URL(response.url()).pathname;
         if (path.startsWith("/api/") && !response.fromServiceWorker())
-          problems.push(`api outside the worker: ${response.url()}`);
+          problems.push(
+            `api outside the worker: ${response.url()} (page ${page.url()})`,
+          );
       });
       await use();
       expect(problems).toEqual([]);
@@ -132,12 +134,16 @@ test("2. arquivos estáticos: worker, assets, fontes, robots", async ({
   expect(script).toBeTruthy();
   const bundle = await request.get(script!);
   expect(bundle.status()).toBe(200);
+  // Fonts load after the first render: wait for them before looking.
+  await expect(page.locator(".nft-grid .nft-card").first()).toBeVisible();
   const font = await page.evaluate(
-    () =>
-      performance
-        .getEntriesByType("resource")
-        .map((e) => e.name)
-        .find((n) => /\.woff2?$/.test(n)) ?? null,
+    async () =>
+      ((await document.fonts.ready) &&
+        performance
+          .getEntriesByType("resource")
+          .map((e) => e.name)
+          .find((n) => /\.woff2?$/.test(n))) ??
+      null,
   );
   expect(font).toBeTruthy();
   expect((await request.get(font!)).status()).toBe(200);
