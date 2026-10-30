@@ -4,7 +4,7 @@ Itens obrigatórios da seção 8 de `docs/challenge-requirements.md`, verificado
 
 ## Auditoria automatizada (axe)
 
-Dependência de desenvolvimento `@axe-core/playwright` (só nos testes, fora do bundle): roda as regras do axe-core dentro do Playwright já usado pelo projeto, sem outra ferramenta nem navegador. Regras `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` e `best-practice`, em desktop (1440 px) e mobile (390 px).
+Dependência de desenvolvimento `@axe-core/playwright` (só nos testes, fora do bundle): roda as regras do axe-core dentro do Playwright já usado pelo projeto, sem outra ferramenta nem navegador. Regras `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa` (inclui `target-size`, alvos de 24 px) e `best-practice`, em desktop (1440 px) e mobile (390 px).
 
 Estados auditados:
 

@@ -16,7 +16,14 @@ async function ready(page: Page) {
 }
 async function audit(page: Page, state: string) {
   const { violations, incomplete } = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"])
+    .withTags([
+      "wcag2a",
+      "wcag2aa",
+      "wcag21a",
+      "wcag21aa",
+      "wcag22aa",
+      "best-practice",
+    ])
     .disableRules(excluded)
     .analyze();
   const found = violations.map(

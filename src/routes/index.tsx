@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useSearch, useNavigate } from "@tanstack/react-router";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
@@ -427,35 +427,66 @@ function PriceRange({
     onChange(a <= low ? "" : eth(a), b >= high ? "" : eth(b));
   const label = (v: number) => formatEth(eth(v));
   const percent = (v: number) => ((v - low) / (high - low)) * 100;
+  const track = useRef<HTMLDivElement>(null);
+  // Two separate 24 px thumbs (role="slider"), not two native ranges stacked
+  // on one track: stacked inputs cover each other as touch targets.
+  const move = (which: "from" | "to", v: number) =>
+    which === "from"
+      ? set(Math.min(clamp(v), to), to)
+      : set(from, Math.max(clamp(v), from));
+  const step = Math.max(1, Math.round((high - low) / 10));
+  const keys: Record<string, (v: number) => number> = {
+    ArrowLeft: (v) => v - 1,
+    ArrowDown: (v) => v - 1,
+    ArrowRight: (v) => v + 1,
+    ArrowUp: (v) => v + 1,
+    PageDown: (v) => v - step,
+    PageUp: (v) => v + step,
+    Home: () => low,
+    End: () => high,
+  };
+  const thumb = (which: "from" | "to", value: number, name: string) => (
+    <div
+      role="slider"
+      tabIndex={bounds ? 0 : -1}
+      aria-label={name}
+      aria-valuemin={low}
+      aria-valuemax={high}
+      aria-valuenow={value}
+      aria-valuetext={`${label(value)} ETH`}
+      aria-disabled={!bounds || undefined}
+      className="price-thumb"
+      style={{ left: `${percent(value)}%` }}
+      onKeyDown={(e) => {
+        const next = keys[e.key];
+        if (!bounds || !next) return;
+        e.preventDefault();
+        move(which, next(value));
+      }}
+      onPointerDown={(e) => {
+        if (!bounds) return;
+        e.currentTarget.setPointerCapture(e.pointerId);
+      }}
+      onPointerMove={(e) => {
+        const box = track.current?.getBoundingClientRect();
+        if (!box || !e.currentTarget.hasPointerCapture(e.pointerId)) return;
+        const ratio = (e.clientX - box.left) / box.width;
+        move(which, Math.round(low + ratio * (high - low)));
+      }}
+    />
+  );
   return (
     <div className="price-range">
       <div
+        ref={track}
         className="price-track"
         style={{
           ["--from" as string]: `${percent(from)}%`,
           ["--to" as string]: `${percent(to)}%`,
         }}
       >
-        <input
-          type="range"
-          aria-label="Preço mínimo (ETH)"
-          aria-valuetext={`${label(from)} ETH`}
-          min={low}
-          max={high}
-          value={from}
-          disabled={!bounds}
-          onChange={(e) => set(Math.min(Number(e.target.value), to), to)}
-        />
-        <input
-          type="range"
-          aria-label="Preço máximo (ETH)"
-          aria-valuetext={`${label(to)} ETH`}
-          min={low}
-          max={high}
-          value={to}
-          disabled={!bounds}
-          onChange={(e) => set(from, Math.max(Number(e.target.value), from))}
-        />
+        {thumb("from", from, "Preço mínimo (ETH)")}
+        {thumb("to", to, "Preço máximo (ETH)")}
       </div>
       <p aria-live="polite">
         {bounds

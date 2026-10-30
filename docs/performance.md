@@ -50,6 +50,28 @@ Todas as metas atingidas. Os relatórios HTML e JSON das três execuções por p
 
 `npm run test:deploy` contra a URL publicada: 10 aprovados, sem erro no console. Uma requisição `/api` fora do worker foi aceita e listada, no instante de uma navegação (caso documentado em `docs/deploy-verification.md`). Contra o build local: 8 aprovados e 2 pulados.
 
+## Etapa final (URL publicada, `229ba64`)
+
+A interface mudou na etapa final, por isso a URL publicada foi medida de novo. A implantação de produção de `229ba64` estava READY na Vercel. Data: 2026-10-30, três execuções por página e perfil, mediana.
+
+| Perfil  | Página  | Perf | A11y |  BP | SEO |     LCP |   CLS |   TBT |
+| ------- | ------- | ---: | ---: | --: | --: | ------: | ----: | ----: |
+| mobile  | início  |   92 |  100 | 100 | 100 | 2754 ms | 0,001 |  0 ms |
+| mobile  | detalhe |   91 |  100 | 100 | 100 | 2853 ms | 0,000 | 44 ms |
+| desktop | início  |  100 |   96 | 100 | 100 |  614 ms | 0,001 |  0 ms |
+| desktop | detalhe |  100 |  100 | 100 | 100 |  582 ms | 0,001 |  0 ms |
+
+**Desempenho:** igual à medição anterior, com todas as metas atingidas.
+
+**Acessibilidade no início desktop (96):** a auditoria `target-size` (WCAG 2.5.8) reprovou o controle deslizante de preço novo. Eram dois `input type="range"` sobrepostos na mesma trilha, e cada um cobria o outro como alvo de toque.
+
+- A barra lateral só aparece acima de 700 px, por isso o mobile não foi afetado.
+- A auditoria axe do projeto não pegou o problema porque não incluía a etiqueta `wcag22aa`.
+- **Correção:** dois marcadores separados (`role="slider"`, alvo de 24 px, setas, Page Up/Down, Home/End e arraste). A etiqueta `wcag22aa` entrou na auditoria axe, que reprova o controle antigo e aprova o novo.
+- **Ainda não medido:** o Lighthouse sobre a correção publicada, que depende do próximo push.
+
+`npm run test:deploy` contra a URL publicada (`229ba64`): 10 aprovados.
+
 ## Gargalo confirmado
 
 Pelos relatórios (rede observada e decomposição do LCP):

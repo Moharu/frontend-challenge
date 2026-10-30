@@ -78,6 +78,14 @@ Referências visuais atualizadas depois de inspecionar as diferenças. Testes qu
 
 Resultado: E2E 14 aprovados; integração 302 aprovados e 9 pulados (testes de perfil único). A suíte completa rodou com 300 aprovados; depois disso entrou o teste "Limpar filtros aplica na hora", que roda só em desktop e tablet, e o grupo de descoberta foi executado de novo (23 aprovados, 1 pulado).
 
+## Publicação de `229ba64`
+
+- **Vercel:** a implantação de produção de `229ba64` ficou READY.
+- **`npm run test:deploy`** contra https://jungle-gaming-challenge-joao.vercel.app: 10 aprovados.
+- **Lighthouse publicado:** desempenho igual ao anterior (mobile 92/91, desktop 100). A acessibilidade caiu para 96 no início desktop, por `target-size` no controle deslizante de preço, e foi corrigida localmente ([desempenho](performance.md#etapa-final-url-publicada-229ba64)).
+- **Depois da correção:** E2E 14 aprovados (só a referência do início desktop foi atualizada; o conteúdo abaixo da trilha, 4 px mais alta, desceu) e integração 304 aprovados e 10 pulados.
+- **Pendente:** publicar a correção e medir de novo o Lighthouse e o `test:deploy` sobre o novo commit.
+
 ## Clone limpo
 
 Diretório novo (`/tmp/kurio-clean`): `git clone` do repositório em `cc99ff5` com as mudanças desta etapa aplicadas, sem `node_modules` nem builds; Node 24.22.0 e npm 11.19.1.

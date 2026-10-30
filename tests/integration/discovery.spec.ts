@@ -208,6 +208,25 @@ test("aplicar filtros a partir da página 2 volta à página 1 (barra lateral e 
     ).toHaveAttribute("aria-current", "page");
   }
 });
+test("faixa de preço pelo teclado: setas movem o marcador e Aplicar filtra", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name.includes("mobile"),
+    "barra lateral (o drawer usa o mesmo componente)",
+  );
+  const aside = page.locator(".catalog-layout aside");
+  const min = aside.getByRole("slider", { name: "Preço mínimo (ETH)" });
+  await expect(min).toHaveAttribute("aria-valuetext", /ETH$/);
+  const start = Number(await min.getAttribute("aria-valuenow"));
+  await min.focus();
+  for (let i = 0; i < 50; i++) await page.keyboard.press("ArrowRight");
+  await expect(min).toHaveAttribute("aria-valuenow", String(start + 50));
+  await aside.getByRole("button", { name: "Aplicar", exact: true }).click();
+  // The router writes the string in quotes: minPrice=%221.5%22.
+  await expect(page).toHaveURL(/minPrice=(%22)?\d/);
+  await expect(page.locator(".nft-grid .nft-card").first()).toBeVisible();
+});
 test("barra lateral: Limpar filtros aplica na hora", async ({
   page,
 }, testInfo) => {
