@@ -8,6 +8,31 @@ import { http } from "@/lib/http";
 import { verifySession } from "@/data/session/identity";
 import "@/styles/globals.css";
 class ServiceWorkerUnavailable extends Error {}
+// MSW's worker unregisters itself when its last page unloads (reload or full
+// navigation). The next page may still be controlled by that old worker,
+// which knows no active page and lets every request through to the network
+// (a 404 on the published site), while MSW activates a new worker. That one
+// claims the open pages on activation: wait for it (briefly) before
+// rendering. A first visit (no controller yet) waits the same way.
+async function controlledByActiveWorker() {
+  const registration = await navigator.serviceWorker.ready;
+  const controlled = () =>
+    !!registration.active &&
+    navigator.serviceWorker.controller === registration.active;
+  if (controlled()) return;
+  await new Promise<void>((resolve) => {
+    const check = () => {
+      if (!controlled()) return;
+      navigator.serviceWorker.removeEventListener("controllerchange", check);
+      resolve();
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", check);
+    setTimeout(() => {
+      navigator.serviceWorker.removeEventListener("controllerchange", check);
+      resolve();
+    }, 3000);
+  });
+}
 async function start() {
   const env = readEnv();
   http.defaults.baseURL = env.apiBaseURL;
@@ -19,18 +44,7 @@ async function start() {
       throw new ServiceWorkerUnavailable();
     const { startMocks } = await import("@/mocks/browser");
     const controls = await startMocks(env.apiBaseURL);
-    // On a first visit the worker may report ready a moment before it
-    // controls the page; requests sent in that gap would go to the network
-    // (404 on the published site). Wait for control, briefly.
-    if (!navigator.serviceWorker.controller)
-      await new Promise<void>((resolve) => {
-        navigator.serviceWorker.addEventListener(
-          "controllerchange",
-          () => resolve(),
-          { once: true },
-        );
-        setTimeout(resolve, 3000);
-      });
+    await controlledByActiveWorker();
     if (import.meta.env.VITE_ENABLE_TEST_HARNESS === "true") {
       const { installHarness } = await import("@/testing/harness");
       installHarness(controls, env.apiBaseURL);

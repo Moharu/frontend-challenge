@@ -46,8 +46,13 @@ Pelo conector da Vercel: a primeira tentativa de criar o projeto falhou por falt
 Chromium desktop e mobile, 2 workers.
 
 - **Primeira execução** (logo após a implantação, cache da CDN frio): 8 aprovados e 2 falhas no desktop.
-  - "acesso direto e refresh": uma requisição `/api/nfts` da página inicial foi respondida pela rede (404) em vez do service worker. **Não se repetiu** em 34 execuções seguintes do mesmo teste (4 isoladas e 3 rodadas completas), nem em 6 sondagens com visitas novas e recargas. Hipótese: numa primeira visita, a promessa de início do MSW resolveu antes de o worker novo assumir o controle da página. Correção defensiva aplicada depois (autorizada pelo usuário): antes de renderizar, `main.tsx` espera `navigator.serviceWorker.controller` (evento `controllerchange`, no máximo 3 s); integração (184), E2E (14) e a suíte de implantação local seguiram aprovadas.
-  - "arquivos estáticos": a fonte ainda não tinha carregado quando o teste a procurou (problema do teste). O teste passou a esperar `document.fonts.ready`; 6/6 em seguida.
+  - "acesso direto e refresh": uma requisição `/api/nfts` da página inicial foi respondida pela rede (404) em vez do service worker. **Não se repetiu** em 34 execuções seguintes do mesmo teste (4 isoladas e 3 rodadas completas), nem em 6 sondagens com visitas novas e recargas. Hipótese: numa primeira visita, a promessa de início do MSW resolveu antes de o worker novo assumir o controle da página. Primeira correção (autorizada pelo usuário, commit `d06407d`): esperar algum `navigator.serviceWorker.controller` antes de renderizar. **Não bastou:** na implantação seguinte, o teste de favoritos (mobile) falhou 2 vezes em 6 com `/api/favorites` respondido pela rede logo após o login.
+
+**Causa identificada:** o worker do MSW 2.15 se desregistra quando sua última página descarrega (`CLIENT_CLOSED` ao recarregar ou navegar com carregamento completo) e esvazia a lista de páginas ativas. A página seguinte pode continuar controlada por esse worker antigo, que deixa passar para a rede tudo enquanto `activeClientIds` está vazio, até o worker novo registrado pelo MSW assumir o controle. Localmente o worker novo se instala quase na hora; na Vercel, buscar o script leva mais tempo e as primeiras requisições escapam.
+
+**Correção:** antes de renderizar, `main.tsx` espera que a página seja controlada pelo worker ativo do registro atual (`navigator.serviceWorker.ready`, comparando com `navigator.serviceWorker.controller`; o worker novo chama `clients.claim()` ao ativar), por no máximo 3 s. Integração (184), E2E (14) e a suíte de implantação local seguiram aprovadas; o resultado em produção está abaixo.
+
+- "arquivos estáticos": a fonte ainda não tinha carregado quando o teste a procurou (problema do teste). O teste passou a esperar `document.fonts.ready`; 6/6 em seguida.
 - **Execuções seguintes:** 3 rodadas completas, 30/30 aprovadas, sem erro no console e sem chamada `/api` fora do service worker; a compra chega ao recibo confirmado sem recarga (o evento `order.updated` pelo Socket.IO simulado); favoritos aparecem na Lista de interesse.
 
 ## Diferenças em relação ao build local

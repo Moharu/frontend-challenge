@@ -136,25 +136,23 @@ test("2. arquivos estáticos: worker, assets, fontes, robots", async ({
   expect(bundle.status()).toBe(200);
   // Fonts load after the first render: wait for them before looking.
   await expect(page.locator(".nft-grid .nft-card").first()).toBeVisible();
-  const font = await page.evaluate(
-    async () =>
-      ((await document.fonts.ready) &&
+  // Fonts and lazy artwork arrive after the first render (later on a cold
+  // CDN): poll the loaded resources until each shows up.
+  const loaded = (pattern: string) =>
+    page.evaluate(
+      (pattern) =>
         performance
           .getEntriesByType("resource")
           .map((e) => e.name)
-          .find((n) => /\.woff2?$/.test(n))) ??
-      null,
-  );
-  expect(font).toBeTruthy();
+          .find((n) => new RegExp(pattern).test(n)) ?? null,
+      pattern,
+    );
+  await expect.poll(() => loaded("\\.woff2?$")).toBeTruthy();
+  const font = await loaded("\\.woff2?$");
   expect((await request.get(font!)).status()).toBe(200);
   // An artwork the page loaded (names depend on the responsive sizes).
-  const image = await page.evaluate(
-    () =>
-      performance
-        .getEntriesByType("resource")
-        .map((e) => e.name)
-        .find((n) => n.includes("/assets/art/")) ?? null,
-  );
+  await expect.poll(() => loaded("/assets/art/")).toBeTruthy();
+  const image = await loaded("/assets/art/");
   expect(image).toBeTruthy();
   expect((await request.get(image!)).status()).toBe(200);
 });
