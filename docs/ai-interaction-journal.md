@@ -288,12 +288,26 @@ Mantenha este diário de alto nível nos próximos trabalhos do projeto com assi
 
 **Verificação:** 122 testes de integração e 10 E2E aprovados com 2 workers, sem erros de infraestrutura e sem processos órfãos. Detalhes em `docs/checkout-verification.md`. Nenhum commit ou push.
 
-**Autorização de commit:** o usuário autorizou commit e push (83f4a2b).
+**Autorização de commit:** o usuário autorizou commit e push (`83f4a2b`).
 
-## 2026-10-30 — Pedidos, pagamento simulado e recibo (docs/handoffs/coding-agent-orders-draft-pt-br.md)
+## 2026-10-30 — Pedidos, pagamento simulado e recibo (`docs/handoffs/coding-agent-orders-draft-pt-br.md`)
 
 **Orientação do usuário:** executar o handoff de pedidos até o recibo, sem Lighthouse e sem commit/push; registrar erros de infraestrutura.
 
-**Resolução:** cotações persistidas e versionadas com comparação no servidor (409 \QUOTE_CHANGED\ com a cotação nova); \POST /orders\ idempotente por usuário e corpo canônico, colecionador validado no servidor, snapshots imutáveis e reserva de estoque; resolução persistida \pending → confirmed | declined\, aplicada uma vez, com redução exata do carrinho e liberação do estoque na recusa; \order.updated\ privado por conexão autenticada (evento \session.authenticate\, porque a integração MSW não expõe o \uth\ da negociação); página \/orders/\ com pendente, confirmado (recibo) e recusado; chave em \sessionStorage\ com retomada após refresh e nova tentativa após falha sem resposta; \<p>\ fora do \<dl>\ e cupom expirado removível. A página substitui o modal do Figma (decisões em \docs/orders.md\).
+**Resolução:** cotações persistidas e versionadas com comparação no servidor (409 `QUOTE_CHANGED` com a cotação nova); `POST /orders` idempotente por usuário e corpo canônico, colecionador validado no servidor, snapshots imutáveis e reserva de estoque; resolução persistida `pending → confirmed | declined`, aplicada uma vez, com redução exata do carrinho e liberação do estoque na recusa; `order.updated` privado por conexão autenticada (evento `session.authenticate`, porque a integração MSW não expõe o `auth` da negociação); página `/orders/$orderId` com pendente, confirmado (recibo) e recusado; chave em `sessionStorage` com retomada após refresh e nova tentativa após falha sem resposta; `<p>` fora do `<dl>` e cupom expirado removível. A página substitui o modal do Figma (decisões em `docs/orders.md`). Na revisão, o recibo desktop passou a seguir o frame `11:4385` e o mobile, a ocupar a tela inteira como o login (orientações do usuário).
 
-**Verificação:** 152 testes de integração (15 casos de pedidos × 2, repetidos 3 vezes) e 12 E2E (com as referências do recibo) aprovados com 2 workers; varredura de larguras sem overflow; nenhum erro de infraestrutura. Uma falha repetida de teste de sessão sob carga foi investigada (Escape antes de o Radix registrar o aviso aninhado) e corrigida no teste. Detalhes em \docs/orders-verification.md\. Nenhum commit ou push.
+**Verificação:** 152 testes de integração (15 casos de pedidos × 2, repetidos 3 vezes) e 12 E2E (com as referências do recibo) aprovados com 2 workers; varredura de larguras sem overflow; nenhum erro de infraestrutura. Uma falha repetida de teste de sessão sob carga foi investigada (Escape antes de o Radix registrar o aviso aninhado) e corrigida no teste. Detalhes em `docs/orders-verification.md`.
+
+**Autorização de commit:** o usuário testou o fluxo de compra e autorizou commit e push (`012829a`).
+
+## 2026-10-30 — Correções da revisão dos pedidos (`docs/handoffs/coding-agent-orders-fixes-draft-pt-br.md`)
+
+**Resolução:** no máximo um pedido pendente por carrinho (409 `ORDER_PENDING` com o pedido existente; a outra aba é levada a ele) e disponibilidade do carrinho do comprador somando de volta a reserva do próprio pedido pendente. Detalhes em `docs/orders-verification.md`. O usuário verificou o fluxo e autorizou commit e push (`fabc1b2`).
+
+## 2026-10-30 — Conta, carteiras e favoritos (`docs/handoffs/coding-agent-account-draft-pt-br.md`)
+
+**Orientação do usuário:** executar o handoff da conta, sem Lighthouse e sem commit/push. As capturas dos frames `9:1238` (perfil) e `9:1670` (carteiras) foram fornecidas pelo usuário, porque o limite do plano do Figma MCP impediu a leitura direta.
+
+**Resolução:** área da conta com rotas reais, barra lateral no desktop e disclosure no mobile; seções fora da versão como páginas honestas; perfil com versão, avatar recortado e reexportado no navegador e troca de senha (outras sessões revogadas) num único "Salvar" com falha parcial por parte; carteiras principal e secundária com edição, limite de duas, "Igual à carteira principal" como preenchimento e desconexão ao mudar endereço, rede ou tipo; favoritos persistidos com atualização otimista, reversão anunciada e fila por NFT com a última intenção; Lista de interesse; isolamento por usuário e geração. Decisões em `docs/account.md`.
+
+**Verificação:** 184 testes de integração (13 casos da conta × 2, repetidos 3 vezes) e 12 E2E aprovados com 2 workers; cinco referências visuais atualizadas após inspeção (coração em SVG e "⋮" com menu); varredura de larguras sem overflow, depois de corrigir o campo de arquivo do avatar; nenhum erro de infraestrutura. Também foi corrigida esta entrada de diário da etapa de pedidos, que havia sido gravada com caracteres corrompidos. Detalhes em `docs/account-verification.md`. Nenhum commit ou push.

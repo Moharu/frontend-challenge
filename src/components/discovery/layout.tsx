@@ -22,8 +22,12 @@ import type { CatalogRealtime } from "@/realtime/catalog";
 import { setRealtime } from "@/realtime/instance";
 import { Unavailable } from "./shared";
 import { AccountArea, MobileAccount, ExpiryRedirect, Notices } from "./account";
-import { subscribeIdentity, getIdentity } from "@/data/session/identity";
-import { openedOnLoad } from "@/lib/redirect";
+import {
+  subscribeIdentity,
+  getIdentity,
+  useIdentity,
+} from "@/data/session/identity";
+import { authLink, openedOnLoad } from "@/lib/redirect";
 import { asset, artImage } from "./assets";
 import { badgeText, cartCountLabel, useCart } from "@/data/cart/hooks";
 // The auth dialog opened over the current page, in its own chunk. It starts
@@ -298,9 +302,8 @@ export function PublicLayout() {
         <Link to="/" search={discoverySearch} aria-label="Início">
           <img src={asset("mobile-home-Home.svg")} alt="" />
         </Link>
-        <Unavailable label="Favoritos">
-          <img src={asset("mobile-home-Vector1.svg")} alt="" />
-        </Unavailable>
+        <FavoritesLink />
+
         <Unavailable
           label="Ação central indisponível"
           className="central-action"
@@ -325,6 +328,33 @@ export function PublicLayout() {
     </>
   );
 }
+// Favorites in the mobile navigation: the "Lista de interesse" (signed out,
+// the login, returning to it).
+function FavoritesLink() {
+  const identity = useIdentity();
+  const icon = <img src={asset("mobile-home-Vector1.svg")} alt="" />;
+  return identity.session ? (
+    <Link to="/account/favorites" aria-label="Lista de interesse">
+      {icon}
+    </Link>
+  ) : (
+    <Link
+      {...authLink("login", "/account/favorites")}
+      aria-label="Lista de interesse, entrar"
+    >
+      {icon}
+    </Link>
+  );
+}
+// Footer items with a real page; the others keep the unavailability notice.
+const footerRoutes: Record<
+  string,
+  "/account/profile" | "/account/activity" | "/account/favorites"
+> = {
+  "Meu perfil": "/account/profile",
+  Atividade: "/account/activity",
+  "Lista de interesse": "/account/favorites",
+};
 function Footer() {
   return (
     <footer>
@@ -413,11 +443,18 @@ function Footer() {
         ].map(([title, ...items]) => (
           <section key={title}>
             <h2>{title}</h2>
-            {items.map((item) => (
-              <Unavailable key={item} label={item}>
-                {item}
-              </Unavailable>
-            ))}
+            {items.map((item) =>
+              item in footerRoutes ? (
+                // Account pages (signed out, the guard leads to the login).
+                <Link key={item} to={footerRoutes[item]}>
+                  {item}
+                </Link>
+              ) : (
+                <Unavailable key={item} label={item}>
+                  {item}
+                </Unavailable>
+              ),
+            )}
           </section>
         ))}
         <section>

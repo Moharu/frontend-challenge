@@ -135,3 +135,12 @@ O retrato passa a `schemaVersion` 6: cotações persistidas (`quotes`, as 50 mai
 | `probeSocket(token)`                             | Abre um segundo cliente `socket.io-client` autenticado com `token` e registra os nomes dos eventos recebidos (teste de vazamento) |
 
 Para reproduzir manualmente uma recusa ou um timeout depois da criação, use a ponte do build de integração (`npm run build:integration` e `npm run preview -- --outDir dist-integration`) e chame `__KURIO_TEST__.setPayment("declined")` ou `__KURIO_TEST__.loseNextOrderResponse()` no console antes de confirmar a compra.
+
+## Extensões da etapa da conta
+
+O retrato passa a `schemaVersion` 7: o perfil fica na conta (`ensName`, `walletNickname`, `bio`, `avatar` e `profileVersion`) e os favoritos por usuário em `favorites`. Retratos anteriores restauram a seed; isso também normaliza usuários que tinham cadastrado mais de duas carteiras pelo checkout antes do limite (principal e secundária). Regras em [conta](account.md).
+
+| Controle da ponte (`window.__KURIO_TEST__`) | Efeito                                                                                   |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `failNextFavorite('http' or 'network')`     | Falha de uso único na próxima escrita de favoritos (`POST` ou `DELETE`), para a reversão |
+| `favoriteDelay(ms)`                         | Latência das escritas de favoritos (cliques rápidos e o estado otimista visível)         |

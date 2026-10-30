@@ -64,16 +64,27 @@ export const ensNamePattern = /^([a-z0-9-]{1,63}\.)*[a-z0-9-]{3,63}\.eth$/;
 export const sameAddress = (a: string, b: string) =>
   a.toLowerCase() === b.toLowerCase();
 export const walletLabelMax = 40;
+export const walletTextMax = 60;
+export const referralCodePattern = /^[A-Z0-9-]{4,20}$/;
+const walletEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type WalletInput = {
   address: string;
   network: string;
   provider: string;
   label: string;
+  // Descriptive fields, all optional (checked when filled).
+  displayName?: string;
+  profileName?: string;
+  referralCode?: string;
+  email?: string;
+  ensName?: string;
+  secondaryAddressOrEns?: string;
 };
-// Shared by the simulated server and the form. `existing` are the user's
-// current wallets, for the one-address-per-user rule. Messages are for
-// display only; `duplicate` tells the conflict case apart explicitly, so the
-// server's status (409 vs 400) never depends on the wording.
+// Shared by the simulated server and the forms. `existing` are the user's
+// other wallets, for the one-address-per-user rule (an edited wallet is left
+// out by the caller). Messages are for display only; `duplicate` tells the
+// conflict case apart explicitly, so the server's status (409 vs 400) never
+// depends on the wording.
 export function validateWallet(
   input: WalletInput,
   existing: Pick<Wallet, "address">[] = [],
@@ -100,8 +111,33 @@ export function validateWallet(
   if (!label) fields.label = "Dê um nome para identificar a carteira.";
   else if (label.length > walletLabelMax)
     fields.label = `Use no máximo ${walletLabelMax} caracteres.`;
+  for (const key of ["displayName", "profileName"] as const) {
+    const value = input[key]?.trim();
+    if (value && value.length > walletTextMax)
+      fields[key] = `Use no máximo ${walletTextMax} caracteres.`;
+  }
+  const referral = input.referralCode?.trim();
+  if (referral && !referralCodePattern.test(referral))
+    fields.referralCode =
+      "Use de 4 a 20 caracteres: letras maiúsculas, números ou hífen.";
+  const email = input.email?.trim();
+  if (email && !walletEmailPattern.test(email))
+    fields.email = "Informe um e-mail válido.";
+  const ens = input.ensName?.trim();
+  if (ens && !ensNamePattern.test(ens))
+    fields.ensName = "Use um nome .eth válido, por exemplo ada.eth.";
+  const secondary = input.secondaryAddressOrEns?.trim();
+  if (
+    secondary &&
+    !ensNamePattern.test(secondary) &&
+    !(network in networkNames && validAddress(network, secondary))
+  )
+    fields.secondaryAddressOrEns =
+      "Use um endereço válido para a rede da carteira ou um nome .eth.";
   return { fields, duplicate };
 }
+// At most one primary and one secondary wallet per user.
+export const maxWallets = 2;
 // Field messages only (the form).
 export const walletErrors = (
   input: WalletInput,

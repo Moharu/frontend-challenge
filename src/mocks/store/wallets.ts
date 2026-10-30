@@ -3,6 +3,7 @@ import { addEth, subtractEth } from "@/contracts/eth";
 import type { Quote } from "@/contracts/quotes";
 import { canonicalJson } from "@/contracts/orders";
 import {
+  maxWallets,
   validateWallet,
   type Wallet,
   type WalletConnection,
@@ -56,12 +57,24 @@ export function createWallet(
   const text = (key: string) =>
     typeof input[key] === "string" ? (input[key] as string) : "";
   const own = Object.values(state.wallets).filter((w) => w.userId === userId);
+  if (own.length >= maxWallets)
+    throw new ApiError(
+      409,
+      "CONFLICT",
+      "Você já tem uma carteira principal e uma secundária. Edite uma delas em Carteiras.",
+    );
   const { fields, duplicate } = validateWallet(
     {
       address: text("address"),
       network: text("network"),
       provider: text("provider"),
       label: text("label"),
+      displayName: text("displayName"),
+      profileName: text("profileName"),
+      referralCode: text("referralCode"),
+      email: text("email"),
+      ensName: text("ensName"),
+      secondaryAddressOrEns: text("secondaryAddressOrEns"),
     },
     own,
   );
@@ -94,6 +107,88 @@ export function createWallet(
   };
   state.wallets[wallet.id] = wallet;
   return wallet;
+}
+const editable = [
+  "address",
+  "network",
+  "provider",
+  "label",
+  "displayName",
+  "profileName",
+  "referralCode",
+  "email",
+  "ensName",
+  "secondaryAddressOrEns",
+] as const;
+// PATCH: omitted fields keep their value; null clears the descriptive ones.
+// The role is not editable (the server decides it). Changing the address,
+// network or provider ends the wallet's active connections: the checkout then
+// shows the disconnection and quotes again.
+export function updateWallet(
+  state: WalletsState,
+  token: string | null,
+  id: string,
+  body: unknown,
+): Wallet {
+  const userId = userOf(state, token);
+  const wallet = ownWallet(state, userId, id);
+  const input = (body ?? {}) as Record<string, unknown>;
+  if (typeof input.version !== "number")
+    throw new ApiError(400, "VALIDATION", "Informe a versão da carteira.");
+  if (input.version !== wallet.version)
+    throw new ApiError(
+      409,
+      "CONFLICT",
+      "A carteira foi alterada em outro lugar. Recarregue os dados e tente novamente.",
+    );
+  const next = { ...wallet };
+  for (const key of editable) {
+    if (!(key in input)) continue;
+    const value = input[key];
+    if (value === null) (next as Record<string, unknown>)[key] = null;
+    else if (typeof value === "string")
+      (next as Record<string, unknown>)[key] = value.trim();
+  }
+  const others = Object.values(state.wallets).filter(
+    (w) => w.userId === userId && w.id !== wallet.id,
+  );
+  const { fields, duplicate } = validateWallet(
+    {
+      address: next.address ?? "",
+      network: next.network ?? "",
+      provider: next.provider ?? "",
+      label: next.label ?? "",
+      displayName: next.displayName ?? "",
+      profileName: next.profileName ?? "",
+      referralCode: next.referralCode ?? "",
+      email: next.email ?? "",
+      ensName: next.ensName ?? "",
+      secondaryAddressOrEns: next.secondaryAddressOrEns ?? "",
+    },
+    others,
+  );
+  if (Object.keys(fields).length)
+    throw new ApiError(
+      duplicate ? 409 : 400,
+      duplicate ? "CONFLICT" : "VALIDATION",
+      "Revise os dados da carteira.",
+      fields,
+    );
+  for (const key of editable)
+    if (key !== "address" && key !== "network" && key !== "provider")
+      (next as Record<string, unknown>)[key] = optional(next[key]);
+  const moved =
+    next.address !== wallet.address ||
+    next.network !== wallet.network ||
+    next.provider !== wallet.provider;
+  if (moved)
+    for (const c of Object.values(state.connections))
+      if (c.walletId === wallet.id && c.status === "active")
+        c.status = "disconnected";
+  state.tick++;
+  next.version++;
+  state.wallets[wallet.id] = next;
+  return next;
 }
 // 404 for an unknown wallet, 403 for another user's wallet.
 export function ownWallet(

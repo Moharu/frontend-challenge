@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   useSyncExternalStore,
@@ -13,6 +14,7 @@ import type { Network } from "@/contracts/common";
 import { compareEth, formatEth } from "@/contracts/eth";
 import type { Quote } from "@/contracts/quotes";
 import {
+  maxWallets,
   networkNames,
   providerNames,
   shortAddress,
@@ -45,7 +47,6 @@ import { apiError } from "@/lib/api-error";
 import { discoverySearch } from "@/lib/discovery-search";
 import { checkoutSteps, type CheckoutStep } from "@/lib/checkout-search";
 import type { Session } from "@/contracts/session";
-import { Unavailable } from "@/components/discovery/shared";
 import { artImage, asset } from "@/components/discovery/assets";
 const eth = (value: string) => `${formatEth(value)} ETH`;
 // Same breakpoint as the login: up to 700px the checkout is the mobile flow
@@ -834,16 +835,47 @@ function WalletRadios({
             <span>{walletLine(w)}</span>
             <span>{networkLine(w)}</span>
           </label>
-          <Unavailable
-            className="wallet-menu"
-            label={`Opções da carteira ${w.label ?? walletLine(w)}`}
-            description="A edição de carteiras chega na etapa de carteiras. Por enquanto, cadastre uma nova carteira no pagamento."
-          >
-            <span aria-hidden="true">⋮</span>
-          </Unavailable>
+          <WalletMenu name={w.label ?? walletLine(w)} />
         </div>
       ))}
     </fieldset>
+  );
+}
+// "⋮" of a wallet: a small disclosure with "Editar carteira" (the wallets
+// page). Escape closes it and returns focus.
+function WalletMenu({ name }: { name: string }) {
+  const [open, setOpen] = useState(false);
+  const toggle = useRef<HTMLButtonElement>(null);
+  const id = useId();
+  return (
+    <div
+      className="wallet-menu-wrap"
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && open) {
+          setOpen(false);
+          toggle.current?.focus();
+        }
+      }}
+    >
+      <button
+        ref={toggle}
+        type="button"
+        className="wallet-menu"
+        aria-label={`Opções da carteira ${name}`}
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span aria-hidden="true">⋮</span>
+      </button>
+      {open && (
+        <ul id={id} className="wallet-menu-list">
+          <li>
+            <Link to="/account/wallets">Editar carteira</Link>
+          </li>
+        </ul>
+      )}
+    </div>
   );
 }
 function WalletCards(props: Shared) {
@@ -1026,6 +1058,7 @@ function WalletForm({
   autoFocus?: boolean;
 }) {
   const create = useCreateWallet();
+  const registered = useWallets().data?.length ?? 0;
   const [values, setValues] = useState({
     label: "",
     network: "ethereum",
@@ -1079,6 +1112,29 @@ function WalletForm({
       <p id={`wallet-form-${name}-error`} className="auth-error">
         {errors[name]}
       </p>
+    );
+  // At most a primary and a secondary wallet: with both, registering is not
+  // available here; the user edits one of them instead.
+  if (registered >= maxWallets)
+    return (
+      <div id="wallet-form" className="wallet-form wallet-limit" role="status">
+        <p>
+          Você já tem uma carteira principal e uma secundária. Para usar outra
+          carteira, edite uma delas.
+        </p>
+        <Link className="button button-outline" to="/account/wallets">
+          Editar carteiras
+        </Link>
+        {onCancel && (
+          <button
+            type="button"
+            className="button button-outline"
+            onClick={onCancel}
+          >
+            Fechar
+          </button>
+        )}
+      </div>
     );
   return (
     <form

@@ -206,6 +206,55 @@ export function createHandlers(
         ),
       ),
     ),
+    http.patch(`${base}/wallets/:id`, (info) =>
+      apiRoute(async (identity, request) =>
+        store.updateWallet(
+          identity.session,
+          String(info.params.id),
+          await body(request),
+        ),
+      )(info),
+    ),
+    // Collector profile (data, avatar and password) and favorites.
+    http.get(
+      `${base}/profile`,
+      apiRoute((identity) => store.profile(identity.session)),
+    ),
+    http.patch(
+      `${base}/profile`,
+      apiRoute(async (identity, request) =>
+        store.updateProfile(identity.session, await body(request)),
+      ),
+    ),
+    http.put(
+      `${base}/profile/avatar`,
+      apiRoute(async (identity, request) =>
+        store.updateAvatar(identity.session, await body(request)),
+      ),
+    ),
+    http.put(
+      `${base}/profile/password`,
+      apiRoute(async (identity, request) => {
+        await store.changePassword(identity.session, await body(request));
+      }),
+    ),
+    http.get(
+      `${base}/favorites`,
+      apiRoute((identity) => store.favorites(identity.session)),
+    ),
+    http.post(
+      `${base}/favorites`,
+      apiRoute(
+        async (identity, request) =>
+          store.addFavorite(identity.session, await body(request)),
+        201,
+      ),
+    ),
+    http.delete(`${base}/favorites/:nftId`, (info) =>
+      apiRoute(async (identity) => {
+        await store.removeFavorite(identity.session, String(info.params.nftId));
+      })(info),
+    ),
     // Orders: idempotent creation (Idempotency-Key), reading and receipt.
     // Overdue payments are resolved on every access.
     http.post(`${base}/orders`, async ({ request }) => {

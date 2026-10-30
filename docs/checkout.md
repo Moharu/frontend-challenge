@@ -71,7 +71,8 @@ Regra de nova confirmação (`useCheckoutQuote`):
 - **Lista de provedores segue a carteira cadastrada:** o provedor da carteira selecionada vem marcado; escolher outro seleciona a carteira do usuário com esse provedor ou oferece cadastrar uma já com o provedor escolhido. No desktop, a primeira opção é o selo "METAMASK • WALLETCONNECT • COINBASE", tratado como WalletConnect (nome acessível "WalletConnect").
 - **Taxa:** com a carteira escolhida, a legenda é a rede efetiva ("Taxa de rede (Polygon)"), não "Taxa estimada".
 - **Resumo no mobile:** o frame mostra só o Total no passo da carteira; o passo de revisão traz itens, subtotal, desconto, taxa e total da cotação.
-- **Menu "⋮":** usa o diálogo de indisponibilidade (edição na etapa de carteiras).
+- **Menu "⋮":** oferece "Editar carteira", que leva a `/account/wallets` (etapa da conta).
+- **Limite de carteiras:** com principal e secundária cadastradas, "Cadastrar nova carteira" (e a escolha de um provedor sem carteira) mostra a explicação e "Editar carteiras" em vez do formulário ([conta](account.md)).
 - **Valores desenhados** são exemplos; todos os valores vêm da cotação da API.
 - **Cabeçalho:** usa o cabeçalho autenticado, não o "Entrar" do frame.
 - **Ícones dos provedores:** o arquivo do Figma não exportou ícones de carteira; os três provedores usam o selo com a inicial (W, M, C) do frame.
@@ -80,4 +81,4 @@ Regra de nova confirmação (`useCheckoutQuote`):
 
 ## Indisponibilidades que permanecem
 
-Edição de carteira e menu "⋮", página de carteiras, perfil, favoritos e login social.
+Login social.

@@ -651,21 +651,28 @@ test("12. teclado e foco: grupos de rádio, cadastro de carteira e avisos", asyn
   await page.keyboard.press("ArrowUp");
   await expect(page.getByRole("radio", { name: "MetaMask" })).toBeChecked();
   await connected(page);
-  // No WalletConnect wallet: choosing it offers the registration form, with
-  // focus on its first field and the provider preselected.
+  // No WalletConnect wallet, but Ada already has a primary and a secondary:
+  // instead of the registration form, the limit and a way to edit them.
   await page.keyboard.press("ArrowUp");
-  await expect(page.locator(".provider-missing [role=status]")).toContainText(
+  const missing = page.locator(".provider-missing");
+  await expect(missing).toContainText(
     "Você não tem uma carteira WalletConnect cadastrada.",
   );
-  const form = page.getByRole("form", { name: "Cadastrar nova carteira" });
-  await expect(form.getByLabel("Nome da carteira")).toBeFocused();
-  await expect(form.getByLabel("Provedor")).toHaveValue("walletconnect");
-  await form.getByRole("button", { name: "Cancelar" }).click();
+  await expect(missing.locator(".wallet-limit")).toContainText(
+    "Você já tem uma carteira principal e uma secundária.",
+  );
+  await expect(
+    missing.getByRole("link", { name: "Editar carteiras" }),
+  ).toHaveAttribute("href", "/account/wallets");
+  await missing.getByRole("button", { name: "Fechar" }).click();
   // Notices are announced once, in the single polite region.
   await expect(page.locator("[role=status].notices")).toHaveCount(1);
-  // The "⋮" menu explains that editing comes later.
-  await page
-    .getByRole("button", { name: /Opções da carteira Principal/ })
-    .click();
-  await expect(dialog(page)).toContainText("A edição de carteiras chega");
+  // The "⋮" menu offers "Editar carteira" (the wallets page).
+  const menu = page.getByRole("button", {
+    name: /Opções da carteira Principal/,
+  });
+  await menu.click();
+  await expect(menu).toHaveAttribute("aria-expanded", "true");
+  await page.getByRole("link", { name: "Editar carteira" }).click();
+  await expect(page).toHaveURL(/\/account\/wallets$/);
 });

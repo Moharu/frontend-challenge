@@ -18,13 +18,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import {
-  NftCard,
-  QueryError,
-  Skeleton,
-  Unavailable,
-} from "@/components/discovery/shared";
+import { NftCard, QueryError, Skeleton } from "@/components/discovery/shared";
 import { artImage, asset } from "@/components/discovery/assets";
+import { FavoriteButton, HeartIcon } from "@/components/discovery/favorite";
 export function NftPage() {
   const { nftId } = useParams({ from: "/nfts/$nftId" });
   const result = useQuery(nftDetailOptions(nftId));
@@ -316,12 +312,18 @@ function NftDetails({ nft }: { nft: Nft }) {
             <Button variant="ghost" onClick={() => void share()}>
               Compartilhar este NFT ↗
             </Button>
-            <Unavailable
-              label="Favoritar NFT"
-              className="button button-outline"
+            <FavoriteButton
+              nftId={nft.id}
+              name={nft.name}
+              className="button button-outline favorite-detail"
             >
-              ♡ Favoritar
-            </Unavailable>
+              {(on) => (
+                <>
+                  <HeartIcon on={on} />
+                  {on ? "Favoritado" : "Favoritar"}
+                </>
+              )}
+            </FavoriteButton>
           </div>
           <p role="status">{shareStatus}</p>
         </div>

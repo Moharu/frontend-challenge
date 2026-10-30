@@ -17,6 +17,12 @@ export interface StoredAccount {
   password: PasswordHash;
   createdAt: string;
   cartId: string;
+  // Collector profile (created with the account).
+  ensName: string | null;
+  walletNickname: string | null;
+  bio: string | null;
+  avatar: string | null;
+  profileVersion: number;
 }
 export interface StoredSession {
   id: string;
@@ -77,11 +83,20 @@ function emptyCart(state: AccountsState, id: string): StoredCart {
 }
 export function seedAccount(
   state: AccountsState,
-  account: Omit<StoredAccount, "cartId" | "createdAt">,
+  account: Pick<
+    StoredAccount,
+    "id" | "username" | "email" | "displayName" | "password"
+  > &
+    Partial<Pick<StoredAccount, "ensName" | "walletNickname">>,
 ) {
   const cartId = `cart-${account.id}`;
   state.carts[cartId] = emptyCart(state, cartId);
   state.accounts[account.id] = {
+    ensName: null,
+    walletNickname: null,
+    bio: null,
+    avatar: null,
+    profileVersion: 1,
     ...account,
     createdAt: logicalTime(state.tick),
     cartId,

@@ -4,6 +4,7 @@ import {
   createRouter,
   Link,
   lazyRouteComponent,
+  redirect,
 } from "@tanstack/react-router";
 import { PublicLayout } from "@/components/discovery/layout";
 import { discoverySearch } from "@/lib/discovery-search";
@@ -63,6 +64,62 @@ const orderRoute = createRoute({
   errorComponent: SessionCheckError,
   component: lazyRouteComponent(() => import("@/routes/order"), "OrderPage"),
 });
+// Collector account: one protected layout (sidebar on desktop, disclosure on
+// mobile) with a real URL per section. The sections outside this version are
+// honest pages inside the same layout.
+const accountRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/account",
+  beforeLoad: requireSession,
+  errorComponent: SessionCheckError,
+  component: lazyRouteComponent(
+    () => import("@/routes/account"),
+    "AccountLayout",
+  ),
+});
+const accountIndexRoute = createRoute({
+  getParentRoute: () => accountRoute,
+  path: "/",
+  beforeLoad: () => {
+    throw redirect({ to: "/account/profile", replace: true });
+  },
+});
+const accountSection = <P extends string>(
+  path: P,
+  load: () => Promise<Record<string, React.ComponentType>>,
+  name: string,
+) =>
+  createRoute({
+    getParentRoute: () => accountRoute,
+    path,
+    component: lazyRouteComponent(load, name),
+  });
+const accountRoutes = [
+  accountIndexRoute,
+  accountSection(
+    "profile",
+    () => import("@/routes/account-profile"),
+    "ProfilePage",
+  ),
+  accountSection(
+    "wallets",
+    () => import("@/routes/account-wallets"),
+    "WalletsPage",
+  ),
+  accountSection(
+    "favorites",
+    () => import("@/routes/account"),
+    "FavoritesPage",
+  ),
+  accountSection("activity", () => import("@/routes/account"), "ActivityPage"),
+  accountSection("offers", () => import("@/routes/account"), "OffersPage"),
+  accountSection(
+    "downloads",
+    () => import("@/routes/account"),
+    "DownloadsPage",
+  ),
+  accountSection("support", () => import("@/routes/account"), "SupportPage"),
+];
 // Login and signup have real URLs; the target travels in a validated param.
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -104,6 +161,7 @@ export const router = createRouter({
     cartRoute,
     checkoutRoute,
     orderRoute,
+    accountRoute.addChildren(accountRoutes),
     loginRoute,
     signupRoute,
     ...testRoutes,

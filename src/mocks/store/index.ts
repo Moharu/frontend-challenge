@@ -38,13 +38,23 @@ import {
   disconnectAll,
   getConnection,
   listWallets,
+  updateWallet,
 } from "./wallets";
+import {
+  addFavorite,
+  changePassword,
+  getProfile,
+  listFavorites,
+  removeFavorite,
+  updateAvatar,
+  updateProfile,
+  type ProfileState,
+} from "./profile";
 import {
   createOrder,
   getOrder,
   getReceipt,
   resolveDue,
-  type OrdersState,
   QuoteChangedError,
   type PaymentOutcome,
 } from "./orders";
@@ -54,15 +64,15 @@ export interface CartIdentity {
   visitor: string | null;
 }
 export const storageKey = "kurio.mock.catalog.v1";
-export interface Snapshot extends OrdersState {
-  schemaVersion: 6;
+export interface Snapshot extends ProfileState {
+  schemaVersion: 7;
   seedVersion: 2;
   tick: number;
   nfts: Nft[];
 }
 function fresh(): Snapshot {
   const state: Snapshot = {
-    schemaVersion: 6,
+    schemaVersion: 7,
     seedVersion: 2,
     tick: 0,
     nfts: seedNfts(),
@@ -81,6 +91,7 @@ function fresh(): Snapshot {
     orders: {},
     idempotency: {},
     orderSequence: 0,
+    favorites: {},
   };
   for (const user of fixtureUsers)
     seedAccount(state, {
@@ -114,7 +125,7 @@ function validCart(value: unknown): value is StoredCart {
 function valid(value: unknown): value is Snapshot {
   if (
     !record(value) ||
-    value.schemaVersion !== 6 ||
+    value.schemaVersion !== 7 ||
     value.seedVersion !== 2 ||
     !integer(value.tick) ||
     value.tick > 1000000 ||
@@ -131,7 +142,8 @@ function valid(value: unknown): value is Snapshot {
     !integer(value.quoteSequence) ||
     !record(value.orders) ||
     !record(value.idempotency) ||
-    !integer(value.orderSequence)
+    !integer(value.orderSequence) ||
+    !record(value.favorites)
   )
     return false;
   const nfts = value.nfts;
@@ -154,7 +166,8 @@ function valid(value: unknown): value is Snapshot {
         typeof a.cartId === "string" &&
         a.cartId in carts &&
         record(a.password) &&
-        typeof a.password.hash === "string",
+        typeof a.password.hash === "string" &&
+        integer(a.profileVersion, 1),
     )
   );
 }
@@ -307,6 +320,24 @@ export function createStore(storage: Storage) {
       transaction(() => listWallets(state, token)),
     createWallet: (token: string | null, body: unknown) =>
       write((draft) => createWallet(draft, token, body)),
+    updateWallet: (token: string | null, id: string, body: unknown) =>
+      write((draft) => updateWallet(draft, token, id, body)),
+    profile: (token: string | null) =>
+      transaction(() => getProfile(state, token)),
+    updateProfile: (token: string | null, body: unknown) =>
+      write((draft) => updateProfile(draft, token, body)),
+    updateAvatar: (token: string | null, body: unknown) =>
+      write((draft) => updateAvatar(draft, token, body)),
+    changePassword: (token: string | null, body: unknown) =>
+      write((draft) => changePassword(draft, token, body)),
+    favorites: (token: string | null) =>
+      transaction(() => listFavorites(state, token)),
+    addFavorite: (token: string | null, body: unknown) =>
+      write((draft) =>
+        addFavorite(draft, token, body, new Date().toISOString()),
+      ),
+    removeFavorite: (token: string | null, nftId: string) =>
+      write((draft) => removeFavorite(draft, token, nftId)),
     connectWallet: (token: string | null, body: unknown) =>
       write((draft) => connectWallet(draft, token, body)),
     connection: (token: string | null, id: string) =>

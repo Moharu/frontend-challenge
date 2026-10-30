@@ -1,12 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  Link,
-  useNavigate,
-  useRouter,
-  useRouterState,
-} from "@tanstack/react-router";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
@@ -18,23 +14,12 @@ import {
   useIdentity,
 } from "@/data/session/identity";
 import { subscribeNotices } from "@/data/session/notices";
-import { authLink, safeRedirect } from "@/lib/redirect";
+import { authLink } from "@/lib/redirect";
+import { useReturnTarget } from "@/lib/return-target";
 import type { Session } from "@/contracts/session";
-import { Unavailable } from "./shared";
 import { asset } from "./assets";
 const displayName = (session: Session) =>
   session.user.displayName ?? session.user.username;
-// Return target for "Entrar": the current page, except on the auth routes.
-function useReturnTarget() {
-  return useRouterState({
-    select: (state) =>
-      safeRedirect(
-        ["/login", "/signup"].includes(state.location.pathname)
-          ? undefined
-          : state.location.href,
-      ),
-  });
-}
 // Header account slot. While a stored session is verified it stays neutral,
 // so an authenticated user never sees "Entrar" flash.
 export function AccountArea() {
@@ -93,10 +78,19 @@ function AccountMenu({ session }: { session: Session }) {
       {open && (
         <ul id="account-menu" className="account-panel">
           <li>
-            <Unavailable label="Meu perfil">Meu perfil</Unavailable>
+            <Link to="/account/profile" onClick={() => setOpen(false)}>
+              Meu perfil
+            </Link>
           </li>
           <li>
-            <Unavailable label="Carteiras">Carteiras</Unavailable>
+            <Link to="/account/wallets" onClick={() => setOpen(false)}>
+              Carteiras
+            </Link>
+          </li>
+          <li>
+            <Link to="/account/favorites" onClick={() => setOpen(false)}>
+              Lista de interesse
+            </Link>
           </li>
           <li>
             <button
@@ -140,9 +134,16 @@ export function MobileAccount() {
           Conectado como {displayName(identity.session)} (
           {identity.session.user.email}).
         </DialogDescription>
-        <Unavailable label="Meu perfil" className="button button-outline">
-          Meu perfil
-        </Unavailable>
+        <DialogClose asChild>
+          <Link className="button button-outline" to="/account/profile">
+            Meu perfil
+          </Link>
+        </DialogClose>
+        <DialogClose asChild>
+          <Link className="button button-outline" to="/account/wallets">
+            Carteiras
+          </Link>
+        </DialogClose>
         <button
           className="button button-primary"
           onClick={() => void signOut()}

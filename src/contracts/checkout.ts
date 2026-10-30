@@ -1,6 +1,11 @@
 import type { Network } from "./common";
 import { emailPattern, usernamePattern } from "./session";
-import { ensNamePattern, validAddress, type WalletProvider } from "./wallets";
+import {
+  ensNamePattern,
+  referralCodePattern,
+  validAddress,
+  type WalletProvider,
+} from "./wallets";
 
 // Collector data for the order. The checkout form validates it now; order
 // creation (which would send it) comes in the next stage.
@@ -13,7 +18,7 @@ export interface CheckoutCollectorData {
   ensName?: string;
   secondaryAddressOrEns?: string;
 }
-export const referralCodePattern = /^[A-Z0-9-]{4,20}$/;
+export { referralCodePattern };
 export const collectorNoteMax = 500;
 export const collectorTextMax = 60;
 // Shared rules for the checkout form (and the future order endpoint). The

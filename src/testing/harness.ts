@@ -129,6 +129,8 @@ export function installHarness(controls: MockControls, baseURL: string) {
     // Checkout: wallet connection and quote scenarios.
     rejectNextConnection: controls.scenarios.rejectNextConnection,
     failNextCheckout: controls.scenarios.failNextCheckout,
+    failNextFavorite: controls.scenarios.failNextFavorite,
+    favoriteDelay: controls.scenarios.setFavoriteDelay,
     checkoutDelay: controls.scenarios.setCheckoutDelay,
     disconnectWallets: controls.store.disconnectWallets,
     expireCoupon: controls.store.expireCoupon,

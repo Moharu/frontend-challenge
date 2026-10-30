@@ -50,15 +50,18 @@ export function registrationErrors(input: {
       "Use de 3 a 20 caracteres: letras sem acento, números ou _.";
   if (!emailPattern.test(input.email.trim()))
     fields.email = "Informe um e-mail válido.";
-  const password = input.password;
-  if (
-    password.length < passwordMinLength ||
+  const password = passwordErrors(input.password);
+  if (password) fields.password = password;
+  return fields;
+}
+// The password rule (sign-up and password change).
+export function passwordErrors(password: string): string | null {
+  return password.length < passwordMinLength ||
     password.length > passwordMaxLength ||
     !/[a-zA-Z]/.test(password) ||
     !/\d/.test(password)
-  )
-    fields.password = `Use pelo menos ${passwordMinLength} caracteres, com uma letra e um número.`;
-  return fields;
+    ? `Use pelo menos ${passwordMinLength} caracteres, com uma letra e um número.`
+    : null;
 }
 function isIdentity(value: unknown): value is UserIdentity {
   return (

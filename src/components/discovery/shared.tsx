@@ -11,7 +11,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { artImage, asset } from "./assets";
+import { artImage } from "./assets";
+import { FavoriteButton } from "./favorite";
 export function Unavailable({
   children,
   label,
@@ -58,9 +59,7 @@ export function NftCard({ nft }: { nft: Nft }) {
             loading="lazy"
           />
         </Link>
-        <Unavailable label={`Favoritar ${nft.name}`} className="favorite">
-          <img src={asset("detail-Heart1.svg")} alt="" />
-        </Unavailable>
+        <FavoriteButton nftId={nft.id} name={nft.name} />
         {nft.discovery.rarity && (
           <span className="rarity">{nft.discovery.rarity}</span>
         )}

@@ -81,6 +81,13 @@ export function cartScope(identity: Identity = state): CartScope {
 }
 export const sameScope = (a: CartScope, b: CartScope) =>
   JSON.stringify(a) === JSON.stringify(b);
+// A saved profile changes the session's identity (username, e-mail, display
+// name): the header shows it without a new login. Same user and generation,
+// so the private cache scope does not change.
+export function updateSessionUser(user: Session["user"]) {
+  if (state.session?.user.id !== user.id) return;
+  setState({ session: { ...state.session, user } });
+}
 export function setVisitorToken(token: string | null) {
   setState({ visitorToken: token });
 }
@@ -103,6 +110,8 @@ const privateResources = new Set([
   "quote",
   "order",
   "receipt",
+  "profile",
+  "favorites",
 ]);
 const privateQuery = (key: readonly unknown[]) =>
   privateResources.has(key[0] as string);

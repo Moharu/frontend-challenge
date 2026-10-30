@@ -46,6 +46,10 @@ export function createScenarios() {
   };
   let checkoutDelays = { ...defaultCheckoutDelays };
   let rejectConnection = false;
+  // Favorites: a one-shot failure and a latency for writes (POST/DELETE),
+  // for the optimistic update and its rollback.
+  let favoriteFailure: Failure | null = null;
+  let favoriteDelay = 0;
   // Timeout after creation: the next order is created but its response lost.
   let loseOrderResponse = false;
   let beforeOrder: (() => Promise<unknown>) | null = null;
@@ -88,6 +92,8 @@ export function createScenarios() {
       checkoutFailures = { quote: null, connection: null };
       checkoutDelays = { ...defaultCheckoutDelays };
       rejectConnection = false;
+      favoriteFailure = null;
+      favoriteDelay = 0;
       loseOrderResponse = false;
       beforeOrder = null;
       stats.started = 0;
@@ -139,6 +145,16 @@ export function createScenarios() {
       if (!Number.isSafeInteger(ms) || ms < 0 || ms > 10000)
         throw new Error("Delay must be 0..10000 ms");
       checkoutDelays[key] = ms;
+    },
+    failNextFavorite(kind: Failure) {
+      if (kind !== "http" && kind !== "network")
+        throw new Error("Invalid failure");
+      favoriteFailure = kind;
+    },
+    setFavoriteDelay(ms: number) {
+      if (!Number.isSafeInteger(ms) || ms < 0 || ms > 10000)
+        throw new Error("Delay must be 0..10000 ms");
+      favoriteDelay = ms;
     },
     rejectNextConnection() {
       rejectConnection = true;
@@ -204,18 +220,27 @@ export function createScenarios() {
         currentFailure = checkoutFailures[checkout];
         checkoutFailures[checkout] = null;
       }
+      const favoriteWrite = /\/favorites(\/|$)/.test(url.pathname) && mutation;
+      if (favoriteWrite && favoriteFailure) {
+        currentFailure = favoriteFailure;
+        favoriteFailure = null;
+      }
       const key = (url.searchParams.get("search") ?? "").trim().toLowerCase();
       // Cart reads model response latency: the state is read first and the
       // response is delayed afterwards, so a slow read can carry older state.
       const cartRead = cart && !mutation;
-      const ms = checkout
-        ? checkoutDelays[checkout]
-        : cart
-          ? mutation
-            ? cartDelays.write
-            : 0
-          : (delays[key] ??
-            (activeScenario === "out-of-order" && key === "emerald" ? 300 : 0));
+      const ms = favoriteWrite
+        ? favoriteDelay
+        : checkout
+          ? checkoutDelays[checkout]
+          : cart
+            ? mutation
+              ? cartDelays.write
+              : 0
+            : (delays[key] ??
+              (activeScenario === "out-of-order" && key === "emerald"
+                ? 300
+                : 0));
       try {
         await pause(ms, request);
         stats.completed++;
