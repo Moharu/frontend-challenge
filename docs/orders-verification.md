@@ -1,5 +1,7 @@
 # Verificação dos pedidos
 
+> **Registro histórico** desta etapa, verdadeiro quando escrito; não descreve o estado atual. Estado atual: [README](../README.md), [verificação final](final-verification.md), [desempenho](performance.md) e [rastreabilidade](requirements-traceability.md).
+
 Evidências executadas em 2026-10-30 sobre a árvore de trabalho da etapa de pedidos (sem commit), partindo de `83f4a2b`. Ambiente: WSL2, Node 24.22.0, npm 11.19.1, Chromium headless do Playwright, 2 workers.
 
 ## Verificações automatizadas

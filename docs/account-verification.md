@@ -1,5 +1,7 @@
 # Verificação da conta
 
+> **Registro histórico** desta etapa, verdadeiro quando escrito; não descreve o estado atual. Estado atual: [README](../README.md), [verificação final](final-verification.md), [desempenho](performance.md) e [rastreabilidade](requirements-traceability.md).
+
 Evidências executadas em 2026-10-30 sobre a árvore de trabalho da etapa da conta (sem commit), partindo de `fabc1b2`. Ambiente: WSL2, Node 24.22.0, npm 11.19.1, Chromium headless do Playwright, 2 workers.
 
 ## Verificações automatizadas

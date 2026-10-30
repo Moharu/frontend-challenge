@@ -1,6 +1,6 @@
 # Escopo da inicialização e passagem de contexto
 
-Registro histórico da etapa de inicialização. Para a base de dados atual, consulte `ARCHITECTURE.md`, `docs/contracts/` e `docs/mock-scenarios.md`.
+> **Registro histórico** da etapa de inicialização, verdadeiro quando escrito; não descreve o estado atual. Estado atual: [README](../README.md), [`ARCHITECTURE.md`](../ARCHITECTURE.md), [contratos](contracts/), [cenários](mock-scenarios.md) e [rastreabilidade](requirements-traceability.md).
 
 Concluída em 2026-10-28. Trata-se de infraestrutura e uma tela provisória neutra, não da implementação do marketplace. Não houve acesso ao Figma, alteração remota, commit, push, vinculação de projeto ou implantação. O arquivo de lock está pronto para um commit futuro com o restante da inicialização.
 

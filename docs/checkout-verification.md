@@ -1,5 +1,7 @@
 # Verificação do checkout
 
+> **Registro histórico** desta etapa, verdadeiro quando escrito; não descreve o estado atual. Estado atual: [README](../README.md), [verificação final](final-verification.md), [desempenho](performance.md) e [rastreabilidade](requirements-traceability.md).
+
 Evidências executadas em 2026-10-29 sobre a árvore de trabalho da etapa do checkout (sem commit), partindo de `fcf352e`. Ambiente: WSL2, Node 24.22.0, npm 11.19.1, Chromium headless do Playwright.
 
 ## Verificações automatizadas

@@ -16,7 +16,7 @@ O carrinho pertence ao servidor simulado. O cliente guarda somente um **token op
 - **Linhas:** identificadas por NFT + edição; adicionar a mesma edição soma à linha existente. Cada linha expõe nome, arte, ID do token, rótulo canônico da edição, preço unitário atual, total da linha, disponibilidade, limite de compra, `maxQuantity = min(available, purchaseLimit)` e a versão do NFT considerada.
 - **Preço atual:** a linha sempre usa o preço atual da edição. O servidor guarda o último preço reconhecido; enquanto for diferente do atual, a linha expõe `priceChange` (anterior e atual). Alterar a quantidade ou enviar `acknowledgePriceEth` com o preço atual reconhece a mudança; um preço reconhecido que já mudou de novo responde 409.
 - **Indisponibilidade:** a API nunca reduz nem remove linhas sozinha. Edição esgotada gera `SOLD_OUT`; quantidade acima do limite gera `QUANTITY_ABOVE_LIMIT` com o máximo atual. `hasConflicts` bloqueia "Conectar e finalizar" até a correção (ajustar ou remover).
-- **Sem reserva de estoque:** adicionar ao carrinho não reserva disponibilidade. Preço, disponibilidade e limites continuam pertencendo ao catálogo; o checkout deverá revalidar tudo na cotação.
+- **Sem reserva de estoque:** adicionar ao carrinho não reserva disponibilidade. Preço, disponibilidade e limites continuam pertencendo ao catálogo; o checkout revalida tudo na cotação ([checkout](checkout.md)).
 - **Quantidade:** inteiro de 1 a 1000 na API; a interface limita de 1 ao máximo efetivo. Diminuir abaixo de 1 não remove; remover é uma ação separada.
 - **Adicionar além do limite:** 409 `CONFLICT` com mensagem explicando quanto ainda é possível adicionar; `fields.quantity` traz uma mensagem legível ("É possível adicionar no máximo 2."), nunca um número solto. O carrinho não muda.
 - **Versão no cache:** uma única regra (`keepNewestCart`) vale para leituras e respostas de mutation: uma resposta com `version` menor que a do carrinho em cache (mesmo `id`) é descartada; versão igual é aceita, porque preço/disponibilidade do catálogo mudam sem escrita no carrinho; outro `id` (novo visitante) substitui. No servidor simulado, leituras passam pela mesma fila das escritas.
@@ -24,7 +24,7 @@ O carrinho pertence ao servidor simulado. O cliente guarda somente um **token op
 
 ### Resumo, rede e taxa
 
-`summary` traz subtotal, desconto, taxa de rede e total já calculados pela API; a interface só exibe. O subtotal soma todas as linhas, inclusive as em conflito (a finalização fica bloqueada até a correção). O carrinho ainda não tem carteira escolhida, então exibe a taxa **estimada** para Ethereum (`feeNetwork: "ethereum"`, `feeEstimated: true`), com a legenda "Taxa estimada (Ethereum)". Taxa fixa por pedido, não por item: Ethereum 0.016, Polygon 0.002, Solana 0.0005 ETH. Carrinho vazio não tem taxa. Todas as quantias são ETH, inclusive para NFTs de Polygon/Solana (convenção da simulação).
+`summary` traz subtotal, desconto, taxa de rede e total já calculados pela API; a interface só exibe. O subtotal soma todas as linhas, inclusive as em conflito (a finalização fica bloqueada até a correção). A carteira só é escolhida no checkout, onde a taxa passa a seguir a rede dela ([checkout](checkout.md)); o carrinho exibe a taxa **estimada** para Ethereum (`feeNetwork: "ethereum"`, `feeEstimated: true`), com a legenda "Taxa estimada (Ethereum)". Taxa fixa por pedido, não por item: Ethereum 0.016, Polygon 0.002, Solana 0.0005 ETH. Carrinho vazio não tem taxa. Todas as quantias são ETH, inclusive para NFTs de Polygon/Solana (convenção da simulação).
 
 ### Cupons de demonstração
 
@@ -52,7 +52,7 @@ O carrinho pertence ao servidor simulado. O cliente guarda somente um **token op
 ## Rotas e interface
 
 - `/cart` é rota lazy do TanStack Router; acesso direto e refresh funcionam no build otimizado.
-- **Detalhe:** como no Figma, só "Comprar" (nome acessível "Comprar NFT") e "Favoritar". Comprar envia edição e quantidade e abre `/cart`. Seleções em conflito ficam desabilitadas, e uma recusa (409, limite) mostra a explicação da API numa região `status` sem sair da página.
+- **Detalhe:** só "Comprar" (nome acessível "Comprar NFT") e "Favoritar", em desktop e mobile; não há botão separado de adicionar ao carrinho (desvio no mobile, ver abaixo). Comprar envia edição e quantidade ao carrinho e abre `/cart`. Seleções em conflito ficam desabilitadas, e uma recusa (409, limite) mostra a explicação da API numa região `status` sem sair da página.
 - **Badge:** soma das quantidades; oculto quando vazio; `99+` acima de 99. O nome acessível do link informa a quantidade exata ("Carrinho, 120 itens" / "Carrinho, vazio"). Aparece no cabeçalho desktop e na navegação mobile.
 - **Tela:** uma única `<table>` semântica (cabeçalhos NFTs, Preço, Edições, Total) que vira cards no mobile por CSS, sem duplicar controles. Controles de quantidade e remoção têm nomes com NFT, edição e quantidade atual. Durante a mutation, os botões da linha usam `aria-disabled` (o foco permanece) e envios concorrentes da mesma linha são ignorados.
 - **Foco:** após alterar quantidade, o foco permanece no botão, inclusive quando ele atinge o limite (indisponibilidade por `aria-disabled`, sem perder o foco); após remover, vai para o nome da próxima linha (ou anterior) e, sem itens, para o título do estado vazio.
@@ -78,13 +78,14 @@ Frames consultados por capturas e exportações fornecidas pelo usuário (sem ac
 - Desktop: a linha mostra também "Edição: 1/20", porque edições diferentes do mesmo NFT são linhas separadas. A linha fica um pouco mais alta que no frame.
 - Mobile: a lixeira fica no canto superior direito de cada card e a quantidade no inferior direito, sem a sobreposição desenhada no card "Ivory Baron". O botão `−` fica desabilitado na quantidade 1, como no frame.
 - Rótulos de edição são os canônicos da API (`1/20`, `1/1`, `Aberta`), não os exemplos `1/50`/`1/10`.
-- "Resumo da carteira" foi mantido como título do resumo (não conflita com carteiras nesta etapa). "Desconto do lançamento" virou "Desconto", com o código aplicado entre parênteses, porque o desconto vem de qualquer cupom.
+- "Resumo da carteira" foi mantido como título do resumo, como no frame. "Desconto do lançamento" virou "Desconto", com o código aplicado entre parênteses, porque o desconto vem de qualquer cupom.
 - "Taxa estimada" ganhou "(Ethereum)" para deixar a rede da estimativa explícita.
 - Mobile: o resumo fixo inferior reserva sua altura medida no fim da página (o último card e o rodapé nunca ficam escondidos), respeita safe area e limita-se a 70% da altura visível com rolagem interna, para zoom e teclado virtual. O título "Resumo da carteira", o rótulo do cupom e "Continuar explorando" ficam somente para leitores de tela no mobile, como no frame; o voltar cobre a navegação.
 - Navegação inferior oculta no carrinho mobile, como no frame.
 - Campo de cupom mobile: texto digitado em 16px (evita zoom automático do iOS ao focar) e placeholder em 12px, para o texto "Digite o código promocional..." caber inteiro em 390px.
 - **768px:** usa a tabela desktop com o resumo abaixo, alinhado à direita (até 480px). Uma coluna lateral de 332px deixaria a tabela estreita demais para preço, quantidade e total legíveis.
 - Detalhe: uma linha abaixo dos botões recebe a explicação de uma compra recusada.
+- **Detalhe mobile sem ação de carrinho separada:** o frame mobile do detalhe (`15:5536`) tem uma ação de carrinho ao lado de Comprar. Por decisão do usuário, o detalhe tem só "Comprar" e "Favoritar" nas duas composições, como no desktop do Figma. Adicionar ao carrinho continua possível por "Comprar", que adiciona e abre o carrinho, e, no desktop com mouse, pelo ícone de carrinho dos cartões, que leva ao detalhe.
 
 ## Ações indisponíveis
 

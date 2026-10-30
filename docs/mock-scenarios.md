@@ -1,18 +1,35 @@
 # Estado dos mocks, cenários e controles de integração
 
-A interface de descoberta consulta NFTs via Axios/Query e mantém uma conexão pública de Socket.IO por layout. A inicialização dos mocks carrega o retrato do catálogo antes de registrar handlers e renderizar. Nenhuma página ou painel de depuração de produto é adicionado.
+A API REST simulada (MSW) atende catálogo, carrinho, sessão, carteiras, cotações, pedidos, perfil e favoritos. A interface a consulta por Axios/TanStack Query e mantém uma conexão de Socket.IO por layout, pública e autenticada, com `nft.updated` e `order.updated`. A inicialização dos mocks carrega o retrato antes de registrar handlers e renderizar. Nenhuma página ou painel de depuração de produto é adicionado.
 
 ## Estado persistido de referência
 
-`src/mocks/store` usa um único retrato em memória, persistido de forma síncrona no localStorage sob **`kurio.mock.catalog.v1`**. Os retratos incluem `schemaVersion: 4`, `seedVersion: 2`, um contador lógico `tick`, os 24 NFTs, os visitantes (token → carrinho), os carrinhos, as contas, as sessões e o contador global de geração de sessão. Não é necessário outro pacote para esse pequeno conjunto de dados. Leituras do carrinho, atualizações e restaurações passam pela mesma fila serializada de promessas, de modo que uma leitura nunca observa um estado anterior a uma escrita já enfileirada. Uma gravação só é confirmada em memória depois de o armazenamento ter sucesso; falhas são propagadas em vez de simular persistência. Retratos ausentes, malformados, estruturalmente inválidos ou incompatíveis restauram e salvam a massa inicial determinística. Indisponibilidade ou falta de espaço no armazenamento causam falhas visíveis pelo tratamento de inicialização ou pela chamada aguardada ao controle.
+`src/mocks/store` usa um único retrato em memória, persistido de forma síncrona no localStorage sob **`kurio.mock.catalog.v1`**. O retrato atual (`Snapshot` em `src/mocks/store/index.ts`) tem `schemaVersion: 7` e `seedVersion: 2` e guarda:
+
+- o contador lógico `tick` e os 24 NFTs;
+- visitantes (token → carrinho) e carrinhos;
+- contas (com o perfil), sessões e o contador global `generation`;
+- carteiras, conexões simuladas e cupons expirados por cenário;
+- cotações (`quotes`, `quoteSequence`), pedidos (`orders`, `orderSequence`) e chaves de idempotência;
+- favoritos por usuário.
+
+Retratos de versão anterior restauram a seed. As seções "Extensões" abaixo registram, por etapa, quando cada parte entrou. Não é necessário outro pacote para esse pequeno conjunto de dados. Leituras do carrinho, atualizações e restaurações passam pela mesma fila serializada de promessas, de modo que uma leitura nunca observa um estado anterior a uma escrita já enfileirada. Uma gravação só é confirmada em memória depois de o armazenamento ter sucesso; falhas são propagadas em vez de simular persistência. Retratos ausentes, malformados, estruturalmente inválidos ou incompatíveis restauram e salvam a massa inicial determinística. Indisponibilidade ou falta de espaço no armazenamento causam falhas visíveis pelo tratamento de inicialização ou pela chamada aguardada ao controle.
 
 O armazenamento é limitado a essa chave; a restauração não limpa dados de outras partes da origem. Recarregamentos normais e reconexões de socket preservam o retrato. **Múltiplas abas:** antes de cada operação, o store adota o retrato persistido se o `tick` dele for maior que o da memória; não há eventos de armazenamento, bloqueios ou transmissões entre abas, e duas gravações no mesmo `tick` resolvem por última gravação. Uma aba vê a mudança da outra na próxima leitura (inclusive ao recuperar o foco). Contextos novos do Playwright isolam os testes.
 
 A restauração aborta requisições de cenário pendentes, limpa falhas de uso único, atrasos, diagnósticos e histórico de reenvio de eventos; fecha sockets ativos; restaura todo o catálogo, versões de esquema/massa inicial e contador lógico zero; depois permite novas conexões. Não restaura dados não relacionados da aplicação/origem. A estrutura de testes também descarta observadores/tempo real e limpa o QueryClient de teste. Não existem eventos de domínio agendados: os controles de atualização emitem imediatamente após uma transação persistida bem-sucedida. Atrasos pendentes de resposta não podem posteriormente alterar o estado ou emitir eventos. Os temporizadores de manutenção da conexão são liberados no fechamento.
 
-IDs da massa de dados: `nft-001`..`nft-024`; cada NFT possui `edition-N-limited` (limite de emissão 20 / disponibilidade 10) e `edition-N-unique` (1 / 1). São nove categorias públicas, duas redes (ethereum/polygon), vários preços e três páginas padrão de oito itens. Os nomes alternam entre Emerald Ape, Sage Nomad, Noon Verbal, Cosmic Bloom, Violet Nomad e Ivory Baron. Os dois primeiros preços limitados padrão são 1.19 e 1.69 ETH. O teste de precisão injeta `1.000000000000000001` e `1.000000000000000002` nos mesmos IDs, mantendo a comparação de valores indistinguíveis como números de ponto flutuante em JS. Os demais preços limitados alternam de 1 a 7 ETH; edições únicas custam 12 ETH. Valores de arte são apenas identificadores. Datas/horários derivam de `2026-01-01T00:00:00.000Z`; atualizações avançam um segundo por incremento lógico persistido, e versões aumentam por NFT. IDs de eventos usam esse contador global. A restauração reinicia intencionalmente o histórico de identidade/versão e exige consumidores novos, como os fornecidos pela estrutura de testes.
+IDs da massa de dados: `nft-001`..`nft-024`. Cada NFT tem três edições:
 
-`fixtureUsers` contém `user-ada` / `ada@example.test` e `user-lin` / `lin@example.test`, com usernames `ada_example` e `lin_example` e nomes de exibição fictícios; `fixturePasswords` guarda apenas sal e hash PBKDF2-SHA256 das senhas de demonstração do README. Não existe estado de perfil, carteira ou pedido; carrinho e sessão estão descritos nas seções de extensões abaixo.
+| Edição              | Rótulo   | Emissão / disponível | Limite por compra | Preço      |
+| ------------------- | -------- | -------------------- | ----------------- | ---------- |
+| `edition-N-limited` | `1/20`   | 20 / 10              | 5                 | ver abaixo |
+| `edition-N-unique`  | `1/1`    | 1 / 1                | 1                 | 12 ETH     |
+| `edition-N-open`    | `Aberta` | 100 / 30             | 3                 | 15 ETH     |
+
+A edição aberta de `nft-001` vem esgotada. São nove categorias públicas e três redes: ethereum e polygon alternadas em `nft-001`..`nft-018`, e solana em `nft-019`..`nft-024`. O catálogo padrão tem três páginas de nove itens. Os nomes alternam entre Emerald Ape, Sage Nomad, Noon Verbal, Cosmic Bloom, Violet Nomad e Ivory Baron. Os dois primeiros preços limitados padrão são 1.19 e 1.69 ETH. O teste de precisão injeta `1.000000000000000001` e `1.000000000000000002` nos mesmos IDs, mantendo a comparação de valores indistinguíveis como números de ponto flutuante em JS. Os demais preços limitados alternam de 1 a 7 ETH. Valores de arte são apenas identificadores. Datas/horários derivam de `2026-01-01T00:00:00.000Z`; atualizações avançam um segundo por incremento lógico persistido, e versões aumentam por NFT. IDs de eventos usam esse contador global. A restauração reinicia intencionalmente o histórico de identidade/versão e exige consumidores novos, como os fornecidos pela estrutura de testes.
+
+`fixtureUsers` contém `user-ada` / `ada@example.test` e `user-lin` / `lin@example.test`, com usernames `ada_example` e `lin_example` e nomes de exibição fictícios; `fixturePasswords` guarda apenas sal e hash PBKDF2-SHA256 das senhas de demonstração do README. `ada_example` começa com as carteiras "Principal" e "Reserva"; `lin_example`, sem carteiras. Perfil, carteiras, pedidos e favoritos seguem as regras de [conta](account.md), [checkout](checkout.md) e [pedidos](orders.md).
 
 ## Cenários nomeados e controles
 
@@ -67,6 +84,10 @@ npm run test:e2e
 A interface inclui início/catálogo, detalhe e carrinho do visitante. O build normal deve usar mocks habilitados para demonstração, pois não há backend real; desabilitá-los não fabrica respostas alternativas. A auditoria cobre início e detalhe. Checkout, pedidos e assinaturas privadas continuam adiados. Consulte `docs/discovery.md` e `docs/cart.md`.
 
 Para testar versões diferentes entre caches, `persistUpdate` persiste uma atualização sem emitir evento; `replay(envelope)` envia o envelope pela conexão Socket.IO interceptada. Assim, o teste pode atualizar o detalhe via REST enquanto a lista permanece antiga e só então entregar o evento real. Esses controles não alteram o cache Query diretamente.
+
+## Extensões por etapa (histórico)
+
+As seções seguintes registram o que cada etapa acrescentou. As versões de esquema citadas nelas (4, 5, 6) foram intermediárias; o estado atual é o descrito em "Estado persistido de referência" (versão 7).
 
 ## Extensões da etapa de descoberta
 

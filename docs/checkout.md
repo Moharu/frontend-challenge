@@ -36,7 +36,7 @@ As regras de formato não aparecem de antemão (o frame não as mostra): o texto
 
 ## Carteiras
 
-- **Endpoints:** `GET /wallets` e `POST /wallets` (edição fica para a etapa de carteiras).
+- **Endpoints:** `GET /wallets` e `POST /wallets` no checkout; a edição (`PATCH /wallets/:id`) fica na conta ([conta](account.md)).
 - **Seed:** `ada_example` tem "Principal" (`primary`, Ethereum, MetaMask, `0xA91F…E82C`) e "Reserva" (`secondary`, Polygon, Coinbase Wallet, `nova.kurio.eth`), com nome de exibição, nome do perfil e e-mail coerentes com a conta. `lin_example` começa sem carteiras.
 - **Validação** (`walletErrors` em `src/contracts/wallets.ts`, no cliente e no servidor): endereço por rede (Ethereum e Polygon `^0x[0-9a-fA-F]{40}$`; Solana base58 de 32 a 44), endereço único por usuário (409, sem diferenciar maiúsculas), provedor entre os três suportados e nome da carteira obrigatório.
 - **Primária e secundária:** a primeira carteira de um usuário vira `primary`; as seguintes, `secondary`. O papel é decidido pelo servidor (não vem no pedido), então nunca há duas primárias.

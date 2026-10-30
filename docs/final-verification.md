@@ -89,6 +89,22 @@ Resultado: E2E 14 aprovados; integração 302 aprovados e 9 pulados (testes de p
   - `test:deploy` com 10 aprovados;
   - Lighthouse com desempenho 92/92 no mobile e 100/100 no desktop, e acessibilidade, boas práticas e SEO em 100 nos quatro casos ([desempenho](performance.md#resultado-final-url-publicada-b7be43c)).
 
+## Coerência da documentação (após `1bdbdb5`)
+
+Rodada só de documentação (`docs/handoffs/coding-agent-docs-fixes-draft-pt-br.md`), sem mudança de código. Cada afirmação foi conferida no código antes de ser reescrita.
+
+- **Corrigido para o estado atual:**
+  - filtro de preço (controle deslizante; coleção, rede e "Limpar filtros" aplicados ao clicar);
+  - status da revisão visual;
+  - rotas protegidas, menu da conta e redefinição do estado em `session.md`;
+  - retrato dos mocks (versão 7, todas as coleções, três edições e três redes);
+  - cabeçalho de `deploy-verification.md` (`b7be43c`);
+  - remoção de "Adicionar ao carrinho", registrada como desvio no mobile;
+  - afirmações no futuro que já valem;
+  - caminho dos relatórios do Lighthouse.
+- **Registros históricos:** as verificações de etapa e o escopo da inicialização ganharam uma nota de registro histórico no topo, sem mudança no conteúdo.
+- **Checagens:** links internos e âncoras conferidos (26 arquivos, nenhum problema); formatação e lint aprovados.
+
 ## Clone limpo
 
 Diretório novo (`/tmp/kurio-clean`): `git clone` do repositório em `cc99ff5` com as mudanças desta etapa aplicadas, sem `node_modules` nem builds; Node 24.22.0 e npm 11.19.1.

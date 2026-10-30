@@ -1,5 +1,7 @@
 # Verificação da etapa de sessão
 
+> **Registro histórico** desta etapa, verdadeiro quando escrito; não descreve o estado atual. Estado atual: [README](../README.md), [verificação final](final-verification.md), [desempenho](performance.md) e [rastreabilidade](requirements-traceability.md).
+
 Evidências executadas em 2026-10-29 sobre a árvore de trabalho da etapa de sessão (sem commit), partindo de `157f168`. Ambiente: WSL2, Node 24.22.0, npm 11.19.1, Chromium headless do Playwright, Lighthouse 12.6.1.
 
 ## Verificações automatizadas

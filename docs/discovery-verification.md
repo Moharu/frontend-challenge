@@ -1,5 +1,7 @@
 # Verificação da descoberta pública
 
+> **Registro histórico** desta etapa, verdadeiro quando escrito; não descreve o estado atual. Estado atual: [README](../README.md), [verificação final](final-verification.md), [desempenho](performance.md) e [rastreabilidade](requirements-traceability.md).
+
 Evidências executadas em 2026-10-29 sobre a árvore de trabalho da etapa de descoberta (sem commit), partindo de `ba9a562`.
 
 ## Ambiente

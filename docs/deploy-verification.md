@@ -3,8 +3,9 @@
 Etapa guiada por `docs/handoffs/coding-agent-deploy-draft-pt-br.md`, com autorização do usuário para criar o projeto `jungle-gaming-challenge-joao` e implantar, e para o commit e o push da preparação.
 
 - **URL de produção:** https://jungle-gaming-challenge-joao.vercel.app
-- **Commit publicado:** primeira implantação `c757b34`; verificada por último `56365d3` (`56365d3b9d4b771a1a9e3dcde448b7a28b0832b4`), branch `main`
-- **Implantações:** primeira `dpl_phKy3itJdCiBsfuRyMjoH3BsS5xG` (criada pelo conector, build de cerca de 26 s); verificada por último `dpl_7pNttnhA25to6uWZwC9SDAb5n9yM` (criada pelo push), região `iad1`, estado READY. Este registro chega por um commit só de documentação e testes, que gera mais uma implantação com o mesmo código da aplicação.
+- **Último commit verificado:** `b7be43c` (`b7be43cd90b3abd2fee394a8eb97c6987d9aa9be`), branch `main`, com `test:deploy` e Lighthouse ([Etapa final](#etapa-final)). Commits posteriores só de documentação geram novas implantações com o mesmo código da aplicação.
+- **Última implantação verificada:** `dpl_Gp7KNVYYkQ51vpYyormTn3ALfYo8`, criada pelo push, estado READY.
+- **Histórico:** primeira implantação `c757b34` (`dpl_phKy3itJdCiBsfuRyMjoH3BsS5xG`, criada pelo conector, build de cerca de 26 s); verificação da etapa de implantação em `56365d3` (`dpl_7pNttnhA25to6uWZwC9SDAb5n9yM`, região `iad1`), detalhada nas seções abaixo.
 - **Data:** 2026-10-30
 - **Projeto:** conta pessoal (`joaovtelos-projects`), vinculado ao repositório `Moharu/frontend-challenge`; cada push em `main` implanta em produção
 

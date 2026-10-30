@@ -65,8 +65,9 @@ Uma linha por desvio, com o documento da decisão.
 | ---------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
 | Descoberta       | Edições, preços, IDs, raridade e totais vêm da API; não se copia a repetição de `1/10` nem valores do desenho | [descoberta](docs/discovery.md#design-recursos-e-desvios)       |
 | Descoberta       | Contrato, padrão do token e royalty com rótulos corretos (troca aparente no layout)                           | [descoberta](docs/discovery.md#design-recursos-e-desvios)       |
-| Descoberta       | Paginação e ordenação acessíveis no mobile; drawer com Aplicar/Cancelar/Limpar                                | [descoberta](docs/discovery.md#design-recursos-e-desvios)       |
-| Descoberta       | Campos de preço digitáveis no lugar do controle decorativo                                                    | [descoberta](docs/discovery.md#design-recursos-e-desvios)       |
+| Descoberta       | Paginação e ordenação acessíveis no mobile; drawer mobile como rascunho, com Aplicar/Cancelar/Limpar          | [descoberta](docs/discovery.md#design-recursos-e-desvios)       |
+| Descoberta       | Barra lateral: coleção, rede e "Limpar filtros" aplicam ao clicar; Aplicar só para a faixa de preço           | [descoberta](docs/discovery.md#design-recursos-e-desvios)       |
+| Descoberta       | Detalhe mobile sem ação de carrinho separada (só Comprar e Favoritar, por decisão do usuário)                 | [carrinho](docs/cart.md#design-e-desvios-do-figma)              |
 | Descoberta       | Busca do cabeçalho desktop expande inline; no mobile o formulário fica visível                                | [descoberta](docs/discovery.md#design-recursos-e-desvios)       |
 | Descoberta       | Navegação inferior só no início; no detalhe mobile, a área inferior é de quantidade, preço e ações            | [descoberta](docs/discovery.md#design-recursos-e-desvios)       |
 | Descoberta       | Blocos editoriais e rodapé em fluxo natural no mobile; alturas podem crescer com o texto real                 | [descoberta](docs/discovery.md#design-recursos-e-desvios)       |
@@ -93,7 +94,7 @@ Uma linha por desvio, com o documento da decisão.
 | Conta            | "Igual à carteira principal" é uma ação de preenchimento; sem avatar no cabeçalho                             | [conta](docs/account.md#decisões-e-desvios-do-figma)            |
 | Conta            | Mobile sem frames: coluna única e menu "Meu perfil" sobreposto; sem rodapé nas páginas da conta               | [conta](docs/account.md#rotas-e-navegação)                      |
 
-A revisão de fidelidade visual com o Figma é feita pelo usuário; ajustes que ela gerar ficam para outra rodada.
+A revisão de fidelidade visual com o Figma foi feita e aprovada pelo usuário; os ajustes que ela gerou estão em [verificação final](docs/final-verification.md#contraste-768-px-e-ajustes-de-figma) e o status em [rastreabilidade](docs/requirements-traceability.md).
 
 ## Limitações
 
