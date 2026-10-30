@@ -84,7 +84,10 @@ Resultado: E2E 14 aprovados; integração 302 aprovados e 9 pulados (testes de p
 - **`npm run test:deploy`** contra https://jungle-gaming-challenge-joao.vercel.app: 10 aprovados.
 - **Lighthouse publicado:** desempenho igual ao anterior (mobile 92/91, desktop 100). A acessibilidade caiu para 96 no início desktop, por `target-size` no controle deslizante de preço, e foi corrigida localmente ([desempenho](performance.md#etapa-final-url-publicada-229ba64)).
 - **Depois da correção:** E2E 14 aprovados (só a referência do início desktop foi atualizada; o conteúdo abaixo da trilha, 4 px mais alta, desceu) e integração 304 aprovados e 10 pulados.
-- **Pendente:** publicar a correção e medir de novo o Lighthouse e o `test:deploy` sobre o novo commit.
+- **Correção publicada em `b7be43c`:**
+  - Vercel READY em produção;
+  - `test:deploy` com 10 aprovados;
+  - Lighthouse com desempenho 92/92 no mobile e 100/100 no desktop, e acessibilidade, boas práticas e SEO em 100 nos quatro casos ([desempenho](performance.md#resultado-final-url-publicada-b7be43c)).
 
 ## Clone limpo
 

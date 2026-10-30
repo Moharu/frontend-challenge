@@ -62,6 +62,12 @@ Chromium desktop e mobile, 2 workers.
 
 Implantação de `56365d3`, criada automaticamente pelo push: `npm run test:deploy` com 8 repetições, **80/80 aprovados**, sem erro no console; duas requisições desviadas, ambas no instante de uma navegação (aceitas e listadas). A compra chega ao recibo confirmado sem recarga (evento `order.updated` pelo Socket.IO simulado) e os favoritos aparecem na Lista de interesse. O teste de arquivos estáticos passou a esperar fontes e artes carregarem.
 
+## Etapa final
+
+- **`229ba64`:** implantação de produção `dpl_8txDDMhn3wdTYfJPZBhpj1sw3Xod`, READY. `npm run test:deploy` com 10 aprovados.
+- **`b7be43c`** (correção do controle deslizante): implantação de produção `dpl_Gp7KNVYYkQ51vpYyormTn3ALfYo8`, criada pelo push, READY. `npm run test:deploy` com **10 aprovados**. Produção conferida na Vercel servindo esse commit.
+- O registro desses resultados chega num commit só de documentação, que gera mais uma implantação com o mesmo código da aplicação.
+
 ## Diferenças em relação ao build local
 
 - Cabeçalhos e o 404 de `/api/*` só existem na Vercel (`vite preview` não aplica o `vercel.json`).
@@ -78,4 +84,4 @@ Nenhum ("Target crashed", navegador fechado, timeout, falta de memória ou proce
 ## Não verificado
 
 - Navegadores além do Chromium e dispositivos físicos.
-- Lighthouse (fica para a etapa de desempenho).
+- Lighthouse: ver [desempenho](performance.md).

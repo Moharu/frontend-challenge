@@ -68,7 +68,19 @@ A interface mudou na etapa final, por isso a URL publicada foi medida de novo. A
 - A barra lateral só aparece acima de 700 px, por isso o mobile não foi afetado.
 - A auditoria axe do projeto não pegou o problema porque não incluía a etiqueta `wcag22aa`.
 - **Correção:** dois marcadores separados (`role="slider"`, alvo de 24 px, setas, Page Up/Down, Home/End e arraste). A etiqueta `wcag22aa` entrou na auditoria axe, que reprova o controle antigo e aprova o novo.
-- **Ainda não medido:** o Lighthouse sobre a correção publicada, que depende do próximo push.
+
+## Resultado final (URL publicada, `b7be43c`)
+
+Implantação de produção de `b7be43c` (correção do controle deslizante), READY na Vercel. Data: 2026-10-30, três execuções por página e perfil, mediana.
+
+| Perfil  | Página  | Perf | A11y |  BP | SEO |     LCP |   CLS |   TBT |
+| ------- | ------- | ---: | ---: | --: | --: | ------: | ----: | ----: |
+| mobile  | início  |   92 |  100 | 100 | 100 | 2790 ms | 0,003 |  1 ms |
+| mobile  | detalhe |   92 |  100 | 100 | 100 | 2848 ms | 0,000 | 41 ms |
+| desktop | início  |  100 |  100 | 100 | 100 |  638 ms | 0,001 |  0 ms |
+| desktop | detalhe |  100 |  100 | 100 | 100 |  595 ms | 0,001 |  0 ms |
+
+Todas as metas atingidas e acessibilidade em 100 nos quatro casos. Os relatórios HTML e JSON das três execuções substituíram os anteriores em [`docs/lighthouse/`](lighthouse/). `npm run test:deploy` contra essa implantação: 10 aprovados.
 
 `npm run test:deploy` contra a URL publicada (`229ba64`): 10 aprovados.
 

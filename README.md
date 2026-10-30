@@ -2,7 +2,7 @@
 
 Marketplace de NFTs em React e TypeScript: descoberta (catálogo com busca, filtros, ordenação e paginação na URL, detalhe com galeria e edições), carrinho persistido com cupons e resumo calculado pela API, cadastro, login e sessão com mesclagem do carrinho de visitante, checkout com carteiras e conexão simulada, pedidos idempotentes com pagamento simulado e recibo, conta do colecionador (perfil, avatar, senha, carteiras principal e secundária, favoritos otimistas) e tempo real por Socket.IO (`nft.updated`, `order.updated`). REST, persistência e Socket.IO são simulados na camada de rede com MSW, também na versão publicada.
 
-**Demonstração publicada:** https://jungle-gaming-challenge-joao.vercel.app (commit verificado `cc99ff5`). Repositório: https://github.com/Moharu/frontend-challenge.
+**Demonstração publicada:** https://jungle-gaming-challenge-joao.vercel.app (commit verificado `b7be43c`). Repositório: https://github.com/Moharu/frontend-challenge.
 
 Requisitos originais em [docs/challenge-requirements.md](docs/challenge-requirements.md), preservados sem alterações, e o atendimento de cada um, lado a lado, em [rastreabilidade](docs/requirements-traceability.md).
 
