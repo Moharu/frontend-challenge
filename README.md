@@ -53,7 +53,7 @@ Contas fictícias (credenciais de demonstração, sem valor fora desta simulaç�
 | `ada_example` | `ada@example.test` | `AdaKurio2026` |
 | `lin_example` | `lin@example.test` | `LinKurio2026` |
 
-A seed guarda apenas sal e hash PBKDF2. Para redefinir tudo (contas criadas, sessões e carrinhos), remova do localStorage `kurio.mock.catalog.v1`, `kurio.session.v1` e `kurio.visitor.v1`. Regras do carrinho em [carrinho](docs/cart.md); política de sessão, retorno ao fluxo e mesclagem em [sessão](docs/session.md); pagamento, carteiras, conexão simulada e cotação em [checkout](docs/checkout.md).
+A seed guarda apenas sal e hash PBKDF2. Para redefinir a demonstração, veja "Redefinir o estado" em [Implantação](#implantação). Regras do carrinho em [carrinho](docs/cart.md); política de sessão, retorno ao fluxo e mesclagem em [sessão](docs/session.md); pagamento, carteiras, conexão simulada e cotação em [checkout](docs/checkout.md).
 
 Carteiras de demonstração: `ada_example` tem "Principal" (Ethereum, MetaMask) e "Reserva" (Polygon, Coinbase Wallet, `nova.kurio.eth`); `lin_example` começa sem carteiras, para testar o cadastro no checkout. A conexão de carteira é simulada (não usa extensão do navegador).
 
@@ -63,4 +63,29 @@ Conta: o menu da conta no cabeçalho (ou "Minha conta" no mobile) leva a `/accou
 
 Consulte [arquitetura](ARCHITECTURE.md), [contratos REST e acompanhamento](docs/contracts/rest.md), [eventos](docs/contracts/events.md), [cenários de mocks](docs/mock-scenarios.md) e [diário](docs/ai-interaction-journal.md). Orientações das etapas ficam em `docs/handoffs/`.
 
-`vercel.json` mantém a preparação para SPA com prioridade para arquivos existentes. Nenhum projeto foi vinculado ou implantado. Toda a documentação é mantida em pt-BR.
+Toda a documentação é mantida em pt-BR.
+
+## Implantação
+
+A demonstração é publicada na Vercel a partir deste repositório (branch `main`); cada push em `main` gera uma nova implantação de produção e cada push em outra branch, uma prévia. URL e commit verificado em [verificação da implantação](docs/deploy-verification.md).
+
+Configuração do projeto, suficiente para reproduzi-lo em outra conta (importar o repositório na Vercel; tudo vem do `vercel.json` e do `package.json`):
+
+| Item                  | Valor                                                                                                                                         |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework             | Vite                                                                                                                                          |
+| Instalação            | `npm ci`                                                                                                                                      |
+| Build                 | `npm run build` (tipos e `vite build`)                                                                                                        |
+| Diretório de saída    | `dist`                                                                                                                                        |
+| Node                  | 24.x, por `engines.node` (`>=24.22.0 <25`, a mesma linha do `.nvmrc`); o npm 11 acompanha o Node 24                                           |
+| Variáveis de ambiente | nenhuma; os padrões de `.env.example` (`VITE_API_BASE_URL=/api`, `VITE_ENABLE_MOCKS=true`) já valem. Nunca definir `VITE_ENABLE_TEST_HARNESS` |
+
+**Roteamento (`vercel.json`):** arquivos existentes têm prioridade; todo o resto, exceto `/api/*`, é reescrito para o `index.html` (acesso direto e refresh em `/`, `/nfts/:id`, `/cart`, `/login`, `/signup`, `/checkout`, `/orders/:id` e `/account/*`). `/api/*` não vira HTML: no navegador, as chamadas são atendidas pelo service worker; fora dele (ou sem o worker), a plataforma responde 404. Rotas desconhecidas mostram "Página não encontrada" com status HTTP 200, por ser uma SPA.
+
+**Cabeçalhos:** `Cache-Control: no-cache` no `index.html`, nas rotas da SPA e no `mockServiceWorker.js` (que também recebe `Content-Type` JavaScript), para que uma nova versão chegue logo; `public, max-age=31536000, immutable` nos arquivos com hash em `/assets/`; uma semana em `/assets/art`, `/assets/figma` e `/assets/fonts` (sem hash); `X-Content-Type-Options: nosniff` e `Referrer-Policy: strict-origin-when-cross-origin` em tudo. Sem CSP nesta etapa (poderia bloquear o MSW).
+
+**Service worker:** a interface só inicia depois de o MSW estar ativo, também numa origem HTTPS nova. O worker do MSW 2.15 chama `skipWaiting()` e `clients.claim()`, e o navegador busca o script sem cache: uma nova implantação ativa o worker novo sem limpar dados. Sem service worker (navegador sem suporte, bloqueio ou origem não segura), a página explica que a demonstração depende dele, em vez de ficar em branco.
+
+**Verificação do site publicado:** `DEPLOY_URL=https://… npm run test:deploy` roda fumaça em Chromium desktop e mobile, só com comportamento público (rotas, arquivos e cabeçalhos, compra completa até o recibo pelo socket simulado, favoritos), falhando com erro no console ou chamada `/api` que saia do navegador. Contra um build local (`npm run build`, `npm run preview` e `DEPLOY_URL=http://127.0.0.1:4173`), os testes de cabeçalhos e de `/api` são pulados, porque o `vite preview` não aplica o `vercel.json`.
+
+**Redefinir o estado:** cada navegador tem a própria simulação. Para recomeçar da seed, use "Limpar dados do site" do navegador (ou, nas ferramentas do desenvolvedor, Application → Clear site data), o que remove também o service worker; ele volta ao recarregar. As chaves usadas são, no localStorage, `kurio.mock.catalog.v1` (estado simulado: contas, sessões, carrinhos, carteiras, pedidos, perfil e favoritos), `kurio.session.v1` e `kurio.visitor.v1`; no sessionStorage, `kurio.checkout.draft.v1:<usuário>` e `kurio.checkout.order.v1:<usuário>` (rascunho e pedido em envio) e, só nos testes, `kurio.mock.quote-ttl`, `kurio.mock.payment` e `kurio.mock.session-failures`.

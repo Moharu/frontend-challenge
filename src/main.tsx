@@ -7,10 +7,16 @@ import { readEnv } from "@/lib/env";
 import { http } from "@/lib/http";
 import { verifySession } from "@/data/session/identity";
 import "@/styles/globals.css";
+class ServiceWorkerUnavailable extends Error {}
 async function start() {
   const env = readEnv();
   http.defaults.baseURL = env.apiBaseURL;
   if (env.enableMocks) {
+    // The demonstration's API lives in a service worker (MSW): without one
+    // (old browser, blocked, or a non-secure origin), the interface does not
+    // start and says why.
+    if (!("serviceWorker" in navigator) || !window.isSecureContext)
+      throw new ServiceWorkerUnavailable();
     const { startMocks } = await import("@/mocks/browser");
     const controls = await startMocks(env.apiBaseURL);
     if (import.meta.env.VITE_ENABLE_TEST_HARNESS === "true") {
@@ -29,8 +35,23 @@ async function start() {
     </StrictMode>,
   );
 }
+// Startup failure: a clear message instead of a blank page. The simulated
+// API depends on the service worker, the usual cause.
 void start().catch((error: unknown) => {
   console.error("Application startup failed", error);
-  document.getElementById("root")!.textContent =
-    "Application setup failed. Check the browser console.";
+  const workerProblem =
+    error instanceof ServiceWorkerUnavailable ||
+    /service ?worker/i.test(String(error));
+  const root = document.getElementById("root")!;
+  const box = document.createElement("main");
+  box.className = "startup-error";
+  box.setAttribute("role", "alert");
+  const title = document.createElement("h1");
+  title.textContent = "Não foi possível iniciar a demonstração";
+  const text = document.createElement("p");
+  text.textContent = workerProblem
+    ? "Esta demonstração simula a API dentro do navegador com um service worker, e ele não pôde ser ativado. Use um navegador atualizado, sem bloqueio de service workers (por exemplo, fora da navegação privada de alguns navegadores), e recarregue a página."
+    : "Ocorreu um erro ao carregar a aplicação. Recarregue a página para tentar de novo.";
+  box.append(title, text);
+  root.replaceChildren(box);
 });
