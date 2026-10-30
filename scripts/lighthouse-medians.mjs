@@ -1,9 +1,12 @@
 // Prints median scores and metrics per profile/route from retained reports.
+// Usage: node scripts/lighthouse-medians.mjs [published|local|<directory>]
 import { readdirSync, readFileSync } from "node:fs";
 const median = (values) =>
   [...values].sort((a, b) => a - b)[values.length >> 1];
+const arg = process.argv[2] ?? "local";
+const root = arg.includes("/") ? arg : `reports/lighthouse/${arg}`;
 for (const profile of ["mobile", "desktop"]) {
-  const dir = `reports/lighthouse/${profile}`;
+  const dir = `${root}/${profile}`;
   const groups = {};
   for (const file of readdirSync(dir).filter((f) =>
     f.endsWith(".report.json"),

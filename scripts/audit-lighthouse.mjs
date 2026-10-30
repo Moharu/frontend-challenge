@@ -4,12 +4,16 @@ import { createRequire } from "node:module";
 import { chromium } from "@playwright/test";
 const require = createRequire(import.meta.url);
 const cli = require.resolve("@lhci/cli/src/cli.js");
+// Reports per target: "published" (LIGHTHOUSE_URL) or "local" (vite preview).
+const target = process.env.LIGHTHOUSE_URL ? "published" : "local";
 for (const profile of ["mobile", "desktop"]) {
+  const outputDir = `reports/lighthouse/${target}/${profile}`;
+  rmSync(outputDir, { recursive: true, force: true });
   const args = [
     cli,
     "autorun",
     "--config=lighthouserc.cjs",
-    `--upload.outputDir=reports/lighthouse/${profile}`,
+    `--upload.outputDir=${outputDir}`,
   ];
   if (profile === "desktop") args.push("--collect.settings.preset=desktop");
   const result = spawnSync(process.execPath, args, {

@@ -387,14 +387,26 @@ export function createStore(storage: Storage) {
     receipt: (token: string | null, id: string) =>
       transaction(() => getReceipt(state, token, id)),
     // Resolves overdue payments (on start, on every order access and on the
-    // page timer). Returns what changed, for the socket events.
+    // page timer). Returns what changed, for the socket events, and when the
+    // next pending order is due (null without one), for the page timer.
     resolveDue: (force = false) =>
       transaction(() => {
         const now = Date.now();
+        const nextDue = (snapshot: Snapshot) => {
+          const due = Object.values(snapshot.orders)
+            .filter((o) => o.status === "pending")
+            .map((o) => o.resolveAt);
+          return due.length ? Math.min(...due) : null;
+        };
         const pending = Object.values(state.orders).some(
           (o) => o.status === "pending" && (force || o.resolveAt <= now),
         );
-        if (!pending) return { orders: [], events: [] as NftUpdated[] };
+        if (!pending)
+          return {
+            orders: [],
+            events: [] as NftUpdated[],
+            nextDue: nextDue(state),
+          };
         const next = structuredClone(state);
         if (force)
           for (const o of Object.values(next.orders))
@@ -405,6 +417,7 @@ export function createStore(storage: Storage) {
         return {
           orders: result.orders,
           events: result.nftIds.map((id) => nftEvent(next, id)),
+          nextDue: nextDue(next),
         };
       }),
     // Simulated payment of the next orders: outcome and resolution delay.

@@ -26,7 +26,7 @@ No Windows, copie `.env.example` pelo terminal ou editor. No Linux, se faltarem 
 | `test:e2e:ui` / `test:e2e:report` | Executor interativo / relatório HTML E2E                                                     |
 | `build:integration`               | Build otimizado com ponte de testes isolada em dist-integration                              |
 | `test:integration`                | ETH, infraestrutura, descoberta, carrinho, sessão, checkout, pedidos e conta (integração)    |
-| `audit:lighthouse`                | Três medições de início/detalhe por perfil mobile/desktop                                    |
+| `audit:lighthouse`                | Três medições de início/detalhe por perfil mobile/desktop (ver "Auditoria de desempenho")    |
 
 Execute `npm run build` antes de E2E e Lighthouse; para integração, execute primeiro `npm run build:integration`. Os testes gerenciam seus próprios servidores locais. As duas configurações do Playwright usam **2 workers** por padrão: com Chromium em paralelo sem limite, o navegador caiu ("Target crashed") e o editor travou sob WSL. Com folga de memória, sobrescreva com `PW_WORKERS=4 npm run test:integration` ou `npm run test:integration -- --workers=4`. Referências visuais são versionáveis e devem ser inspecionadas antes de atualização.
 
@@ -91,3 +91,16 @@ Configuração do projeto, suficiente para reproduzi-lo em outra conta (importar
 **Verificação do site publicado:** `DEPLOY_URL=https://… npm run test:deploy` roda fumaça em Chromium desktop e mobile, só com comportamento público (rotas, arquivos e cabeçalhos, compra completa até o recibo pelo socket simulado, favoritos), falhando com erro no console ou chamada `/api` que saia do navegador. Contra um build local (`npm run build`, `npm run preview` e `DEPLOY_URL=http://127.0.0.1:4173`), os testes de cabeçalhos e de `/api` são pulados, porque o `vite preview` não aplica o `vercel.json`.
 
 **Redefinir o estado:** cada navegador tem a própria simulação. Para recomeçar da seed, use "Limpar dados do site" do navegador (ou, nas ferramentas do desenvolvedor, Application → Clear site data), o que remove também o service worker; ele volta ao recarregar. As chaves usadas são, no localStorage, `kurio.mock.catalog.v1` (estado simulado: contas, sessões, carrinhos, carteiras, pedidos, perfil e favoritos), `kurio.session.v1` e `kurio.visitor.v1`; no sessionStorage, `kurio.checkout.draft.v1:<usuário>` e `kurio.checkout.order.v1:<usuário>` (rascunho e pedido em envio) e, só nos testes, `kurio.mock.quote-ttl`, `kurio.mock.payment` e `kurio.mock.session-failures`.
+
+## Auditoria de desempenho
+
+A medição oficial é a da URL publicada; a local serve de referência reproduzível. As duas rodam três execuções de início e detalhe nos perfis mobile e desktop:
+
+```sh
+LIGHTHOUSE_URL=https://jungle-gaming-challenge-joao.vercel.app npm run audit:lighthouse
+node scripts/lighthouse-medians.mjs published
+npm run build && npm run audit:lighthouse
+node scripts/lighthouse-medians.mjs local
+```
+
+Os relatórios ficam em `reports/lighthouse/<published|local>/<perfil>` (ignorado pelo Git). A medição local usa `scripts/serve-dist.mjs`, que serve `dist/` com a compressão e os cabeçalhos da Vercel. Resultados, ambiente e análise em [desempenho](docs/performance.md).

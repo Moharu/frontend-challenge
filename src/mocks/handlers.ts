@@ -48,6 +48,8 @@ const fromApiError = (e: ApiError) =>
 export interface HandlerEvents {
   nfts(events: NftUpdated[]): void;
   orders(orders: Order[]): void;
+  // An order was created: its payment is now pending.
+  pending(): void;
 }
 export function createHandlers(
   base: string,
@@ -269,6 +271,7 @@ export function createHandlers(
           await body(request),
         );
         events.nfts(result.events);
+        events.pending();
         // Scenario "timeout after creation": the order exists, but the
         // response is lost on the way back.
         if (scenarios.takeLostOrderResponse()) return HttpResponse.error();

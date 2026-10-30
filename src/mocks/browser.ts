@@ -7,10 +7,11 @@ import { apiURL, socketURL } from "@/lib/urls";
 import type { NftUpdated, OrderUpdated } from "@/contracts/events";
 import type { Order } from "@/contracts/orders";
 import type { PaymentOutcome } from "./store/orders";
-// How often the page checks for overdue simulated payments. Resolution does
-// not depend on this timer alone: overdue orders are also resolved on start
-// and on every order access, so a reload never loses one.
-const paymentTick = 250;
+// The page timer resolves simulated payments when they are due. It runs only
+// while an order is pending (armed for the earliest one), so idle pages do
+// not reread the persisted state. Resolution does not depend on this timer
+// alone: overdue orders are also resolved on start and on every order
+// access, so a reload never loses one.
 export async function startMocks(baseURL: string) {
   const base = apiURL(baseURL);
   const store: MockStore = createStore(localStorage);
@@ -46,6 +47,9 @@ export async function startMocks(baseURL: string) {
         };
       }
     },
+    pending() {
+      void resolve().catch(() => undefined);
+    },
   };
   const worker = setupWorker(
     ...createHandlers(base, store, scenarios, events),
@@ -62,15 +66,21 @@ export async function startMocks(baseURL: string) {
         print.error();
     },
   });
+  let timer = 0;
   async function resolve(force = false) {
     const result = await store.resolveDue(force);
     events.nfts(result.events);
     events.orders(result.orders);
+    window.clearTimeout(timer);
+    if (result.nextDue !== null)
+      timer = window.setTimeout(
+        () => void resolve().catch(() => undefined),
+        Math.max(0, result.nextDue - Date.now()),
+      );
     return result.orders;
   }
-  // Overdue payments resolve on start, then on the page timer.
+  // Overdue payments resolve on start, then when the next one is due.
   await resolve();
-  window.setInterval(() => void resolve().catch(() => undefined), paymentTick);
   // No timer-based catalog scheduler: mutations emit only after persistence.
   const controls = {
     store,
