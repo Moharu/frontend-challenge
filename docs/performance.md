@@ -35,6 +35,21 @@ Comandos em "Auditoria de desempenho" no [README](../README.md#auditoria-de-dese
 
 A URL publicada já atingia todas as metas antes desta etapa. O local fica abaixo no mobile porque a latência do servidor local é baixa demais para o modelo simulado (TTFB observado de cerca de 5 ms), que então dá peso relativo maior à transferência de JavaScript.
 
+## Resultado final (URL publicada, `5a5b433`)
+
+Implantação criada pelo push de `5a5b433`, conferida pelo nome do bundle servido antes de medir. Data: 2026-10-30.
+
+| Perfil  | Página  | Perf | A11y |  BP | SEO |     LCP |   CLS |   TBT |
+| ------- | ------- | ---: | ---: | --: | --: | ------: | ----: | ----: |
+| mobile  | início  |   92 |  100 | 100 | 100 | 2755 ms | 0,001 |  0 ms |
+| mobile  | detalhe |   92 |  100 | 100 | 100 | 2842 ms | 0,000 | 32 ms |
+| desktop | início  |  100 |  100 | 100 | 100 |  614 ms | 0,002 |  0 ms |
+| desktop | detalhe |  100 |  100 | 100 | 100 |  583 ms | 0,001 |  0 ms |
+
+Todas as metas atingidas. Os relatórios HTML e JSON das três execuções por página e perfil estão em [`docs/lighthouse/`](lighthouse/) (cerca de 17 MB, quase tudo capturas de tela embutidas pelo Lighthouse). Local final (`5a5b433`, servidor comprimido): mobile 89 no início e 84 no detalhe, desktop 99 nos dois, demais categorias 100.
+
+`npm run test:deploy` contra a URL publicada: 10 aprovados, sem erro no console. Uma requisição `/api` fora do worker foi aceita e listada, no instante de uma navegação (caso documentado em `docs/deploy-verification.md`). Contra o build local: 8 aprovados e 2 pulados.
+
 ## Gargalo confirmado
 
 Pelos relatórios (rede observada e decomposição do LCP):
